@@ -1,0 +1,103 @@
+############################################
+# GENERAL
+############################################
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+############################################
+# NODE / REACT (Frontend)
+############################################
+
+node_modules/
+dist/
+build/
+coverage/
+
+# Vite
+.vite/
+
+############################################
+# .NET / ASP.NET
+############################################
+
+bin/
+obj/
+out/
+publish/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+############################################
+# TEST RESULTS
+############################################
+
+TestResults/
+*.trx
+*.coverage
+coverage.cobertura.xml
+
+############################################
+# DATABASE
+############################################
+
+# Ignore local DB files (if any)
+*.db
+*.sqlite
+*.sqlite3
+
+############################################
+# DOCKER
+############################################
+
+# Ignore docker override files if local only
+docker-compose.override.yml
+
+############################################
+# AZURE
+############################################
+
+.azure/
+.publishsettings
+
+############################################
+# PACKAGE MANAGERS
+############################################
+
+# npm
+package-lock.json
+
+# If using yarn instead
+# yarn.lock
+
+############################################
+# TEMP FILES
+############################################
+
+*.tmp
+*.temp
+*.swp
