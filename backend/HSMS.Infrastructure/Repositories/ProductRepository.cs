@@ -1,43 +1,130 @@
+using HSMS.Application.DTOs;
+using HSMS.Application.Interfaces;
 using HSMS.Domain.Entities;
-using HSMS.Infrastructure.Data;
+using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
-using System.Data;
 
 namespace HSMS.Infrastructure.Repositories;
 
-public class ProductRepository
+public class ProductRepository : IProductRepository
 {
-    private readonly DbConnectionFactory _factory;
+    private readonly string _connectionString;
 
-    public ProductRepository(DbConnectionFactory factory)
+    public ProductRepository(IConfiguration configuration)
     {
-        _factory = factory;
+        _connectionString = configuration.GetConnectionString("DefaultConnection")!;
     }
 
-    public async Task<IEnumerable<Product>> GetAllAsync()
+    // CREATE
+    public async Task<int> AddProduct(ProductCreateDTO product)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        string query = @"INSERT INTO Products (Name, SKU, Price, Quantity, Category)
+                         VALUES (@Name, @SKU, @Price, @Quantity, @Category);
+                         SELECT LAST_INSERT_ID();";
+
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Name", product.Name);
+        command.Parameters.AddWithValue("@SKU", product.SKU);
+        command.Parameters.AddWithValue("@Price", product.Price);
+        command.Parameters.AddWithValue("@Quantity", product.Quantity);
+        command.Parameters.AddWithValue("@Category", product.Category);
+
+        var result = await command.ExecuteScalarAsync();
+        return Convert.ToInt32(result);
+    }
+
+    // READ ALL
+    public async Task<List<Product>> GetAllProducts()
     {
         var products = new List<Product>();
 
-        using var connection = _factory.CreateConnection();
+        using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var command = new MySqlCommand("SELECT * FROM Products", connection);
-
+        using var command = new MySqlCommand("SELECT * FROM Products", connection);
         using var reader = await command.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
             products.Add(new Product
             {
-                Id = reader.GetInt32("Id"),
-                Name = reader.GetString("Name"),
-                SKU = reader.GetString("SKU"),
-                Price = reader.GetDecimal("Price"),
-                Quantity = reader.GetInt32("Quantity"),
-                Category = reader.GetString("Category")
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                SKU = reader["SKU"].ToString()!,
+                Price = Convert.ToDecimal(reader["Price"]),
+                Quantity = Convert.ToInt32(reader["Quantity"]),
+                Category = reader["Category"].ToString()!,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
             });
         }
 
         return products;
+    }
+
+    // READ BY ID
+    public async Task<Product?> GetProductById(int id)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = new MySqlCommand("SELECT * FROM Products WHERE Id = @Id", connection);
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = await command.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            return new Product
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                SKU = reader["SKU"].ToString()!,
+                Price = Convert.ToDecimal(reader["Price"]),
+                Quantity = Convert.ToInt32(reader["Quantity"]),
+                Category = reader["Category"].ToString()!,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            };
+        }
+
+        return null;
+    }
+
+    // UPDATE
+    public async Task<bool> UpdateProduct(int id, ProductUpdateDTO product)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        string query = @"UPDATE Products
+                         SET Name=@Name, SKU=@SKU, Price=@Price,
+                             Quantity=@Quantity, Category=@Category
+                         WHERE Id=@Id";
+
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Id", id);
+        command.Parameters.AddWithValue("@Name", product.Name);
+        command.Parameters.AddWithValue("@SKU", product.SKU);
+        command.Parameters.AddWithValue("@Price", product.Price);
+        command.Parameters.AddWithValue("@Quantity", product.Quantity);
+        command.Parameters.AddWithValue("@Category", product.Category);
+
+        int rows = await command.ExecuteNonQueryAsync();
+        return rows > 0;
+    }
+
+    // DELETE
+    public async Task<bool> DeleteProduct(int id)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = new MySqlCommand("DELETE FROM Products WHERE Id=@Id", connection);
+        command.Parameters.AddWithValue("@Id", id);
+
+        int rows = await command.ExecuteNonQueryAsync();
+        return rows > 0;
     }
 }
