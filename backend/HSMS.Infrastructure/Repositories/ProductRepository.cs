@@ -13,6 +13,7 @@ public class ProductRepository : IProductRepository
     public ProductRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
+        EnsureProductsTableExists();
     }
 
     // CREATE
@@ -126,5 +127,24 @@ public class ProductRepository : IProductRepository
 
         int rows = await command.ExecuteNonQueryAsync();
         return rows > 0;
+    }
+
+    private void EnsureProductsTableExists()
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        connection.Open();
+
+        const string tableSql = @"CREATE TABLE IF NOT EXISTS Products (
+                                    Id INT AUTO_INCREMENT PRIMARY KEY,
+                                    Name VARCHAR(255) NOT NULL,
+                                    SKU VARCHAR(100) NOT NULL,
+                                    Price DECIMAL(10,2) NOT NULL,
+                                    Quantity INT NOT NULL,
+                                    Category VARCHAR(255) NOT NULL,
+                                    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  );";
+
+        using var command = new MySqlCommand(tableSql, connection);
+        command.ExecuteNonQuery();
     }
 }
