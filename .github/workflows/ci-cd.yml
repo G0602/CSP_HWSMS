@@ -6,6 +6,10 @@ on:
   push:
     branches: [ "develop", "main" ]
 
+permissions:
+  id-token: write
+  contents: read
+
 concurrency:
   group: hsms-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -133,4 +137,5 @@ jobs:
           app_location: frontend/HWSMS_UI
           api_location: ""
           output_location: ${{ vars.FRONTEND_OUTPUT_DIR }}
+
           skip_app_build: true
