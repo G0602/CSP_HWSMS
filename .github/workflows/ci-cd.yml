@@ -96,12 +96,12 @@ jobs:
       - name: Publish API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release --no-restore -o ${{ runner.temp }}/backend_publish
 
-      - name: Azure login
-        uses: azure/login@v2
+      - name: Deploy Azure Web App (Backend)
+        uses: azure/webapps-deploy@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{ runner.temp }}/backend_publish
 
       - name: Deploy Azure Web App (Backend)
         uses: azure/webapps-deploy@v3
@@ -133,4 +133,5 @@ jobs:
           app_location: frontend/HWSMS_UI
           api_location: ""
           output_location: ${{ vars.FRONTEND_OUTPUT_DIR }}
+
           skip_app_build: true
