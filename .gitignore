@@ -89,12 +89,9 @@ docker-compose.override.yml
 ############################################
 
 # npm
-package-lock.json
+# package-lock.json
 
-# If using yarn instead
-# yarn.lock
-
-############################################
+#############################################
 # TEMP FILES
 ############################################
 
