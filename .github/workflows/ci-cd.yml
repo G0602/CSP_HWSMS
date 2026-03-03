@@ -57,7 +57,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        working-directory: frontend
+        working-directory: frontend/HWSMS_UI
         run: npm run build
 
   deploy_main:
