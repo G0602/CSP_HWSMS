@@ -14,6 +14,9 @@ jobs:
   backend_ci:
     name: Backend CI (Build + Test)
     runs-on: ubuntu-latest
+    # Run CI for PRs, and for pushes to develop only (avoid duplicate CI on main pushes)
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +45,9 @@ jobs:
   frontend_ci:
     name: Frontend CI (Install + Build)
     runs-on: ubuntu-latest
+    # Run CI for PRs, and for pushes to develop only (avoid duplicate CI on main pushes)
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -76,6 +82,14 @@ jobs:
         with:
           dotnet-version: ${{ vars.DOTNET_VERSION }}
 
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'backend/**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
       - name: Restore backend
         run: dotnet restore backend/HSMS.sln
 
@@ -96,13 +110,27 @@ jobs:
           slot-name: ${{ vars.AZURE_BACKEND_SLOT }}
           package: ${{ runner.temp }}/backend_publish
 
-      # ---- Frontend deploy ----
+      # ---- Frontend build + deploy (avoid Oryx detection issues) ----
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ vars.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/HWSMS_UI/package-lock.json
+
+      - name: Install & Build Frontend
+        working-directory: frontend/HWSMS_UI
+        run: |
+          npm ci
+          npm run build
+
       - name: Deploy Azure Static Web App (Frontend)
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: frontend
+          app_location: frontend/HWSMS_UI
           api_location: ""
           output_location: ${{ vars.FRONTEND_OUTPUT_DIR }}
+          skip_app_build: true
