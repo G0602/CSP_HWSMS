@@ -50,10 +50,10 @@ jobs:
         with:
           node-version: ${{ vars.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/HWSMS_UI/package-lock.json
 
       - name: Install
-        working-directory: frontend
+        working-directory: frontend/HWSMS_UI
         run: npm ci
 
       - name: Build
