@@ -11,7 +11,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.Domain", "HSMS.Domain\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.Infrastructure", "HSMS.Infrastructure\HSMS.Infrastructure.csproj", "{2AE478B3-9080-43EB-9E3F-E618F92A8B52}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.Tests", "HSMS.Tests\HSMS.Tests.csproj", "{764051A6-D65B-4848-8555-1C132037BAA9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.Tests", "HSMS.Tests\HSMS.Tests.csproj", "{5B1B95B8-5F20-4EE2-A56C-C5D5A15004D4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,9 +38,9 @@ Global
 		{2AE478B3-9080-43EB-9E3F-E618F92A8B52}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2AE478B3-9080-43EB-9E3F-E618F92A8B52}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2AE478B3-9080-43EB-9E3F-E618F92A8B52}.Release|Any CPU.Build.0 = Release|Any CPU
-		{764051A6-D65B-4848-8555-1C132037BAA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{764051A6-D65B-4848-8555-1C132037BAA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{764051A6-D65B-4848-8555-1C132037BAA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{764051A6-D65B-4848-8555-1C132037BAA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B1B95B8-5F20-4EE2-A56C-C5D5A15004D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B1B95B8-5F20-4EE2-A56C-C5D5A15004D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B1B95B8-5F20-4EE2-A56C-C5D5A15004D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B1B95B8-5F20-4EE2-A56C-C5D5A15004D4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
