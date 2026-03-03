@@ -139,4 +139,3 @@ jobs:
           output_location: ${{ vars.FRONTEND_OUTPUT_DIR }}
 
           skip_app_build: true
-
