@@ -1,5 +1,6 @@
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HSMS.API.Controllers;
@@ -11,6 +12,7 @@ namespace HSMS.API.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
