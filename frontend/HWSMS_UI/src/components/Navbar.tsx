@@ -1,9 +1,11 @@
 type NavbarProps = {
   search: string;
   onSearchChange: (value: string) => void;
+  username?: string;
+  onLogout?: () => void;
 };
 
-const Navbar = ({ search, onSearchChange }: NavbarProps) => {
+const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => {
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
       <div className="flex items-center gap-3">
@@ -19,7 +21,14 @@ const Navbar = ({ search, onSearchChange }: NavbarProps) => {
           placeholder="Search inventory..."
           className="bg-gray-100 px-4 py-2 rounded-xl text-sm focus:outline-none"
         />
-        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+        {username && <span className="text-sm text-gray-600">{username}</span>}
+        <button
+          type="button"
+          onClick={onLogout}
+          className="text-sm bg-slate-800 text-white px-3 py-2 rounded-lg hover:bg-slate-900 transition-colors"
+        >
+          Logout
+        </button>
       </div>
     </div>
   );
