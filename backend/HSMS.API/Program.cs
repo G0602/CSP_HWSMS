@@ -95,6 +95,7 @@ builder.Services.AddCors(options =>
 // ----- Dependency Injection - Data Layer -----
 // Scoped: one ProductRepository instance per HTTP request.
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

@@ -60,6 +60,18 @@ public class ProductController : ControllerBase
         return Ok(products);
     }
 
+    // LOOKUP / SEARCH
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchProducts([FromQuery] string query, [FromQuery] int limit = 20)
+    {
+        string term = query.Trim();
+        if (string.IsNullOrWhiteSpace(term))
+            return BadRequest("Search query is required.");
+
+        var products = await _repository.SearchProducts(term, limit);
+        return Ok(products);
+    }
+
     /// <summary>
     /// Returns a single product by its primary key.
     /// </summary>
