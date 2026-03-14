@@ -4,6 +4,7 @@ import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
 import RegisterPage from "./pages/RegisterPage";
+import SalesPage from "./pages/SalesPage";
 
 function App() {
   return (
@@ -30,6 +31,14 @@ function App() {
           element={
             <ProtectedRoute>
               <ProductDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sales"
+          element={
+            <ProtectedRoute>
+              <SalesPage />
             </ProtectedRoute>
           }
         />

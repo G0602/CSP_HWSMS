@@ -35,6 +35,15 @@ export const getProducts = async () => {
   return await axios.get<Product[]>(API_URL, { headers: getAuthHeader() });
 };
 
+export const searchProducts = async (query: string, limit = 20) => {
+  const { data } = await axios.get<Product[]>(`${API_URL}/search`, {
+    headers: getAuthHeader(),
+    params: { query, limit },
+  });
+
+  return data;
+};
+
 export const addProduct = async (product: ProductPayload) => {
   return await axios.post(API_URL, product, { headers: getAuthHeader() });
 };
