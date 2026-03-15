@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { canAccessInventory, canAccessSales } from "../auth/roles";
+import { canAccessInventory, canAccessSales, canAccessTransactions } from "../auth/roles";
 import { getCurrentUser } from "../services/authService";
 
 type NavbarProps = {
@@ -37,6 +37,16 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
               }
             >
               Sales
+            </NavLink>
+          )}
+          {canAccessTransactions(role) && (
+            <NavLink
+              to="/transactions"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Transactions
             </NavLink>
           )}
         </div>

@@ -13,3 +13,7 @@ export const canAccessInventory = (role?: string) => {
 export const canAccessSales = (role?: string) => {
   return role === AppRoles.Admin || role === AppRoles.Manager || role === AppRoles.Cashier;
 };
+
+export const canAccessTransactions = (role?: string) => {
+  return role === AppRoles.Admin || role === AppRoles.Manager;
+};
