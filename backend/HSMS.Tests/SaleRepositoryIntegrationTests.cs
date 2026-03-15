@@ -95,6 +95,49 @@ public class SaleRepositoryIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task GetInvoiceAsync_Should_Match_Persisted_Sale_Records()
+    {
+        string? connectionString = GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        var repository = CreateRepository(connectionString);
+
+        string sku = $"IT-INVOICE-{Guid.NewGuid():N}";
+        int productId = await InsertProductAsync(connectionString, "Integration Saw", sku, 1800m, 9, "Tools");
+
+        int createdSaleId = 0;
+
+        try
+        {
+            var sale = new SaleCreateDTO
+            {
+                Items = [new SaleItemCreateDTO { ProductId = productId, Quantity = 2 }],
+            };
+
+            var saleResult = await repository.CreateSaleAsync(sale, "integration-admin");
+            createdSaleId = saleResult.SaleId;
+
+            var invoice = await repository.GetInvoiceAsync(createdSaleId);
+
+            Assert.NotNull(invoice);
+            Assert.Equal(createdSaleId, invoice!.TransactionId);
+            Assert.Equal($"INV-{createdSaleId:D6}", invoice.InvoiceNumber);
+            Assert.Single(invoice.Items);
+            Assert.Equal(3600m, invoice.Subtotal);
+            Assert.Equal(3600m, invoice.GrandTotal);
+            Assert.Equal(0m, invoice.TaxAmount);
+        }
+        finally
+        {
+            await DeleteSaleCascadeAsync(connectionString, createdSaleId);
+            await DeleteProductCascadeAsync(connectionString, productId);
+        }
+    }
+
     private static async Task<int> InsertProductAsync(
         string connectionString,
         string name,
@@ -174,5 +217,28 @@ public class SaleRepositoryIntegrationTests
         await using var deleteProductCommand = new MySqlCommand(deleteProductSql, connection);
         deleteProductCommand.Parameters.AddWithValue("@Id", productId);
         await deleteProductCommand.ExecuteNonQueryAsync();
+    }
+
+    private static async Task DeleteSaleCascadeAsync(string connectionString, int saleId)
+    {
+        if (saleId <= 0)
+        {
+            return;
+        }
+
+        await using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        const string deleteSaleItemsSql = "DELETE FROM SaleItems WHERE SaleId = @SaleId";
+        await using (var deleteSaleItemsCommand = new MySqlCommand(deleteSaleItemsSql, connection))
+        {
+            deleteSaleItemsCommand.Parameters.AddWithValue("@SaleId", saleId);
+            await deleteSaleItemsCommand.ExecuteNonQueryAsync();
+        }
+
+        const string deleteSaleSql = "DELETE FROM Sales WHERE Id = @SaleId";
+        await using var deleteSaleCommand = new MySqlCommand(deleteSaleSql, connection);
+        deleteSaleCommand.Parameters.AddWithValue("@SaleId", saleId);
+        await deleteSaleCommand.ExecuteNonQueryAsync();
     }
 }

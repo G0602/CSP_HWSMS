@@ -260,6 +260,72 @@ public class SaleRepository : ISaleRepository
         return sale;
     }
 
+    public async Task<InvoiceResponseDTO?> GetInvoiceAsync(int saleId)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string saleQuery = @"SELECT Id, SoldAt, TotalAmount, SoldBy
+                                   FROM Sales
+                                   WHERE Id = @SaleId";
+
+        await using var saleCommand = new MySqlCommand(saleQuery, connection);
+        saleCommand.Parameters.AddWithValue("@SaleId", saleId);
+
+        await using var saleReader = await saleCommand.ExecuteReaderAsync();
+        if (!await saleReader.ReadAsync())
+        {
+            return null;
+        }
+
+        var invoice = new InvoiceResponseDTO
+        {
+            TransactionId = Convert.ToInt32(saleReader["Id"]),
+            InvoiceNumber = $"INV-{Convert.ToInt32(saleReader["Id"]):D6}",
+            SoldAt = Convert.ToDateTime(saleReader["SoldAt"]),
+            SoldBy = saleReader["SoldBy"].ToString()!,
+            GrandTotal = Convert.ToDecimal(saleReader["TotalAmount"]),
+            TaxRate = 0m,
+            Items = new List<InvoiceItemDTO>(),
+        };
+
+        await saleReader.DisposeAsync();
+
+        const string itemsQuery = @"SELECT ProductId, ProductName, SKU, UnitPrice, Quantity, LineSubtotal
+                                    FROM SaleItems
+                                    WHERE SaleId = @SaleId
+                                    ORDER BY Id ASC";
+
+        await using var itemsCommand = new MySqlCommand(itemsQuery, connection);
+        itemsCommand.Parameters.AddWithValue("@SaleId", saleId);
+
+        await using var itemsReader = await itemsCommand.ExecuteReaderAsync();
+        while (await itemsReader.ReadAsync())
+        {
+            invoice.Items.Add(new InvoiceItemDTO
+            {
+                ProductId = Convert.ToInt32(itemsReader["ProductId"]),
+                ProductName = itemsReader["ProductName"].ToString()!,
+                SKU = itemsReader["SKU"].ToString()!,
+                UnitPrice = Convert.ToDecimal(itemsReader["UnitPrice"]),
+                Quantity = Convert.ToInt32(itemsReader["Quantity"]),
+                LineSubtotal = Convert.ToDecimal(itemsReader["LineSubtotal"]),
+            });
+        }
+
+        invoice.Subtotal = invoice.Items.Sum(i => i.LineSubtotal);
+        invoice.TaxAmount = invoice.GrandTotal - invoice.Subtotal;
+
+        // Prevent negative tax from precision inconsistencies and preserve DB grand total as source of truth.
+        if (invoice.TaxAmount < 0)
+        {
+            invoice.TaxAmount = 0;
+            invoice.Subtotal = invoice.GrandTotal;
+        }
+
+        return invoice;
+    }
+
     private void EnsureSalesTablesExist()
     {
         using var connection = new MySqlConnection(_connectionString);

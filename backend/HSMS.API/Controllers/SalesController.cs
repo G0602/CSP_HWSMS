@@ -73,4 +73,17 @@ public class SalesController : ControllerBase
 
         return Ok(sale);
     }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("{saleId:int}/invoice")]
+    public async Task<IActionResult> GetInvoice(int saleId)
+    {
+        var invoice = await _saleRepository.GetInvoiceAsync(saleId);
+        if (invoice is null)
+        {
+            return NotFound("Transaction not found.");
+        }
+
+        return Ok(invoice);
+    }
 }
