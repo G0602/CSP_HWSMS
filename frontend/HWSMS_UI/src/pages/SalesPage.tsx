@@ -23,6 +23,7 @@ const SalesPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [stockRefreshSignal, setStockRefreshSignal] = useState(0);
 
   const handleLogout = () => {
     logout();
@@ -103,6 +104,7 @@ const SalesPage = () => {
       });
 
       setItems([]);
+      setStockRefreshSignal((prev) => prev + 1);
       setSuccessMessage(`Sale #${result.saleId} completed successfully. Total: Rs. ${result.totalAmount.toFixed(2)}`);
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -138,7 +140,11 @@ const SalesPage = () => {
         {errorMessage && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{errorMessage}</div>}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ProductSearchSelect selectedProductIds={items.map((item) => item.productId)} onAddItem={onAddItem} />
+          <ProductSearchSelect
+            selectedProductIds={items.map((item) => item.productId)}
+            onAddItem={onAddItem}
+            refreshSignal={stockRefreshSignal}
+          />
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-xl font-semibold text-slate-900">Cart</h3>

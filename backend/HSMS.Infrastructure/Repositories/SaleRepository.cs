@@ -108,12 +108,17 @@ public class SaleRepository : ISaleRepository
 
                 const string stockUpdate = @"UPDATE Products
                                              SET Quantity = Quantity - @Qty
-                                             WHERE Id = @ProductId";
+                                             WHERE Id = @ProductId
+                                               AND Quantity >= @Qty";
 
                 await using var updateCommand = new MySqlCommand(stockUpdate, connection, (MySqlTransaction)transaction);
                 updateCommand.Parameters.AddWithValue("@Qty", item.Quantity);
                 updateCommand.Parameters.AddWithValue("@ProductId", item.ProductId);
-                await updateCommand.ExecuteNonQueryAsync();
+                int updatedRows = await updateCommand.ExecuteNonQueryAsync();
+                if (updatedRows == 0)
+                {
+                    throw new InvalidOperationException($"Stock update failed for product {item.ProductId}.");
+                }
             }
 
             await transaction.CommitAsync();

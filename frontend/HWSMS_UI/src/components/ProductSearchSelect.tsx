@@ -5,9 +5,10 @@ import { searchProducts } from "../services/productService";
 type ProductSearchSelectProps = {
   selectedProductIds: number[];
   onAddItem: (product: Product, quantity: number) => void;
+  refreshSignal?: number;
 };
 
-const ProductSearchSelect = ({ selectedProductIds, onAddItem }: ProductSearchSelectProps) => {
+const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 }: ProductSearchSelectProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -41,6 +42,31 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem }: ProductSearchSel
 
     return () => window.clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    setQuantities({});
+
+    const term = query.trim();
+    if (term.length < 2) {
+      return;
+    }
+
+    const refresh = async () => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const data = await searchProducts(term);
+        setResults(data.filter((item) => item.quantity > 0));
+      } catch {
+        setError("Failed to refresh product stock.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void refresh();
+  }, [refreshSignal]);
 
   const getQty = (productId: number) => quantities[productId] ?? 1;
 
