@@ -8,7 +8,7 @@ export type LoginPayload = {
 export type RegisterPayload = {
   username: string;
   password: string;
-  role?: "User" | "Admin" | "Manager" | "Cashier";
+  role?: "Admin" | "Manager" | "Cashier";
 };
 
 export type AuthResponse = {

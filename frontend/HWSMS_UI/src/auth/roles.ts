@@ -2,7 +2,6 @@ export const AppRoles = {
   Admin: "Admin",
   Manager: "Manager",
   Cashier: "Cashier",
-  User: "User",
 } as const;
 
 export type AppRole = (typeof AppRoles)[keyof typeof AppRoles];

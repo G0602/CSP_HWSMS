@@ -37,7 +37,7 @@ const RegisterPage = () => {
     setIsSubmitting(true);
 
     try {
-      await register({ username: trimmedUsername, password, role: "User" });
+      await register({ username: trimmedUsername, password, role: "Cashier" });
       navigate("/dashboard", { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err) && typeof err.response?.data === "string") {

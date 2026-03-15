@@ -71,7 +71,7 @@ public class UserRepository : IUserRepository
                                     Id INT AUTO_INCREMENT PRIMARY KEY,
                                     Username VARCHAR(100) NOT NULL UNIQUE,
                                     PasswordHash VARCHAR(512) NOT NULL,
-                                    Role VARCHAR(30) NOT NULL DEFAULT 'User',
+                                                                        Role VARCHAR(30) NOT NULL DEFAULT 'Cashier',
                                     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                   );";
 

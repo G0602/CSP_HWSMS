@@ -47,7 +47,7 @@ public class AuthController : ControllerBase
         string role = string.IsNullOrWhiteSpace(dto.Role) ? AppRoles.Cashier : dto.Role.Trim();
         if (!IsAllowedRole(role))
         {
-            return BadRequest("Role must be one of 'Admin', 'Manager', 'Cashier', or 'User'.");
+            return BadRequest("Role must be one of 'Admin', 'Manager', or 'Cashier'.");
         }
 
         var existingUser = await _userRepository.GetByUsernameAsync(username);
@@ -94,7 +94,6 @@ public class AuthController : ControllerBase
     {
         return role.Equals(AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
             || role.Equals(AppRoles.Manager, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(AppRoles.Cashier, StringComparison.OrdinalIgnoreCase)
-            || role.Equals(AppRoles.User, StringComparison.OrdinalIgnoreCase);
+            || role.Equals(AppRoles.Cashier, StringComparison.OrdinalIgnoreCase);
     }
 }
