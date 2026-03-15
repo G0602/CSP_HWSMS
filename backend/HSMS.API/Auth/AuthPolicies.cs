@@ -6,4 +6,5 @@ public static class AuthPolicies
     public const string InventoryWrite = "InventoryWrite";
     public const string InventoryDelete = "InventoryDelete";
     public const string SalesCreate = "SalesCreate";
+    public const string SalesRead = "SalesRead";
 }

@@ -43,4 +43,34 @@ public class SalesController : ControllerBase
             return StatusCode(500, "Failed to save sale transaction.");
         }
     }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("history")]
+    public async Task<IActionResult> GetHistory(
+        [FromQuery] int? transactionId,
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] int limit = 100)
+    {
+        if (limit <= 0)
+        {
+            return BadRequest("Limit must be greater than zero.");
+        }
+
+        var history = await _saleRepository.GetSalesHistoryAsync(transactionId, fromDate, toDate, limit);
+        return Ok(history);
+    }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("{saleId:int}")]
+    public async Task<IActionResult> GetDetails(int saleId)
+    {
+        var sale = await _saleRepository.GetSaleDetailsAsync(saleId);
+        if (sale is null)
+        {
+            return NotFound("Transaction not found.");
+        }
+
+        return Ok(sale);
+    }
 }

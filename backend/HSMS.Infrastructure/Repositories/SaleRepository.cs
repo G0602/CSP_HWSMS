@@ -139,6 +139,127 @@ public class SaleRepository : ISaleRepository
         }
     }
 
+    public async Task<List<SaleHistoryItemDTO>> GetSalesHistoryAsync(int? saleId, DateTime? fromDate, DateTime? toDate, int limit = 100)
+    {
+        var history = new List<SaleHistoryItemDTO>();
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var filters = new List<string>();
+        if (saleId.HasValue)
+        {
+            filters.Add("s.Id = @SaleId");
+        }
+
+        if (fromDate.HasValue)
+        {
+            filters.Add("s.SoldAt >= @FromDate");
+        }
+
+        if (toDate.HasValue)
+        {
+            filters.Add("s.SoldAt < @ToDateExclusive");
+        }
+
+        string whereClause = filters.Count > 0 ? $"WHERE {string.Join(" AND ", filters)}" : string.Empty;
+
+        string query = $@"SELECT s.Id, s.SoldAt, s.TotalAmount, s.SoldBy, COUNT(si.Id) AS ItemCount
+                          FROM Sales s
+                          LEFT JOIN SaleItems si ON si.SaleId = s.Id
+                          {whereClause}
+                          GROUP BY s.Id, s.SoldAt, s.TotalAmount, s.SoldBy
+                          ORDER BY s.SoldAt DESC
+                          LIMIT @Limit";
+
+        await using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Limit", Math.Clamp(limit, 1, 500));
+
+        if (saleId.HasValue)
+        {
+            command.Parameters.AddWithValue("@SaleId", saleId.Value);
+        }
+
+        if (fromDate.HasValue)
+        {
+            command.Parameters.AddWithValue("@FromDate", fromDate.Value);
+        }
+
+        if (toDate.HasValue)
+        {
+            command.Parameters.AddWithValue("@ToDateExclusive", toDate.Value.Date.AddDays(1));
+        }
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            history.Add(new SaleHistoryItemDTO
+            {
+                SaleId = Convert.ToInt32(reader["Id"]),
+                SoldAt = Convert.ToDateTime(reader["SoldAt"]),
+                TotalAmount = Convert.ToDecimal(reader["TotalAmount"]),
+                SoldBy = reader["SoldBy"].ToString()!,
+                ItemCount = Convert.ToInt32(reader["ItemCount"]),
+            });
+        }
+
+        return history;
+    }
+
+    public async Task<SaleResponseDTO?> GetSaleDetailsAsync(int saleId)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string saleQuery = @"SELECT Id, SoldAt, TotalAmount, SoldBy
+                                   FROM Sales
+                                   WHERE Id = @SaleId";
+
+        await using var saleCommand = new MySqlCommand(saleQuery, connection);
+        saleCommand.Parameters.AddWithValue("@SaleId", saleId);
+
+        await using var saleReader = await saleCommand.ExecuteReaderAsync();
+        if (!await saleReader.ReadAsync())
+        {
+            return null;
+        }
+
+        var sale = new SaleResponseDTO
+        {
+            SaleId = Convert.ToInt32(saleReader["Id"]),
+            SoldAt = Convert.ToDateTime(saleReader["SoldAt"]),
+            TotalAmount = Convert.ToDecimal(saleReader["TotalAmount"]),
+            SoldBy = saleReader["SoldBy"].ToString()!,
+            Items = new List<SaleItemResponseDTO>(),
+        };
+
+        await saleReader.DisposeAsync();
+
+        const string itemsQuery = @"SELECT ProductId, ProductName, SKU, UnitPrice, Quantity, LineSubtotal
+                                    FROM SaleItems
+                                    WHERE SaleId = @SaleId
+                                    ORDER BY Id ASC";
+
+        await using var itemsCommand = new MySqlCommand(itemsQuery, connection);
+        itemsCommand.Parameters.AddWithValue("@SaleId", saleId);
+
+        await using var itemsReader = await itemsCommand.ExecuteReaderAsync();
+        while (await itemsReader.ReadAsync())
+        {
+            sale.Items.Add(new SaleItemResponseDTO
+            {
+                ProductId = Convert.ToInt32(itemsReader["ProductId"]),
+                ProductName = itemsReader["ProductName"].ToString()!,
+                SKU = itemsReader["SKU"].ToString()!,
+                UnitPrice = Convert.ToDecimal(itemsReader["UnitPrice"]),
+                Quantity = Convert.ToInt32(itemsReader["Quantity"]),
+                LineSubtotal = Convert.ToDecimal(itemsReader["LineSubtotal"]),
+            });
+        }
+
+        return sale;
+    }
+
     private void EnsureSalesTablesExist()
     {
         using var connection = new MySqlConnection(_connectionString);
