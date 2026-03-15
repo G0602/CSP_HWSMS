@@ -6,5 +6,5 @@ public class AuthRegisterDTO
 
     public string Password { get; set; } = string.Empty;
 
-    public string Role { get; set; } = "User";
+    public string Role { get; set; } = "Cashier";
 }

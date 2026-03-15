@@ -2,6 +2,8 @@ namespace HSMS.Application.DTOs;
 
 public class AuthResponseDTO
 {
+    public int UserId { get; set; }
+
     public string AccessToken { get; set; } = string.Empty;
 
     public DateTime ExpiresAtUtc { get; set; }

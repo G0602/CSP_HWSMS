@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using HSMS.API.Auth;
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,6 @@ namespace HSMS.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
 public class SalesController : ControllerBase
 {
     private readonly ISaleRepository _saleRepository;
@@ -18,6 +18,7 @@ public class SalesController : ControllerBase
         _saleRepository = saleRepository;
     }
 
+    [Authorize(Policy = AuthPolicies.SalesCreate)]
     [HttpPost]
     public async Task<IActionResult> CreateSale(SaleCreateDTO dto)
     {

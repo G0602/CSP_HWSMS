@@ -1,4 +1,5 @@
 using System.Text;
+using HSMS.API.Auth;
 using HSMS.API.Services;
 using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Repositories;
@@ -77,7 +78,20 @@ builder.Services
 		};
 	});
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+	options.AddPolicy(AuthPolicies.InventoryRead, policy =>
+		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+
+	options.AddPolicy(AuthPolicies.InventoryWrite, policy =>
+		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+
+	options.AddPolicy(AuthPolicies.InventoryDelete, policy =>
+		policy.RequireRole(AppRoles.Admin));
+
+	options.AddPolicy(AuthPolicies.SalesCreate, policy =>
+		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+});
 
 // ----- CORS -----
 // Allows requests from the Vite dev server (port 5173).
@@ -99,8 +113,11 @@ builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
+
+await SeedDefaultUsersAsync(app.Services);
 
 // ----- Middleware Pipeline -----
 app.UseSwagger();
@@ -112,3 +129,29 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static async Task SeedDefaultUsersAsync(IServiceProvider services)
+{
+	using IServiceScope scope = services.CreateScope();
+	var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+	var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+	var usersToSeed = new[]
+	{
+		new { Username = "admin", Role = AppRoles.Admin, Password = "Admin@123" },
+		new { Username = "manager", Role = AppRoles.Manager, Password = "Manager@123" },
+		new { Username = "cashier", Role = AppRoles.Cashier, Password = "Cashier@123" }
+	};
+
+	foreach (var user in usersToSeed)
+	{
+		var existingUser = await userRepository.GetByUsernameAsync(user.Username);
+		if (existingUser is not null)
+		{
+			continue;
+		}
+
+		string hash = passwordHasher.HashPassword(user.Password);
+		await userRepository.CreateUserAsync(user.Username, hash, user.Role);
+	}
+}

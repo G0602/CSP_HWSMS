@@ -1,4 +1,5 @@
 using HSMS.API.Services;
+using HSMS.API.Auth;
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Domain.Entities;
@@ -14,15 +15,18 @@ public class AuthController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IAuthenticationService _authenticationService;
 
     public AuthController(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IJwtTokenService jwtTokenService,
+        IAuthenticationService authenticationService)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
+        _authenticationService = authenticationService;
     }
 
     [AllowAnonymous]
@@ -40,10 +44,10 @@ public class AuthController : ControllerBase
             return BadRequest("Password must be at least 8 characters long.");
         }
 
-        string role = string.IsNullOrWhiteSpace(dto.Role) ? "User" : dto.Role.Trim();
+        string role = string.IsNullOrWhiteSpace(dto.Role) ? AppRoles.Cashier : dto.Role.Trim();
         if (!IsAllowedRole(role))
         {
-            return BadRequest("Role must be either 'Admin' or 'User'.");
+            return BadRequest("Role must be one of 'Admin', 'Manager', 'Cashier', or 'User'.");
         }
 
         var existingUser = await _userRepository.GetByUsernameAsync(username);
@@ -71,25 +75,26 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login(AuthLoginDTO dto)
     {
-        string username = dto.Username.Trim();
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(dto.Password))
+        try
         {
-            return BadRequest("Username and password are required.");
+            AuthResponseDTO auth = await _authenticationService.LoginAsync(dto);
+            return Ok(auth);
         }
-
-        var user = await _userRepository.GetByUsernameAsync(username);
-        if (user is null || !_passwordHasher.VerifyPassword(dto.Password, user.PasswordHash))
+        catch (InvalidOperationException ex)
         {
-            return Unauthorized("Invalid username or password.");
+            return BadRequest(ex.Message);
         }
-
-        AuthResponseDTO auth = _jwtTokenService.GenerateToken(user);
-        return Ok(auth);
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
     }
 
     private static bool IsAllowedRole(string role)
     {
-        return role.Equals("Admin", StringComparison.OrdinalIgnoreCase)
-            || role.Equals("User", StringComparison.OrdinalIgnoreCase);
+        return role.Equals(AppRoles.Admin, StringComparison.OrdinalIgnoreCase)
+            || role.Equals(AppRoles.Manager, StringComparison.OrdinalIgnoreCase)
+            || role.Equals(AppRoles.Cashier, StringComparison.OrdinalIgnoreCase)
+            || role.Equals(AppRoles.User, StringComparison.OrdinalIgnoreCase);
     }
 }

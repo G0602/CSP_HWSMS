@@ -1,5 +1,6 @@
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
+using HSMS.API.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,6 @@ namespace HSMS.API.Controllers;
 /// </summary>
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
@@ -35,6 +35,7 @@ public class ProductController : ControllerBase
     /// or <c>400 Bad Request</c> if validation fails.
     /// </returns>
     // CREATE
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
     [HttpPost]
     public async Task<IActionResult> AddProduct(ProductCreateDTO dto)
     {
@@ -53,6 +54,7 @@ public class ProductController : ControllerBase
     /// </summary>
     /// <returns><c>200 OK</c> with a JSON array of <c>Product</c> objects.</returns>
     // READ ALL
+    [Authorize(Policy = AuthPolicies.InventoryRead)]
     [HttpGet]
     public async Task<IActionResult> GetProducts()
     {
@@ -61,6 +63,7 @@ public class ProductController : ControllerBase
     }
 
     // LOOKUP / SEARCH
+    [Authorize(Policy = AuthPolicies.InventoryRead)]
     [HttpGet("search")]
     public async Task<IActionResult> SearchProducts([FromQuery] string query, [FromQuery] int limit = 20)
     {
@@ -80,6 +83,7 @@ public class ProductController : ControllerBase
     /// <c>200 OK</c> with the product object, or <c>404 Not Found</c> if the Id does not exist.
     /// </returns>
     // READ BY ID
+    [Authorize(Policy = AuthPolicies.InventoryRead)]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetProductById(int id)
     {
@@ -99,6 +103,7 @@ public class ProductController : ControllerBase
     /// <c>200 OK</c> on success, or <c>404 Not Found</c> if the Id does not exist.
     /// </returns>
     // UPDATE
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, ProductUpdateDTO dto)
     {
@@ -117,6 +122,7 @@ public class ProductController : ControllerBase
     /// <c>200 OK</c> on success, or <c>404 Not Found</c> if the Id does not exist.
     /// </returns>
     // DELETE
+    [Authorize(Policy = AuthPolicies.InventoryDelete)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(int id)
     {

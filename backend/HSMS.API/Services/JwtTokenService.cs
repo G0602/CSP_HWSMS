@@ -52,6 +52,7 @@ public class JwtTokenService : IJwtTokenService
 
         return new AuthResponseDTO
         {
+            UserId = user.Id,
             AccessToken = new JwtSecurityTokenHandler().WriteToken(token),
             ExpiresAtUtc = expiresAtUtc,
             Username = user.Username,
