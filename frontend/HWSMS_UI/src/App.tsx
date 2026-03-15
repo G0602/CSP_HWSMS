@@ -3,6 +3,7 @@ import { AppRoles } from "./auth/roles";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
+import InvoicePreviewPage from "./pages/InvoicePreviewPage";
 import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
 import RegisterPage from "./pages/RegisterPage";
@@ -50,6 +51,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
               <TransactionHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/transactions/:transactionId/invoice"
+          element={
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
+              <InvoicePreviewPage />
             </ProtectedRoute>
           }
         />

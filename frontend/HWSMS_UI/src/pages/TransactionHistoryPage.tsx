@@ -161,15 +161,24 @@ const TransactionHistoryPage = () => {
                   <td className="py-2">{transaction.itemCount}</td>
                   <td className="py-2">Rs. {transaction.totalAmount.toFixed(2)}</td>
                   <td className="py-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void openDetails(transaction.saleId);
-                      }}
-                      className="rounded-lg bg-slate-100 px-3 py-1.5 hover:bg-slate-200"
-                    >
-                      View
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void openDetails(transaction.saleId);
+                        }}
+                        className="rounded-lg bg-slate-100 px-3 py-1.5 hover:bg-slate-200"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/transactions/${transaction.saleId}/invoice`)}
+                        className="rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
+                      >
+                        Invoice
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
