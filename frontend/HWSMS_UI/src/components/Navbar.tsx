@@ -1,4 +1,6 @@
 import { NavLink } from "react-router-dom";
+import { canAccessInventory, canAccessSales } from "../auth/roles";
+import { getCurrentUser } from "../services/authService";
 
 type NavbarProps = {
   search?: string;
@@ -9,6 +11,7 @@ type NavbarProps = {
 
 const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => {
   const showSearch = typeof search === "string" && typeof onSearchChange === "function";
+  const role = getCurrentUser()?.role;
 
   return (
     <div className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
@@ -16,22 +19,26 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
         <div className="bg-blue-600 text-white p-2 rounded-xl">🛠️</div>
         <h1 className="text-lg font-semibold text-gray-800">Hardware Store Product Management</h1>
         <div className="ml-5 flex gap-2">
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) =>
-              `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
-            }
-          >
-            Inventory
-          </NavLink>
-          <NavLink
-            to="/sales"
-            className={({ isActive }) =>
-              `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
-            }
-          >
-            Sales
-          </NavLink>
+          {canAccessInventory(role) && (
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Inventory
+            </NavLink>
+          )}
+          {canAccessSales(role) && (
+            <NavLink
+              to="/sales"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Sales
+            </NavLink>
+          )}
         </div>
       </div>
 

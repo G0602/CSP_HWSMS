@@ -8,10 +8,11 @@ export type LoginPayload = {
 export type RegisterPayload = {
   username: string;
   password: string;
-  role?: "User" | "Admin";
+  role?: "User" | "Admin" | "Manager" | "Cashier";
 };
 
 export type AuthResponse = {
+  userId: number;
   accessToken: string;
   expiresAtUtc: string;
   username: string;
@@ -19,6 +20,7 @@ export type AuthResponse = {
 };
 
 export type AuthUser = {
+  userId: number;
   username: string;
   role: string;
   expiresAtUtc: string;
@@ -45,10 +47,11 @@ const API_BASE_URL = resolveApiBaseUrl();
 const AUTH_API_URL = `${API_BASE_URL}/api/Auth`;
 
 const persistSession = (response: AuthResponse) => {
-  localStorage.setItem(TOKEN_KEY, response.accessToken);
-  localStorage.setItem(
+  sessionStorage.setItem(TOKEN_KEY, response.accessToken);
+  sessionStorage.setItem(
     USER_KEY,
     JSON.stringify({
+      userId: response.userId,
       username: response.username,
       role: response.role,
       expiresAtUtc: response.expiresAtUtc,
@@ -69,14 +72,14 @@ export const login = async (payload: LoginPayload) => {
 };
 
 export const logout = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 };
 
-export const getAccessToken = () => localStorage.getItem(TOKEN_KEY);
+export const getAccessToken = () => sessionStorage.getItem(TOKEN_KEY);
 
 export const getCurrentUser = (): AuthUser | null => {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) {
     return null;
   }

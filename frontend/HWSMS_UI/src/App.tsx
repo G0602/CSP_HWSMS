@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppRoles } from "./auth/roles";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
+import AccessDeniedPage from "./pages/AccessDeniedPage";
 import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
 import RegisterPage from "./pages/RegisterPage";
@@ -29,7 +31,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
               <ProductDashboard />
             </ProtectedRoute>
           }
@@ -37,8 +39,16 @@ function App() {
         <Route
           path="/sales"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier]}>
               <SalesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/access-denied"
+          element={
+            <ProtectedRoute>
+              <AccessDeniedPage />
             </ProtectedRoute>
           }
         />

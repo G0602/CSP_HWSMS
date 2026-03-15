@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
+import { canAccessInventory, canAccessSales } from "../auth/roles";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -24,8 +25,15 @@ const LoginPage = () => {
     setIsSubmitting(true);
 
     try {
-      await login({ username: username.trim(), password });
-      navigate("/dashboard", { replace: true });
+      const auth = await login({ username: username.trim(), password });
+
+      if (canAccessInventory(auth.role)) {
+        navigate("/dashboard", { replace: true });
+      } else if (canAccessSales(auth.role)) {
+        navigate("/sales", { replace: true });
+      } else {
+        navigate("/access-denied", { replace: true });
+      }
     } catch (err) {
       if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
         setError(err.response.data);
