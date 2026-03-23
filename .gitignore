@@ -74,8 +74,10 @@ coverage.cobertura.xml
 # DOCKER
 ############################################
 
-# Ignore docker override files if local only
+# Ignore docker override files (contains local/sensitive data)
 docker-compose.override.yml
+# But track the example/template
+!docker-compose.override.yml.example
 
 ############################################
 # AZURE
