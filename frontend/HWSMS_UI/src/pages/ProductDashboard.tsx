@@ -1,9 +1,12 @@
+import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardHeader from "../components/DashboardHeader";
 import InventoryTableCard from "../components/InventoryTableCard";
 import Navbar from "../components/Navbar";
 import ProductFormCard from "../components/ProductFormCard";
 import StatsCard from "../components/StatsCard";
+import { getCurrentUser, logout } from "../services/authService";
 import {
   addProduct,
   deleteProduct,
@@ -14,13 +17,32 @@ import {
 } from "../services/productService";
 
 const ProductDashboard = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+
+  const user = getCurrentUser();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   const loadProducts = async () => {
-    const response = await getProducts();
-    setProducts(response.data);
+    setError("");
+    try {
+      const response = await getProducts();
+      setProducts(response.data);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      setError("Could not load products. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -75,9 +97,11 @@ const ProductDashboard = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <Navbar search={search} onSearchChange={setSearch} />
+      <Navbar search={search} onSearchChange={setSearch} username={user?.username} onLogout={handleLogout} />
 
       <div className="p-10">
+        {error && <div className="mb-4 rounded-md bg-red-100 p-3 text-red-700">{error}</div>}
+
         <DashboardHeader totalValuation={totalValuationFormatted} />
 
         <div className="grid grid-cols-3 gap-8">
