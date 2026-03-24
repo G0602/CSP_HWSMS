@@ -13,7 +13,7 @@ export type Product = ProductPayload & {
   createdAt?: string;
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5162/api/Product";
+const API_URL = import.meta.env.VITE_API_URL || "https://hsmsbackend-e9acfpeff8bycuax.indonesiacentral-01.azurewebsites.net/api/Product";
 
 export const getProducts = async () => {
   return await axios.get<Product[]>(API_URL);
