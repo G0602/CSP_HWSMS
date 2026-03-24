@@ -95,13 +95,55 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ----- CORS -----
-// Read allowed origins from environment variable for easy deployment
-// Format: comma-separated list (e.g., "http://localhost:5173,https://yourdomain.com")
-string corsOrigins = builder.Configuration["CORS_ORIGINS"]
-	?? throw new InvalidOperationException("CORS_ORIGINS environment variable is missing");
-var allowedOrigins = corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
-	.Select(o => o.Trim())
+// Allowed browser origins for API calls.
+// Database hosts are not browser origins and are not part of CORS.
+string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
+string? frontendUrl = builder.Configuration["FRONTEND_URL"];
+string? backendPublicUrl = builder.Configuration["BACKEND_PUBLIC_URL"];
+
+var originCandidates = new List<string>();
+
+if (!string.IsNullOrWhiteSpace(corsOrigins))
+{
+	originCandidates.AddRange(
+		corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
+			.Select(o => o.Trim())
+	);
+}
+
+if (!string.IsNullOrWhiteSpace(frontendUrl))
+{
+	originCandidates.Add(frontendUrl.Trim().TrimEnd('/'));
+}
+
+if (!string.IsNullOrWhiteSpace(backendPublicUrl))
+{
+	originCandidates.Add(backendPublicUrl.Trim().TrimEnd('/'));
+}
+
+// Development-safe defaults so local startup works even without env values.
+if (originCandidates.Count == 0)
+{
+	originCandidates.AddRange(
+	[
+		"http://localhost:5173",
+		"http://localhost:3000",
+		"https://csp-hwsms.vercel.app"
+	]
+	);
+}
+
+var allowedOrigins = originCandidates
+	.Where(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+		&& (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+	.Select(origin => origin.TrimEnd('/'))
+	.Distinct(StringComparer.OrdinalIgnoreCase)
 	.ToArray();
+
+if (allowedOrigins.Length == 0)
+{
+	throw new InvalidOperationException("No valid CORS origins found. Configure CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL.");
+}
 
 builder.Services.AddCors(options =>
 {
