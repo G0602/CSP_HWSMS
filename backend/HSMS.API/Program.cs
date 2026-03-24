@@ -7,16 +7,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
-// -----------------------------------------------------------------------
-// HSMS.API - Application Entry Point
-// -----------------------------------------------------------------------
-// Bootstraps the ASP.NET Core 8 minimal-hosting pipeline:
-//   1. Registers services in the DI container (controllers, Swagger, CORS, repository)
-//   2. Builds the WebApplication
-//   3. Adds middleware: Swagger UI, CORS, routing
-//   4. Starts the Kestrel HTTP server
-// -----------------------------------------------------------------------
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Load environment-specific configuration
@@ -123,8 +113,6 @@ builder.Services.AddCors(options =>
 	});
 });
 
-// ----- Dependency Injection - Data Layer -----
-// Scoped: one ProductRepository instance per HTTP request.
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -144,6 +132,7 @@ if (seedDefaultUsers)
 // ----- Middleware Pipeline -----
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
