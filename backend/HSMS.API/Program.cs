@@ -9,12 +9,15 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy("FrontendPolicy", policy =>
-	{
-		policy.WithOrigins("http://localhost:5173")
-			  .AllowAnyHeader()
-			  .AllowAnyMethod();
-	});
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173",
+                "https://csp-hwsms.vercel.app"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
 });
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
