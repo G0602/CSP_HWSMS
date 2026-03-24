@@ -24,6 +24,14 @@ public interface IProductRepository
     Task<List<Product>> GetAllProducts();
 
     /// <summary>
+    /// Retrieves products using keyword search against Name, SKU and Category.
+    /// </summary>
+    /// <param name="query">Search keyword.</param>
+    /// <param name="limit">Maximum number of records to return.</param>
+    /// <returns>A filtered list of matching products.</returns>
+    Task<List<Product>> SearchProducts(string query, int limit = 20);
+
+    /// <summary>
     /// Retrieves a single product by its primary key.
     /// </summary>
     /// <param name="id">The unique identifier of the product.</param>

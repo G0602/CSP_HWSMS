@@ -78,6 +78,44 @@ public class ProductRepository : IProductRepository
         return products;
     }
 
+    // SEARCH
+    /// <inheritdoc/>
+    public async Task<List<Product>> SearchProducts(string query, int limit = 20)
+    {
+        var products = new List<Product>();
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string sql = @"SELECT *
+                             FROM Products
+                             WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
+                             ORDER BY Name ASC
+                             LIMIT @Limit";
+
+        using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Term", $"%{query}%");
+        command.Parameters.AddWithValue("@Limit", Math.Clamp(limit, 1, 100));
+
+        using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            products.Add(new Product
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                SKU = reader["SKU"].ToString()!,
+                Price = Convert.ToDecimal(reader["Price"]),
+                Quantity = Convert.ToInt32(reader["Quantity"]),
+                Category = reader["Category"].ToString()!,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return products;
+    }
+
     // READ BY ID
     /// <inheritdoc/>
     public async Task<Product?> GetProductById(int id)
