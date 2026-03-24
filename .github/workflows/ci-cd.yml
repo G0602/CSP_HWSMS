@@ -114,6 +114,10 @@ jobs:
         working-directory: frontend/HWSMS_UI
         run: |
           npm ci
+<<<<<<< HEAD
           npm run build
 
           
+=======
+          npm run build
+>>>>>>> main
