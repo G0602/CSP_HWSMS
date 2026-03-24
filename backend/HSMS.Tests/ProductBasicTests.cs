@@ -1,10 +1,12 @@
+using Xunit;
+
 namespace HSMS.Tests;
 
-public class UnitTest1
+public class ProductBasicTests
 {
     [Fact]
-    public void Test1()
+    public void Should_Return_True()
     {
-
+        Assert.True(true);
     }
 }
