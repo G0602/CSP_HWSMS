@@ -7,17 +7,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
-// -----------------------------------------------------------------------
-// HSMS.API - Application Entry Point
-// -----------------------------------------------------------------------
-// Bootstraps the ASP.NET Core 8 minimal-hosting pipeline:
-//   1. Registers services in the DI container (controllers, Swagger, CORS, repository)
-//   2. Builds the WebApplication
-//   3. Adds middleware: Swagger UI, CORS, routing
-//   4. Starts the Kestrel HTTP server
-// -----------------------------------------------------------------------
-
 var builder = WebApplication.CreateBuilder(args);
+
+// Load environment-specific configuration
+// Priority: appsettings.json -> appsettings.{Environment}.json -> environment variables
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+	builder.Configuration.AddJsonFile("appsettings.Production.json", optional: true);
+}
+// Environment variables automatically override all JSON configuration files
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -97,20 +95,24 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ----- CORS -----
-// Allows requests from the Vite dev server (port 5173).
-// In production, replace the origin with the deployed frontend URL.
+// Read allowed origins from environment variable for easy deployment
+// Format: comma-separated list (e.g., "http://localhost:5173,https://yourdomain.com")
+string corsOrigins = builder.Configuration["CORS_ORIGINS"]
+	?? throw new InvalidOperationException("CORS_ORIGINS environment variable is missing");
+var allowedOrigins = corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
+	.Select(o => o.Trim())
+	.ToArray();
+
 builder.Services.AddCors(options =>
 {
 	options.AddPolicy("FrontendPolicy", policy =>
 	{
-		policy.WithOrigins("http://localhost:5173")
+		policy.WithOrigins(allowedOrigins)
 			  .AllowAnyHeader()
 			  .AllowAnyMethod();
 	});
 });
 
-// ----- Dependency Injection - Data Layer -----
-// Scoped: one ProductRepository instance per HTTP request.
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -120,11 +122,17 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-await SeedDefaultUsersAsync(app.Services);
+// Seed default users only if enabled via environment variable
+bool seedDefaultUsers = builder.Configuration.GetValue<bool>("SEED_DEFAULT_USERS", true);
+if (seedDefaultUsers)
+{
+	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
+}
 
 // ----- Middleware Pipeline -----
 app.UseSwagger();
 app.UseSwaggerUI();
+
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -133,17 +141,22 @@ app.MapControllers();
 
 app.Run();
 
-static async Task SeedDefaultUsersAsync(IServiceProvider services)
+static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
 {
 	using IServiceScope scope = services.CreateScope();
 	var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 	var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
+	// Read default passwords from environment variables
+	string adminPassword = configuration["ADMIN_PASSWORD"] ?? "Admin@123";
+	string managerPassword = configuration["MANAGER_PASSWORD"] ?? "Manager@123";
+	string cashierPassword = configuration["CASHIER_PASSWORD"] ?? "Cashier@123";
+
 	var usersToSeed = new[]
 	{
-		new { Username = "admin", Role = AppRoles.Admin, Password = "Admin@123" },
-		new { Username = "manager", Role = AppRoles.Manager, Password = "Manager@123" },
-		new { Username = "cashier", Role = AppRoles.Cashier, Password = "Cashier@123" }
+		new { Username = "admin", Role = AppRoles.Admin, Password = adminPassword },
+		new { Username = "manager", Role = AppRoles.Manager, Password = managerPassword },
+		new { Username = "cashier", Role = AppRoles.Cashier, Password = cashierPassword }
 	};
 
 	foreach (var user in usersToSeed)
