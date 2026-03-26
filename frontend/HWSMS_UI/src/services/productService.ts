@@ -1,5 +1,4 @@
 import axios from "axios";
-
 export type ProductPayload = {
   name: string;
   sku: string;
@@ -19,6 +18,12 @@ export const getProducts = async () => {
   return await axios.get<Product[]>(API_URL);
 };
 
+export const searchProducts = async (query: string) => {
+  const response = await axios.get<Product[]>(`${API_URL}/search`, {
+    params: { query },
+  });
+  return response.data;
+};
 export const addProduct = async (product: ProductPayload) => {
   return await axios.post(API_URL, product);
 };
