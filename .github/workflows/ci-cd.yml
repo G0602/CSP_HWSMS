@@ -2,9 +2,12 @@ name: HSMS CI/CD
 
 on:
   pull_request:
-    branches: [ "develop", "main" ]
+    branches: ["develop", "main"]
   push:
-    branches: [ "develop", "main" ]
+    branches: ["develop", "main"]
+
+permissions:
+  contents: read
 
 concurrency:
   group: hsms-${{ github.workflow }}-${{ github.ref }}
@@ -14,6 +17,8 @@ jobs:
   backend_ci:
     name: Backend CI (Build + Test)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +47,8 @@ jobs:
   frontend_ci:
     name: Frontend CI (Install + Build)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -63,18 +70,25 @@ jobs:
   deploy_main:
     name: Deploy (Main only)
     runs-on: ubuntu-latest
-    needs: [ backend_ci, frontend_ci ]
+    needs: [backend_ci, frontend_ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
 
     steps:
       - uses: actions/checkout@v4
 
-      # ---- Backend publish + deploy ----
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ vars.DOTNET_VERSION }}
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'backend/**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Restore backend
         run: dotnet restore backend/HSMS.sln
@@ -82,27 +96,22 @@ jobs:
       - name: Publish API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release --no-restore -o ${{ runner.temp }}/backend_publish
 
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Deploy Azure Web App (Backend)
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
-          slot-name: ${{ vars.AZURE_BACKEND_SLOT }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ runner.temp }}/backend_publish
 
-      # ---- Frontend deploy ----
-      - name: Deploy Azure Static Web App (Frontend)
-        uses: Azure/static-web-apps-deploy@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: upload
-          app_location: frontend
-          api_location: ""
-          output_location: ${{ vars.FRONTEND_OUTPUT_DIR }}
+          node-version: ${{ vars.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/HWSMS_UI/package-lock.json
+
+      - name: Install & Build Frontend
+        working-directory: frontend/HWSMS_UI
+        run: |
+          npm ci
+          npm run build
