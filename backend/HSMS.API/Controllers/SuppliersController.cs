@@ -30,4 +30,37 @@ public class SuppliersController : ControllerBase
         int id = await _supplierRepository.AddSupplierAsync(new SupplierCreateDTO { Name = name });
         return Created($"/api/suppliers/{id}", new { id, name });
     }
+
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateSupplier(int id, SupplierUpdateDTO dto)
+    {
+        string name = dto.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest("Name is required.");
+        }
+
+        bool updated = await _supplierRepository.UpdateSupplierAsync(id, new SupplierUpdateDTO { Name = name });
+        if (!updated)
+        {
+            return NotFound("Supplier not found.");
+        }
+
+        return Ok("Supplier updated successfully.");
+    }
+
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteSupplier(int id)
+    {
+        var status = await _supplierRepository.DeleteSupplierAsync(id);
+
+        return status switch
+        {
+            SupplierDeleteStatus.Deleted => Ok("Supplier deleted successfully."),
+            SupplierDeleteStatus.LinkedRecordsExist => Conflict("Cannot delete supplier because it is linked to existing records."),
+            _ => NotFound("Supplier not found.")
+        };
+    }
 }
