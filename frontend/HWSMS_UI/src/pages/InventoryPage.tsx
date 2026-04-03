@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { CRITICAL_STOCK_THRESHOLD, LOW_STOCK_THRESHOLD } from "../constants/inventory";
 import { logout } from "../services/authService";
-import { getInventoryProducts, type InventoryProduct } from "../services/productService";
+import { getInventoryProducts, updateProductStock, type InventoryProduct } from "../services/productService";
+
+type StockOperation = "increase" | "decrease";
 
 const InventoryPage = () => {
   const navigate = useNavigate();
@@ -12,7 +14,14 @@ const InventoryPage = () => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [showLowStockPopup, setShowLowStockPopup] = useState(false);
+  const [stockModalProduct, setStockModalProduct] = useState<InventoryProduct | null>(null);
+  const [stockOperation, setStockOperation] = useState<StockOperation>("increase");
+  const [stockAmount, setStockAmount] = useState(1);
+  const [stockReason, setStockReason] = useState("");
+  const [stockFormError, setStockFormError] = useState("");
+  const [isStockUpdating, setIsStockUpdating] = useState(false);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -73,6 +82,72 @@ const InventoryPage = () => {
     maximumFractionDigits: 2,
   });
 
+  const openStockModal = (product: InventoryProduct) => {
+    setStockModalProduct(product);
+    setStockOperation("increase");
+    setStockAmount(1);
+    setStockReason("");
+    setStockFormError("");
+  };
+
+  const closeStockModal = () => {
+    setStockModalProduct(null);
+    setStockFormError("");
+  };
+
+  const submitStockUpdate = async () => {
+    if (!stockModalProduct) {
+      return;
+    }
+
+    if (!Number.isFinite(stockAmount) || stockAmount <= 0) {
+      setStockFormError("Enter a valid amount greater than zero.");
+      return;
+    }
+
+    const nextQuantity =
+      stockOperation === "increase" ? stockModalProduct.quantity + stockAmount : stockModalProduct.quantity - stockAmount;
+
+    if (nextQuantity < 0) {
+      setStockFormError("Stock cannot go below zero.");
+      return;
+    }
+
+    setIsStockUpdating(true);
+    setStockFormError("");
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      await updateProductStock(stockModalProduct.id, {
+        quantity: nextQuantity,
+        reason: stockReason.trim() || undefined,
+      });
+
+      setSuccessMessage(`Stock updated for ${stockModalProduct.name}. New quantity: ${nextQuantity}.`);
+      closeStockModal();
+      await loadInventory();
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        navigate("/access-denied", { replace: true });
+        return;
+      }
+
+      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
+        setStockFormError(err.response.data);
+      } else {
+        setStockFormError("Failed to update stock.");
+      }
+    } finally {
+      setIsStockUpdating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar search={search} onSearchChange={setSearch} onLogout={handleLogout} />
@@ -96,6 +171,7 @@ const InventoryPage = () => {
           </div>
         </div>
 
+        {successMessage && <div className="mb-4 rounded-lg bg-green-100 px-4 py-3 text-green-800">{successMessage}</div>}
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
         {!error && lowStockCount > 0 && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
@@ -129,12 +205,13 @@ const InventoryPage = () => {
                 <th className="py-2">Quantity</th>
                 <th className="py-2">Price</th>
                 <th className="py-2">Category</th>
+                <th className="py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {!isLoading && filteredInventory.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-5 text-slate-500">
+                  <td colSpan={5} className="py-5 text-slate-500">
                     No inventory items found.
                   </td>
                 </tr>
@@ -158,6 +235,15 @@ const InventoryPage = () => {
                     </td>
                     <td className="py-3">Rs. {priceFormatter.format(product.price)}</td>
                     <td className="py-3">{product.category}</td>
+                    <td className="py-3">
+                      <button
+                        type="button"
+                        onClick={() => openStockModal(product)}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                      >
+                        Update Stock
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -182,6 +268,75 @@ const InventoryPage = () => {
             >
               Dismiss
             </button>
+          </div>
+        </div>
+      )}
+
+      {stockModalProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Update Stock</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {stockModalProduct.name} (Current: {stockModalProduct.quantity})
+            </p>
+
+            <div className="mt-4 grid gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Operation</label>
+                <select
+                  value={stockOperation}
+                  onChange={(e) => setStockOperation(e.target.value as StockOperation)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="increase">Increase</option>
+                  <option value="decrease">Decrease</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Amount</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={stockAmount}
+                  onChange={(e) => setStockAmount(Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Reason (optional)</label>
+                <input
+                  type="text"
+                  value={stockReason}
+                  onChange={(e) => setStockReason(e.target.value)}
+                  placeholder="e.g., Supplier restock"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            {stockFormError && <div className="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">{stockFormError}</div>}
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeStockModal}
+                className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void submitStockUpdate();
+                }}
+                disabled={isStockUpdating}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
+              >
+                {isStockUpdating ? "Updating..." : "Save"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -18,6 +18,11 @@ export type InventoryProduct = Product & {
   isLowStock: boolean;
 };
 
+export type ProductStockUpdatePayload = {
+  quantity: number;
+  reason?: string;
+};
+
 const resolveApiBaseUrl = () => {
   const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (explicitBaseUrl) {
@@ -74,4 +79,12 @@ export const deleteProduct = async (id: number) => {
   return await axios.delete(`${PRODUCTS_API_URL}/${id}`, {
     headers: getAuthHeader(),
   });
+};
+
+export const updateProductStock = async (id: number, payload: ProductStockUpdatePayload) => {
+  const { data } = await axios.put<string>(`${PRODUCTS_API_URL}/${id}/stock`, payload, {
+    headers: getAuthHeader(),
+  });
+
+  return data;
 };
