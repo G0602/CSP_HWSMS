@@ -54,4 +54,12 @@ public interface IProductRepository
     /// <param name="id">The primary key of the product to delete.</param>
     /// <returns><c>true</c> if the record was found and deleted; <c>false</c> otherwise.</returns>
     Task<bool> DeleteProduct(int id);
+
+    /// <summary>
+    /// Updates only the stock quantity of a product.
+    /// </summary>
+    /// <param name="id">The primary key of the product.</param>
+    /// <param name="stockUpdate">Payload containing the new quantity and optional reason.</param>
+    /// <returns><c>true</c> if the product exists and was updated; <c>false</c> otherwise.</returns>
+    Task<bool> UpdateProductStock(int id, ProductStockUpdateDTO stockUpdate);
 }

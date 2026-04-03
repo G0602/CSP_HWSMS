@@ -183,6 +183,63 @@ public class ProductRepository : IProductRepository
         return rows > 0;
     }
 
+    // STOCK UPDATE
+    /// <inheritdoc/>
+    public async Task<bool> UpdateProductStock(int id, ProductStockUpdateDTO stockUpdate)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+
+        try
+        {
+            const string selectSql = "SELECT Quantity FROM Products WHERE Id = @Id FOR UPDATE";
+            await using var selectCommand = new MySqlCommand(selectSql, connection, (MySqlTransaction)transaction);
+            selectCommand.Parameters.AddWithValue("@Id", id);
+
+            var currentQuantityResult = await selectCommand.ExecuteScalarAsync();
+            if (currentQuantityResult is null)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            int previousQuantity = Convert.ToInt32(currentQuantityResult);
+
+            const string updateSql = @"UPDATE Products
+                                       SET Quantity = @Quantity
+                                       WHERE Id = @Id";
+            await using var updateCommand = new MySqlCommand(updateSql, connection, (MySqlTransaction)transaction);
+            updateCommand.Parameters.AddWithValue("@Id", id);
+            updateCommand.Parameters.AddWithValue("@Quantity", stockUpdate.Quantity);
+            int updatedRows = await updateCommand.ExecuteNonQueryAsync();
+
+            if (updatedRows == 0)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            const string logSql = @"INSERT INTO StockLogs (ProductId, PreviousQuantity, NewQuantity, ChangeAmount, Reason)
+                                    VALUES (@ProductId, @PreviousQuantity, @NewQuantity, @ChangeAmount, @Reason)";
+            await using var logCommand = new MySqlCommand(logSql, connection, (MySqlTransaction)transaction);
+            logCommand.Parameters.AddWithValue("@ProductId", id);
+            logCommand.Parameters.AddWithValue("@PreviousQuantity", previousQuantity);
+            logCommand.Parameters.AddWithValue("@NewQuantity", stockUpdate.Quantity);
+            logCommand.Parameters.AddWithValue("@ChangeAmount", stockUpdate.Quantity - previousQuantity);
+            logCommand.Parameters.AddWithValue("@Reason", (object?)stockUpdate.Reason ?? DBNull.Value);
+            await logCommand.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     /// <summary>
     /// Creates the <c>Products</c> table if it does not already exist.
     /// Executed synchronously during the repository constructor to guarantee
@@ -213,5 +270,22 @@ public class ProductRepository : IProductRepository
 
         using var ensureColumnsCommand = new MySqlCommand(ensureColumnsSql, connection);
         ensureColumnsCommand.ExecuteNonQuery();
+
+        const string stockLogTableSql = @"CREATE TABLE IF NOT EXISTS StockLogs (
+                                            Id INT AUTO_INCREMENT PRIMARY KEY,
+                                            ProductId INT NOT NULL,
+                                            PreviousQuantity INT NOT NULL,
+                                            NewQuantity INT NOT NULL,
+                                            ChangeAmount INT NOT NULL,
+                                            Reason VARCHAR(255) NULL,
+                                            UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                            INDEX IX_StockLogs_ProductId (ProductId),
+                                            CONSTRAINT FK_StockLogs_Products
+                                                FOREIGN KEY (ProductId) REFERENCES Products(Id)
+                                                ON DELETE CASCADE
+                                          );";
+
+        using var stockLogCommand = new MySqlCommand(stockLogTableSql, connection);
+        stockLogCommand.ExecuteNonQuery();
     }
 }

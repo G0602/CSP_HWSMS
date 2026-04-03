@@ -184,4 +184,56 @@ public class ProductControllerTests
         Assert.Equal(1, products[0].Id);
         Assert.True(products[0].IsLowStock);
     }
+
+    [Fact]
+    public async Task UpdateProductStock_Should_Return_BadRequest_When_Quantity_Is_Negative()
+    {
+        var mockRepo = new Mock<IProductRepository>();
+        var controller = new ProductController(mockRepo.Object);
+
+        var dto = new ProductStockUpdateDTO
+        {
+            Quantity = -1,
+            Reason = "Manual correction"
+        };
+
+        var result = await controller.UpdateProductStock(1, dto);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProductStock_Should_Return_NotFound_When_Product_Does_Not_Exist()
+    {
+        var mockRepo = new Mock<IProductRepository>();
+        var dto = new ProductStockUpdateDTO { Quantity = 20 };
+
+        mockRepo.Setup(repo => repo.UpdateProductStock(1, dto))
+                .Returns(Task.FromResult(false));
+
+        var controller = new ProductController(mockRepo.Object);
+
+        var result = await controller.UpdateProductStock(1, dto);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(404, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProductStock_Should_Return_Ok_When_Updated()
+    {
+        var mockRepo = new Mock<IProductRepository>();
+        var dto = new ProductStockUpdateDTO { Quantity = 15, Reason = "Restock" };
+
+        mockRepo.Setup(repo => repo.UpdateProductStock(1, dto))
+                .Returns(Task.FromResult(true));
+
+        var controller = new ProductController(mockRepo.Object);
+
+        var result = await controller.UpdateProductStock(1, dto);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
+    }
 }

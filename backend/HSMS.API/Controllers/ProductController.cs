@@ -167,6 +167,30 @@ public class ProductController : ControllerBase
     }
 
     /// <summary>
+    /// Manually updates stock quantity for a product.
+    /// </summary>
+    /// <param name="id">The primary key of the product to update.</param>
+    /// <param name="dto">The new stock quantity and optional reason.</param>
+    /// <returns>
+    /// <c>200 OK</c> on success,
+    /// <c>400 Bad Request</c> if quantity is negative,
+    /// or <c>404 Not Found</c> if the product does not exist.
+    /// </returns>
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
+    [HttpPut("{id}/stock")]
+    public async Task<IActionResult> UpdateProductStock(int id, ProductStockUpdateDTO dto)
+    {
+        if (dto.Quantity < 0)
+            return BadRequest("Quantity cannot be negative.");
+
+        bool updated = await _repository.UpdateProductStock(id, dto);
+        if (!updated)
+            return NotFound("Product not found.");
+
+        return Ok("Product stock updated successfully.");
+    }
+
+    /// <summary>
     /// Permanently removes a product from the inventory.
     /// </summary>
     /// <param name="id">The primary key of the product to delete.</param>
