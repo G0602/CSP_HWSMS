@@ -2,9 +2,11 @@ import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import SupplierFormCard from "../components/SupplierFormCard";
 import { CRITICAL_STOCK_THRESHOLD, LOW_STOCK_THRESHOLD } from "../constants/inventory";
 import { logout } from "../services/authService";
 import { getInventoryProducts, updateProductStock, type InventoryProduct } from "../services/productService";
+import { addSupplier, type SupplierPayload } from "../services/supplierService";
 
 type StockOperation = "increase" | "decrease";
 
@@ -22,6 +24,7 @@ const InventoryPage = () => {
   const [stockReason, setStockReason] = useState("");
   const [stockFormError, setStockFormError] = useState("");
   const [isStockUpdating, setIsStockUpdating] = useState(false);
+  const [isSupplierSubmitting, setIsSupplierSubmitting] = useState(false);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -148,6 +151,35 @@ const InventoryPage = () => {
     }
   };
 
+  const submitSupplier = async (payload: SupplierPayload) => {
+    setIsSupplierSubmitting(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      await addSupplier(payload);
+      setSuccessMessage(`Supplier "${payload.name}" added successfully.`);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        navigate("/access-denied", { replace: true });
+        return;
+      }
+
+      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
+        setError(err.response.data);
+      } else {
+        setError("Failed to add supplier.");
+      }
+    } finally {
+      setIsSupplierSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar search={search} onSearchChange={setSearch} onLogout={handleLogout} />
@@ -195,6 +227,10 @@ const InventoryPage = () => {
             <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
             Low stock (below {LOW_STOCK_THRESHOLD})
           </span>
+        </div>
+
+        <div className="mb-4">
+          <SupplierFormCard onSubmit={submitSupplier} isSubmitting={isSupplierSubmitting} />
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
