@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
 import RegisterPage from "./pages/RegisterPage";
 import SalesPage from "./pages/SalesPage";
+import SupplierPage from "./pages/SupplierPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 
 function App() {
@@ -52,6 +53,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier]}>
               <SalesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/suppliers"
+          element={
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
+              <SupplierPage />
             </ProtectedRoute>
           }
         />

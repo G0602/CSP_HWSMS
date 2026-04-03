@@ -39,6 +39,16 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
               Sales
             </NavLink>
           )}
+          {canAccessInventory(role) && (
+            <NavLink
+              to="/suppliers"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Suppliers
+            </NavLink>
+          )}
           {canAccessTransactions(role) && (
             <NavLink
               to="/transactions"
