@@ -12,10 +12,12 @@ namespace HSMS.API.Controllers;
 /// Depends on <see cref="IProductRepository"/> injected via the DI container.
 /// </summary>
 [Route("api/[controller]")]
+[Route("api/products")]
 [ApiController]
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
+    private const int LowStockThreshold = 10;
 
     /// <summary>
     /// Initialises the controller with the product repository.
@@ -60,6 +62,29 @@ public class ProductController : ControllerBase
     {
         var products = await _repository.GetAllProducts();
         return Ok(products);
+    }
+
+    /// <summary>
+    /// Returns products for inventory view with low-stock status metadata.
+    /// Accessible only by Manager and Admin roles.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.InventoryManagerRead)]
+    [HttpGet("inventory")]
+    public async Task<IActionResult> GetInventoryProducts()
+    {
+        var products = await _repository.GetAllProducts();
+        var inventory = products.Select(product => new InventoryProductResponseDTO
+        {
+            Id = product.Id,
+            Name = product.Name,
+            SKU = product.SKU,
+            Quantity = product.Quantity,
+            Category = product.Category,
+            Price = product.Price,
+            IsLowStock = product.Quantity <= LowStockThreshold
+        });
+
+        return Ok(inventory);
     }
 
     // LOOKUP / SEARCH

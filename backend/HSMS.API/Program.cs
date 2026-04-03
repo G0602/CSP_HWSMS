@@ -81,6 +81,9 @@ builder.Services.AddAuthorization(options =>
 	options.AddPolicy(AuthPolicies.InventoryRead, policy =>
 		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
 
+	options.AddPolicy(AuthPolicies.InventoryManagerRead, policy =>
+		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+
 	options.AddPolicy(AuthPolicies.InventoryWrite, policy =>
 		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
 
