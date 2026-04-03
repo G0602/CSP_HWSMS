@@ -17,15 +17,17 @@ namespace HSMS.API.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
-    private const int LowStockThreshold = 10;
+    private readonly int _lowStockThreshold;
 
     /// <summary>
     /// Initialises the controller with the product repository.
     /// </summary>
     /// <param name="repository">The data-access abstraction for products.</param>
-    public ProductController(IProductRepository repository)
+    /// <param name="configuration">Application configuration for runtime thresholds.</param>
+    public ProductController(IProductRepository repository, IConfiguration? configuration = null)
     {
         _repository = repository;
+        _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
     }
 
     /// <summary>
@@ -81,10 +83,35 @@ public class ProductController : ControllerBase
             Quantity = product.Quantity,
             Category = product.Category,
             Price = product.Price,
-            IsLowStock = product.Quantity <= LowStockThreshold
+            IsLowStock = product.Quantity < _lowStockThreshold
         });
 
         return Ok(inventory);
+    }
+
+    /// <summary>
+    /// Returns only low-stock products where quantity is below the configured threshold.
+    /// Accessible only by Manager and Admin roles.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.InventoryManagerRead)]
+    [HttpGet("low-stock")]
+    public async Task<IActionResult> GetLowStockProducts()
+    {
+        var products = await _repository.GetAllProducts();
+        var lowStockProducts = products
+            .Where(product => product.Quantity < _lowStockThreshold)
+            .Select(product => new InventoryProductResponseDTO
+            {
+                Id = product.Id,
+                Name = product.Name,
+                SKU = product.SKU,
+                Quantity = product.Quantity,
+                Category = product.Category,
+                Price = product.Price,
+                IsLowStock = true
+            });
+
+        return Ok(lowStockProducts);
     }
 
     // LOOKUP / SEARCH

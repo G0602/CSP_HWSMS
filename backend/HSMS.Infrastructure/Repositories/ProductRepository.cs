@@ -205,5 +205,13 @@ public class ProductRepository : IProductRepository
 
         using var command = new MySqlCommand(tableSql, connection);
         command.ExecuteNonQuery();
+
+        const string ensureColumnsSql = @"ALTER TABLE Products
+                                          ADD COLUMN IF NOT EXISTS Price DECIMAL(10,2) NOT NULL DEFAULT 0,
+                                          ADD COLUMN IF NOT EXISTS Quantity INT NOT NULL DEFAULT 0,
+                                          ADD COLUMN IF NOT EXISTS Category VARCHAR(255) NOT NULL DEFAULT '';";
+
+        using var ensureColumnsCommand = new MySqlCommand(ensureColumnsSql, connection);
+        ensureColumnsCommand.ExecuteNonQuery();
     }
 }
