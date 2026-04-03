@@ -3,6 +3,7 @@ import { AppRoles } from "./auth/roles";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
+import InventoryPage from "./pages/InventoryPage";
 import InvoicePreviewPage from "./pages/InvoicePreviewPage";
 import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
@@ -39,6 +40,14 @@ function App() {
           }
         />
         <Route
+          path="/inventory"
+          element={
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
+              <InventoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/sales"
           element={
             <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier]}>
@@ -70,7 +79,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/inventory" replace />} />
       </Routes>
     </BrowserRouter>
   );

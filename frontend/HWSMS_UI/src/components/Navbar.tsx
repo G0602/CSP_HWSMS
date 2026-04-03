@@ -21,7 +21,7 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
         <div className="ml-5 flex gap-2">
           {canAccessInventory(role) && (
             <NavLink
-              to="/dashboard"
+              to="/inventory"
               className={({ isActive }) =>
                 `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
               }

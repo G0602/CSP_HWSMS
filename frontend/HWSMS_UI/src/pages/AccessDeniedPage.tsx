@@ -12,10 +12,10 @@ const AccessDeniedPage = () => {
 
         <div className="mt-6 flex justify-center gap-3">
           <Link
-            to="/dashboard"
+            to="/inventory"
             className="rounded-xl bg-slate-800 text-white px-4 py-2.5 font-medium hover:bg-slate-900 transition-colors"
           >
-            Go to Dashboard
+            Go to Inventory
           </Link>
           <Link
             to="/sales"
