@@ -12,6 +12,7 @@ const InventoryPage = () => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showLowStockPopup, setShowLowStockPopup] = useState(false);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -57,6 +58,15 @@ const InventoryPage = () => {
   const lowStockCount = filteredInventory.filter(
     (product) => product.isLowStock || product.quantity < LOW_STOCK_THRESHOLD,
   ).length;
+  const criticalStockCount = filteredInventory.filter(
+    (product) => (product.isLowStock || product.quantity < LOW_STOCK_THRESHOLD) && product.quantity <= CRITICAL_STOCK_THRESHOLD,
+  ).length;
+
+  useEffect(() => {
+    if (!isLoading && lowStockCount > 0) {
+      setShowLowStockPopup(true);
+    }
+  }, [isLoading, lowStockCount]);
 
   const priceFormatter = new Intl.NumberFormat("en-LK", {
     minimumFractionDigits: 2,
@@ -70,7 +80,12 @@ const InventoryPage = () => {
       <div className="mx-auto max-w-7xl p-6 lg:p-10">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">Inventory</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-3xl font-bold text-slate-900">Inventory</h2>
+              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                {lowStockCount} low stock
+              </span>
+            </div>
             <p className="mt-1 text-slate-600">Track stock levels and quickly spot low-stock items.</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
@@ -82,6 +97,18 @@ const InventoryPage = () => {
         </div>
 
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
+        {!error && lowStockCount > 0 && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+            <p className="font-semibold">
+              Low stock alert: {lowStockCount} item(s) are below {LOW_STOCK_THRESHOLD}.
+            </p>
+            {criticalStockCount > 0 && (
+              <p className="text-sm text-red-700">
+                {criticalStockCount} item(s) are at critical stock ({CRITICAL_STOCK_THRESHOLD} or less).
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mb-4 flex items-center gap-3 text-xs text-slate-600">
           <span className="inline-flex items-center gap-2 rounded-md bg-red-50 px-3 py-1">
@@ -138,6 +165,26 @@ const InventoryPage = () => {
           </table>
         </div>
       </div>
+
+      {showLowStockPopup && !error && lowStockCount > 0 && (
+        <div className="fixed bottom-5 right-5 z-50 w-[320px] rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-lg">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Inventory Notification</p>
+              <p className="mt-1 text-sm text-amber-800">
+                {lowStockCount} low-stock item(s) need attention.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLowStockPopup(false)}
+              className="rounded-md px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
