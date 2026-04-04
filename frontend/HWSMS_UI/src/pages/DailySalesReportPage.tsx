@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { getCurrentUser, logout } from "../services/authService";
 import {
+  exportDailySalesCsv,
   getDailySalesReport,
   getLowStockReport,
   getMonthlySalesReport,
@@ -18,6 +19,7 @@ const DailySalesReportPage = () => {
   const [monthlyReport, setMonthlyReport] = useState<MonthlySalesReportItem[]>([]);
   const [lowStockReport, setLowStockReport] = useState<LowStockReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState("");
   const user = getCurrentUser();
 
@@ -60,6 +62,37 @@ const DailySalesReportPage = () => {
     void loadReport();
   }, []);
 
+  const handleExportCsv = async () => {
+    setError("");
+    setIsExporting(true);
+
+    try {
+      const { blob, fileName } = await exportDailySalesCsv();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      if (axios.isAxiosError(err) && err.response?.status === 403) {
+        navigate("/access-denied", { replace: true });
+        return;
+      }
+
+      setError("Failed to export CSV report.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const totalSales = useMemo(() => report.reduce((sum, item) => sum + item.totalAmount, 0), [report]);
   const totalMonthlySales = useMemo(
     () => monthlyReport.reduce((sum, item) => sum + item.totalAmount, 0),
@@ -78,6 +111,16 @@ const DailySalesReportPage = () => {
         <div className="mb-6">
           <h2 className="text-3xl font-bold text-slate-900">Sales Reports</h2>
           <p className="text-slate-600 mt-1">Daily and monthly aggregated sales totals.</p>
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => void handleExportCsv()}
+              disabled={isExporting}
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isExporting ? "Exporting..." : "Export CSV"}
+            </button>
+          </div>
         </div>
 
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}

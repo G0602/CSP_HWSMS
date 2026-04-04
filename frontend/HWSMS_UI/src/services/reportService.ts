@@ -59,3 +59,20 @@ export const getLowStockReport = async () => {
   });
   return data;
 };
+
+export const exportDailySalesCsv = async () => {
+  const response = await axios.get(`${REPORTS_API_URL}/export`, {
+    headers: getAuthHeader(),
+    params: { type: "daily" },
+    responseType: "blob",
+  });
+
+  const disposition = response.headers["content-disposition"] as string | undefined;
+  const fileNameMatch = disposition?.match(/filename="?([^"]+)"?/i);
+  const fileName = fileNameMatch?.[1] ?? `daily-sales-report-${new Date().toISOString().slice(0, 10)}.csv`;
+
+  return {
+    blob: response.data as Blob,
+    fileName,
+  };
+};
