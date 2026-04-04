@@ -17,6 +17,15 @@ export type CreateUserPayload = {
   role: "Admin" | "Manager" | "Cashier";
 };
 
+export type UserRole = "Admin" | "Manager" | "Cashier";
+
+export type ManagedUser = {
+  id: number;
+  username: string;
+  role: UserRole;
+  createdAt?: string;
+};
+
 export type AuthResponse = {
   userId: number;
   accessToken: string;
@@ -82,6 +91,27 @@ export const createUser = async (payload: CreateUserPayload) => {
   const { data } = await axios.post(USERS_API_URL, payload, {
     headers: getAuthHeader(),
   });
+  return data;
+};
+
+export const getUsers = async () => {
+  const { data } = await axios.get<ManagedUser[]>(USERS_API_URL, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const updateUserRole = async (userId: number, role: UserRole) => {
+  const { data } = await axios.put<{ message?: string; auth?: AuthResponse } | string>(
+    `${USERS_API_URL}/${userId}/role`,
+    { role },
+    { headers: getAuthHeader() },
+  );
+
+  if (typeof data === "object" && data?.auth) {
+    persistSession(data.auth);
+  }
+
   return data;
 };
 
