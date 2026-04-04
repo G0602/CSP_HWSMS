@@ -5,6 +5,7 @@ import { AppRoles } from "../auth/roles";
 import Navbar from "../components/Navbar";
 import {
   createUser,
+  deleteUser,
   getCurrentUser,
   getUsers,
   logout,
@@ -27,7 +28,9 @@ const UsersPage = () => {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [roleDraftByUserId, setRoleDraftByUserId] = useState<Record<number, UserRole>>({});
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [savingUserId, setSavingUserId] = useState<number | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
 
   const user = getCurrentUser();
 
@@ -105,14 +108,12 @@ const UsersPage = () => {
     }
   };
 
-  const hasRoleChanged = (item: ManagedUser) =>
-    roleDraftByUserId[item.id] !== undefined && roleDraftByUserId[item.id] !== item.role;
-
   const sortedUsers = useMemo(() => [...users].sort((a, b) => a.username.localeCompare(b.username)), [users]);
 
   const handleSaveRole = async (item: ManagedUser) => {
     const nextRole = roleDraftByUserId[item.id];
     if (!nextRole || nextRole === item.role) {
+      setEditingUserId(null);
       return;
     }
 
@@ -124,6 +125,7 @@ const UsersPage = () => {
       await updateUserRole(item.id, nextRole);
       setMessage(`Role updated for ${item.username}.`);
       await loadUsers();
+      setEditingUserId(null);
     } catch (err) {
       if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
         setError(err.response.data);
@@ -132,6 +134,34 @@ const UsersPage = () => {
       }
     } finally {
       setSavingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (item: ManagedUser) => {
+    const confirmed = window.confirm(`Delete user "${item.username}"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setDeletingUserId(item.id);
+
+    try {
+      await deleteUser(item.id);
+      setMessage(`User ${item.username} deleted successfully.`);
+      await loadUsers();
+      if (editingUserId === item.id) {
+        setEditingUserId(null);
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
+        setError(err.response.data);
+      } else {
+        setError("User deletion failed. Please try again.");
+      }
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -206,7 +236,7 @@ const UsersPage = () => {
                     <tr>
                       <th className="py-2">Username</th>
                       <th className="py-2">Role</th>
-                      <th className="py-2"></th>
+                      <th className="py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -214,30 +244,69 @@ const UsersPage = () => {
                       <tr key={item.id}>
                         <td className="py-3 font-medium">{item.username}</td>
                         <td className="py-3">
-                          <select
-                            value={roleDraftByUserId[item.id] ?? item.role}
-                            onChange={(e) =>
-                              setRoleDraftByUserId((prev) => ({
-                                ...prev,
-                                [item.id]: e.target.value as UserRole,
-                              }))
-                            }
-                            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value={AppRoles.Admin}>Admin</option>
-                            <option value={AppRoles.Manager}>Manager</option>
-                            <option value={AppRoles.Cashier}>Cashier</option>
-                          </select>
+                          {editingUserId === item.id ? (
+                            <select
+                              value={roleDraftByUserId[item.id] ?? item.role}
+                              onChange={(e) =>
+                                setRoleDraftByUserId((prev) => ({
+                                  ...prev,
+                                  [item.id]: e.target.value as UserRole,
+                                }))
+                              }
+                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value={AppRoles.Admin}>Admin</option>
+                              <option value={AppRoles.Manager}>Manager</option>
+                              <option value={AppRoles.Cashier}>Cashier</option>
+                            </select>
+                          ) : (
+                            <span>{item.role}</span>
+                          )}
                         </td>
                         <td className="py-3 text-right">
-                          <button
-                            type="button"
-                            disabled={!hasRoleChanged(item) || savingUserId === item.id}
-                            onClick={() => void handleSaveRole(item)}
-                            className="rounded-lg bg-slate-800 text-white px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-900"
-                          >
-                            {savingUserId === item.id ? "Saving..." : "Save"}
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            {editingUserId === item.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={savingUserId === item.id}
+                                  onClick={() => void handleSaveRole(item)}
+                                  className="rounded-lg bg-slate-800 text-white px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-900"
+                                >
+                                  {savingUserId === item.id ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUserId(null);
+                                    setRoleDraftByUserId((prev) => ({
+                                      ...prev,
+                                      [item.id]: item.role,
+                                    }));
+                                  }}
+                                  className="rounded-lg bg-slate-200 text-slate-800 px-3 py-1.5 text-sm hover:bg-slate-300"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingUserId(item.id)}
+                                className="rounded-lg bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={deletingUserId === item.id}
+                              onClick={() => void handleDeleteUser(item)}
+                              className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+                            >
+                              {deletingUserId === item.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

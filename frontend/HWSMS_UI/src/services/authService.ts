@@ -115,6 +115,13 @@ export const updateUserRole = async (userId: number, role: UserRole) => {
   return data;
 };
 
+export const deleteUser = async (userId: number) => {
+  const { data } = await axios.delete<string>(`${USERS_API_URL}/${userId}`, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
 export const logout = () => {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
