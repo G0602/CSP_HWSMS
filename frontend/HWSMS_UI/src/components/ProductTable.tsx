@@ -4,12 +4,13 @@ import ConfirmModal from "./ConfirmModal";
 
 type ProductTableProps = {
   products: Product[];
+  supplierNameById?: Record<number, string>;
   loading: boolean;
   onEdit: (product: Product) => void;
   onDelete: (id: number) => Promise<void> | void;
 };
 
-const ProductTable = ({ products, loading, onEdit, onDelete }: ProductTableProps) => {
+const ProductTable = ({ products, supplierNameById = {}, loading, onEdit, onDelete }: ProductTableProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -38,6 +39,7 @@ const ProductTable = ({ products, loading, onEdit, onDelete }: ProductTableProps
             <th className="p-2">SKU</th>
             <th className="p-2">Price</th>
             <th className="p-2">Quantity</th>
+            <th className="p-2">Supplier</th>
             <th className="p-2">Status</th>
             <th className="p-2">Actions</th>
           </tr>
@@ -50,6 +52,9 @@ const ProductTable = ({ products, loading, onEdit, onDelete }: ProductTableProps
               <td className="p-2">{product.sku}</td>
               <td className="p-2">Rs. {Number(product.price).toFixed(2)}</td>
               <td className="p-2">{product.quantity}</td>
+              <td className="p-2">
+                {product.supplierId ? supplierNameById[product.supplierId] ?? `#${product.supplierId}` : "-"}
+              </td>
               <td className={`p-2 font-semibold ${product.quantity < 10 ? "text-red-600" : "text-green-600"}`}>
                 {product.quantity < 10 ? "Low Stock" : "In Stock"}
               </td>

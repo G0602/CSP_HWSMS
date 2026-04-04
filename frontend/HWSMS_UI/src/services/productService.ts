@@ -7,6 +7,7 @@ export type ProductPayload = {
   price: number;
   quantity: number;
   category: string;
+  supplierId?: number | null;
 };
 
 export type Product = ProductPayload & {

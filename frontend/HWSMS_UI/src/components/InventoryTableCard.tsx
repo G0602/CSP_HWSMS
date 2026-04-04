@@ -3,11 +3,12 @@ import StatusBadge from "./StatusBadge";
 
 type InventoryTableCardProps = {
   products: Product[];
+  supplierNameById?: Record<number, string>;
   onEdit: (product: Product) => void;
   onDelete: (id: number) => Promise<void>;
 };
 
-const InventoryTableCard = ({ products, onEdit, onDelete }: InventoryTableCardProps) => {
+const InventoryTableCard = ({ products, supplierNameById = {}, onEdit, onDelete }: InventoryTableCardProps) => {
   const lkrFormatter = new Intl.NumberFormat("en-LK", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -25,6 +26,7 @@ const InventoryTableCard = ({ products, onEdit, onDelete }: InventoryTableCardPr
               <th>SKU</th>
               <th>Price (Rs.)</th>
               <th>Quantity</th>
+              <th>Supplier</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -37,6 +39,7 @@ const InventoryTableCard = ({ products, onEdit, onDelete }: InventoryTableCardPr
                 <td>{p.sku}</td>
                 <td>Rs. {lkrFormatter.format(p.price)}</td>
                 <td>{p.quantity}</td>
+                <td>{p.supplierId ? supplierNameById[p.supplierId] ?? `#${p.supplierId}` : "-"}</td>
                 <td>
                   <StatusBadge quantity={p.quantity} />
                 </td>

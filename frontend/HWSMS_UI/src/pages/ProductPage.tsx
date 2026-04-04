@@ -9,9 +9,11 @@ import {
 } from "../services/productService";
 import ProductForm from "../components/ProductForm";
 import ProductTable from "../components/ProductTable";
+import { getSuppliers, type Supplier } from "../services/supplierService";
 
 const ProductPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,9 +33,24 @@ const ProductPage = () => {
     }
   };
 
+  const loadSuppliers = async () => {
+    try {
+      const data = await getSuppliers();
+      setSuppliers(data);
+    } catch {
+      setSuppliers([]);
+    }
+  };
+
   useEffect(() => {
     void loadProducts();
+    void loadSuppliers();
   }, []);
+
+  const supplierNameById = suppliers.reduce<Record<number, string>>((acc, supplier) => {
+    acc[supplier.id] = supplier.name;
+    return acc;
+  }, {});
 
   const handleAddOrUpdate = async (product: ProductPayload) => {
     setIsSubmitting(true);
@@ -79,9 +96,20 @@ const ProductPage = () => {
         {message && <div className="mb-4 rounded-md bg-green-100 p-3 text-green-800">{message}</div>}
         {error && <div className="mb-4 rounded-md bg-red-100 p-3 text-red-700">{error}</div>}
 
-        <ProductForm onSubmit={handleAddOrUpdate} editingProduct={editingProduct} isSubmitting={isSubmitting} />
+        <ProductForm
+          onSubmit={handleAddOrUpdate}
+          editingProduct={editingProduct}
+          suppliers={suppliers}
+          isSubmitting={isSubmitting}
+        />
 
-        <ProductTable products={products} loading={loading} onEdit={setEditingProduct} onDelete={handleDelete} />
+        <ProductTable
+          products={products}
+          supplierNameById={supplierNameById}
+          loading={loading}
+          onEdit={setEditingProduct}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );
