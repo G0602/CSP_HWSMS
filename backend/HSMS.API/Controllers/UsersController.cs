@@ -1,37 +1,28 @@
-using HSMS.API.Services;
 using HSMS.API.Auth;
+using HSMS.API.Services;
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
-using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HSMS.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/users")]
 [ApiController]
-public class AuthController : ControllerBase
+public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IJwtTokenService _jwtTokenService;
-    private readonly IAuthenticationService _authenticationService;
 
-    public AuthController(
-        IUserRepository userRepository,
-        IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService,
-        IAuthenticationService authenticationService)
+    public UsersController(IUserRepository userRepository, IPasswordHasher passwordHasher)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
-        _jwtTokenService = jwtTokenService;
-        _authenticationService = authenticationService;
     }
 
-    [AllowAnonymous]
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(AuthRegisterDTO dto)
+    [Authorize(Policy = AuthPolicies.UsersManage)]
+    [HttpPost]
+    public async Task<IActionResult> CreateUser(UserCreateDTO dto)
     {
         string username = dto.Username.Trim();
         if (string.IsNullOrWhiteSpace(username))
@@ -59,35 +50,12 @@ public class AuthController : ControllerBase
         string passwordHash = _passwordHasher.HashPassword(dto.Password);
         int userId = await _userRepository.CreateUserAsync(username, passwordHash, role);
 
-        var user = new User
+        return Created($"/api/users/{userId}", new
         {
-            Id = userId,
-            Username = username,
-            PasswordHash = passwordHash,
-            Role = role
-        };
-
-        AuthResponseDTO auth = _jwtTokenService.GenerateToken(user);
-        return Ok(auth);
-    }
-
-    [AllowAnonymous]
-    [HttpPost("login")]
-    public async Task<IActionResult> Login(AuthLoginDTO dto)
-    {
-        try
-        {
-            AuthResponseDTO auth = await _authenticationService.LoginAsync(dto);
-            return Ok(auth);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ex.Message);
-        }
+            id = userId,
+            username,
+            role
+        });
     }
 
     private static string NormalizeRole(string role)

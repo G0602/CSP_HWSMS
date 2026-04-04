@@ -8,4 +8,5 @@ public static class AuthPolicies
     public const string InventoryDelete = "InventoryDelete";
     public const string SalesCreate = "SalesCreate";
     public const string SalesRead = "SalesRead";
+    public const string UsersManage = "UsersManage";
 }

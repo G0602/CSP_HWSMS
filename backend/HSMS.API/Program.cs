@@ -95,6 +95,9 @@ builder.Services.AddAuthorization(options =>
 
 	options.AddPolicy(AuthPolicies.SalesRead, policy =>
 		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+
+	options.AddPolicy(AuthPolicies.UsersManage, policy =>
+		policy.RequireRole(AppRoles.Admin));
 });
 
 // ----- CORS -----
