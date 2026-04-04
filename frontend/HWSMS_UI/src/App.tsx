@@ -11,6 +11,7 @@ import RegisterPage from "./pages/RegisterPage";
 import SalesPage from "./pages/SalesPage";
 import SupplierPage from "./pages/SupplierPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
+import UsersPage from "./pages/UsersPage";
 
 function App() {
   return (
@@ -77,6 +78,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
               <InvoicePreviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute allowedRoles={[AppRoles.Admin]}>
+              <UsersPage />
             </ProtectedRoute>
           }
         />
