@@ -121,4 +121,42 @@ public class ReportsControllerTests
         Assert.Equal(1, products[0].Id);
         Assert.True(products[0].IsLowStock);
     }
+
+    [Fact]
+    public async Task ExportReport_Should_Return_Csv_File_When_Type_Is_Daily()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+
+        saleRepo.Setup(repo => repo.GetDailySalesReportAsync())
+            .ReturnsAsync(
+            [
+                new DailySalesReportItemDTO
+                {
+                    Date = new DateTime(2026, 4, 3),
+                    TotalAmount = 15000m
+                }
+            ]);
+
+        var controller = new ReportsController(saleRepo.Object, productRepo.Object);
+        var result = await controller.ExportReport("daily");
+
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("text/csv", file.ContentType);
+        Assert.Contains("daily-sales-report-", file.FileDownloadName);
+        Assert.EndsWith(".csv", file.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task ExportReport_Should_Return_BadRequest_When_Type_Is_Unsupported()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+
+        var controller = new ReportsController(saleRepo.Object, productRepo.Object);
+        var result = await controller.ExportReport("monthly");
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
+    }
 }

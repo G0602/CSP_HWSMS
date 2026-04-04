@@ -3,6 +3,7 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 
 namespace HSMS.API.Controllers;
 
@@ -60,5 +61,31 @@ public class ReportsController : ControllerBase
             });
 
         return Ok(lowStockProducts);
+    }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportReport([FromQuery] string type = "daily")
+    {
+        string reportType = type.Trim().ToLowerInvariant();
+        if (reportType != "daily")
+        {
+            return BadRequest("Unsupported export type. Use type=daily.");
+        }
+
+        var dailyReport = await _saleRepository.GetDailySalesReportAsync();
+
+        var csv = new StringBuilder();
+        csv.AppendLine("Date,TotalSales");
+
+        foreach (var item in dailyReport)
+        {
+            csv.AppendLine($"{item.Date:yyyy-MM-dd},{item.TotalAmount:0.00}");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(csv.ToString());
+        var fileName = $"daily-sales-report-{DateTime.UtcNow:yyyyMMdd}.csv";
+
+        return File(bytes, "text/csv", fileName);
     }
 }
