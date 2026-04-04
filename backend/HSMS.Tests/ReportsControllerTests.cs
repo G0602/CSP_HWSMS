@@ -1,13 +1,25 @@
 using HSMS.API.Controllers;
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
+using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Moq;
 
 namespace HSMS.Tests;
 
 public class ReportsControllerTests
 {
+    private static ReportsController CreateController(
+        Mock<ISaleRepository> saleRepo,
+        Mock<IProductRepository>? productRepo = null,
+        IConfiguration? config = null)
+    {
+        productRepo ??= new Mock<IProductRepository>();
+        productRepo.Setup(repo => repo.GetAllProducts()).ReturnsAsync([]);
+        return new ReportsController(saleRepo.Object, productRepo.Object, config);
+    }
+
     [Fact]
     public async Task GetDailySalesReport_Should_Return_Ok_With_Report_Data()
     {
@@ -27,7 +39,7 @@ public class ReportsControllerTests
                 }
             ]);
 
-        var controller = new ReportsController(saleRepo.Object);
+        var controller = CreateController(saleRepo);
         var result = await controller.GetDailySalesReport();
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -53,10 +65,60 @@ public class ReportsControllerTests
                 }
             ]);
 
-        var controller = new ReportsController(saleRepo.Object);
+        var controller = CreateController(saleRepo);
         var result = await controller.GetMonthlySalesReport();
 
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(200, ok.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetLowStockReport_Should_Filter_By_Configured_Threshold()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+
+        productRepo.Setup(repo => repo.GetAllProducts())
+            .ReturnsAsync(
+            [
+                new Product
+                {
+                    Id = 1,
+                    Name = "Hammer",
+                    SKU = "HM-1",
+                    Quantity = 9,
+                    Category = "Tools",
+                    Price = 1500m
+                },
+                new Product
+                {
+                    Id = 2,
+                    Name = "Drill",
+                    SKU = "DR-1",
+                    Quantity = 10,
+                    Category = "Power Tools",
+                    Price = 12000m
+                }
+            ]);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LOW_STOCK_THRESHOLD"] = "10"
+            })
+            .Build();
+
+        var controller = CreateController(saleRepo, productRepo, config);
+        var result = await controller.GetLowStockReport();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
+
+        var payload = Assert.IsAssignableFrom<IEnumerable<InventoryProductResponseDTO>>(ok.Value);
+        var products = payload.ToList();
+
+        Assert.Single(products);
+        Assert.Equal(1, products[0].Id);
+        Assert.True(products[0].IsLowStock);
     }
 }
