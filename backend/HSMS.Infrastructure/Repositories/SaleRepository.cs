@@ -234,6 +234,34 @@ public class SaleRepository : ISaleRepository
         return report;
     }
 
+    public async Task<List<MonthlySalesReportItemDTO>> GetMonthlySalesReportAsync()
+    {
+        var report = new List<MonthlySalesReportItemDTO>();
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT DATE_FORMAT(SoldAt, '%Y-%m-01') AS ReportMonth,
+                                      SUM(TotalAmount) AS TotalAmount
+                               FROM Sales
+                               GROUP BY YEAR(SoldAt), MONTH(SoldAt)
+                               ORDER BY ReportMonth DESC";
+
+        await using var command = new MySqlCommand(query, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            report.Add(new MonthlySalesReportItemDTO
+            {
+                Month = Convert.ToDateTime(reader["ReportMonth"]),
+                TotalAmount = Convert.ToDecimal(reader["TotalAmount"])
+            });
+        }
+
+        return report;
+    }
+
     public async Task<SaleResponseDTO?> GetSaleDetailsAsync(int saleId)
     {
         await using var connection = new MySqlConnection(_connectionString);

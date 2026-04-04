@@ -23,4 +23,12 @@ public class ReportsController : ControllerBase
         var report = await _saleRepository.GetDailySalesReportAsync();
         return Ok(report);
     }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("monthly")]
+    public async Task<IActionResult> GetMonthlySalesReport()
+    {
+        var report = await _saleRepository.GetMonthlySalesReportAsync();
+        return Ok(report);
+    }
 }

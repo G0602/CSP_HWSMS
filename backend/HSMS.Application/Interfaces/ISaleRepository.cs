@@ -9,6 +9,7 @@ public interface ISaleRepository
     Task<List<SaleHistoryItemDTO>> GetSalesHistoryAsync(int? saleId, DateTime? fromDate, DateTime? toDate, int limit = 100);
 
     Task<List<DailySalesReportItemDTO>> GetDailySalesReportAsync();
+    Task<List<MonthlySalesReportItemDTO>> GetMonthlySalesReportAsync();
 
     Task<SaleResponseDTO?> GetSaleDetailsAsync(int saleId);
 
