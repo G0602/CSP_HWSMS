@@ -11,6 +11,17 @@ export type MonthlySalesReportItem = {
   totalAmount: number;
 };
 
+export type LowStockReportItem = {
+  id: number;
+  name: string;
+  sku: string;
+  quantity: number;
+  category: string;
+  price: number;
+  supplierId?: number | null;
+  isLowStock: boolean;
+};
+
 const resolveApiBaseUrl = () => {
   const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (explicitBaseUrl) {
@@ -37,6 +48,13 @@ export const getDailySalesReport = async () => {
 
 export const getMonthlySalesReport = async () => {
   const { data } = await axios.get<MonthlySalesReportItem[]>(`${REPORTS_API_URL}/monthly`, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const getLowStockReport = async () => {
+  const { data } = await axios.get<LowStockReportItem[]>(`${REPORTS_API_URL}/low-stock`, {
     headers: getAuthHeader(),
   });
   return data;

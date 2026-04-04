@@ -5,8 +5,10 @@ import Navbar from "../components/Navbar";
 import { getCurrentUser, logout } from "../services/authService";
 import {
   getDailySalesReport,
+  getLowStockReport,
   getMonthlySalesReport,
   type DailySalesReportItem,
+  type LowStockReportItem,
   type MonthlySalesReportItem,
 } from "../services/reportService";
 
@@ -14,6 +16,7 @@ const DailySalesReportPage = () => {
   const navigate = useNavigate();
   const [report, setReport] = useState<DailySalesReportItem[]>([]);
   const [monthlyReport, setMonthlyReport] = useState<MonthlySalesReportItem[]>([]);
+  const [lowStockReport, setLowStockReport] = useState<LowStockReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const user = getCurrentUser();
@@ -28,9 +31,14 @@ const DailySalesReportPage = () => {
     setIsLoading(true);
 
     try {
-      const [dailyData, monthlyData] = await Promise.all([getDailySalesReport(), getMonthlySalesReport()]);
+      const [dailyData, monthlyData, lowStockData] = await Promise.all([
+        getDailySalesReport(),
+        getMonthlySalesReport(),
+        getLowStockReport(),
+      ]);
       setReport(dailyData);
       setMonthlyReport(monthlyData);
+      setLowStockReport(lowStockData);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         handleLogout();
@@ -171,6 +179,37 @@ const DailySalesReportPage = () => {
                 <td className="py-2 font-semibold">Rs. {totalSales.toFixed(2)}</td>
               </tr>
             </tfoot>
+          </table>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-x-auto">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">Low-Stock Products</h3>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left border-b border-slate-200 text-slate-500">
+                <th className="py-2">Product</th>
+                <th className="py-2">SKU</th>
+                <th className="py-2">Category</th>
+                <th className="py-2">Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!isLoading && lowStockReport.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="py-5 text-slate-500">
+                    No low-stock products found.
+                  </td>
+                </tr>
+              )}
+              {lowStockReport.map((item) => (
+                <tr key={item.id} className="border-b border-slate-100">
+                  <td className="py-2">{item.name}</td>
+                  <td className="py-2">{item.sku}</td>
+                  <td className="py-2">{item.category}</td>
+                  <td className="py-2 font-medium text-red-600">{item.quantity}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </div>
