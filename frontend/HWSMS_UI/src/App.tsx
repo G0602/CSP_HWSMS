@@ -3,6 +3,7 @@ import { AppRoles } from "./auth/roles";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
+import DailySalesReportPage from "./pages/DailySalesReportPage";
 import InventoryPage from "./pages/InventoryPage";
 import InvoicePreviewPage from "./pages/InvoicePreviewPage";
 import LoginPage from "./pages/LoginPage";
@@ -78,6 +79,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
               <InvoicePreviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/daily"
+          element={
+            <ProtectedRoute allowedRoles={[AppRoles.Admin, AppRoles.Manager]}>
+              <DailySalesReportPage />
             </ProtectedRoute>
           }
         />
