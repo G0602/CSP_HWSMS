@@ -4,12 +4,31 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using Moq;
 
 namespace HSMS.Tests;
 
 public class UsersControllerTests
 {
+    private static UsersController CreateController(
+        Mock<IUserRepository> userRepo,
+        Mock<IJwtTokenService>? jwtService = null)
+    {
+        jwtService ??= new Mock<IJwtTokenService>();
+        jwtService.Setup(service => service.GenerateToken(It.IsAny<User>()))
+            .Returns(new AuthResponseDTO
+            {
+                UserId = 1,
+                AccessToken = "token",
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(60),
+                Username = "admin",
+                Role = "Admin"
+            });
+
+        return new UsersController(userRepo.Object, new PasswordHasher(), jwtService.Object);
+    }
+
     [Fact]
     public async Task CreateUser_Should_Return_Created_When_Valid()
     {
@@ -22,7 +41,7 @@ public class UsersControllerTests
                 "Admin"))
             .ReturnsAsync(101);
 
-        var controller = new UsersController(userRepo.Object, new PasswordHasher());
+        var controller = CreateController(userRepo);
 
         var dto = new UserCreateDTO
         {
@@ -46,7 +65,7 @@ public class UsersControllerTests
     public async Task CreateUser_Should_Return_BadRequest_When_Role_Invalid()
     {
         var userRepo = new Mock<IUserRepository>();
-        var controller = new UsersController(userRepo.Object, new PasswordHasher());
+        var controller = CreateController(userRepo);
 
         var result = await controller.CreateUser(new UserCreateDTO
         {
@@ -72,7 +91,7 @@ public class UsersControllerTests
                 Role = "Cashier"
             });
 
-        var controller = new UsersController(userRepo.Object, new PasswordHasher());
+        var controller = CreateController(userRepo);
 
         var result = await controller.CreateUser(new UserCreateDTO
         {
@@ -97,7 +116,7 @@ public class UsersControllerTests
                 "Cashier"))
             .ReturnsAsync(102);
 
-        var controller = new UsersController(userRepo.Object, new PasswordHasher());
+        var controller = CreateController(userRepo);
 
         var result = await controller.CreateUser(new UserCreateDTO
         {
@@ -108,5 +127,96 @@ public class UsersControllerTests
 
         var created = Assert.IsType<CreatedResult>(result);
         Assert.Equal(201, created.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_Should_Return_BadRequest_When_Role_Invalid()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        var controller = CreateController(userRepo);
+
+        var result = await controller.UpdateUserRole(10, new UserRoleUpdateDTO { Role = "Supervisor" });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_Should_Return_NotFound_When_User_Does_Not_Exist()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetByIdAsync(10)).ReturnsAsync((User?)null);
+
+        var controller = CreateController(userRepo);
+
+        var result = await controller.UpdateUserRole(10, new UserRoleUpdateDTO { Role = "Manager" });
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(404, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_Should_Return_Ok_When_Another_User_Updated()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetByIdAsync(2)).ReturnsAsync(new User
+        {
+            Id = 2,
+            Username = "cashier",
+            PasswordHash = "hash",
+            Role = "Cashier"
+        });
+        userRepo.Setup(repo => repo.UpdateRoleAsync(2, "Manager")).ReturnsAsync(true);
+
+        var controller = CreateController(userRepo);
+
+        var result = await controller.UpdateUserRole(2, new UserRoleUpdateDTO { Role = "Manager" });
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_Should_Return_Refreshed_Token_When_Current_User_Updated()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(new User
+        {
+            Id = 1,
+            Username = "admin",
+            PasswordHash = "hash",
+            Role = "Admin"
+        });
+        userRepo.Setup(repo => repo.UpdateRoleAsync(1, "Manager")).ReturnsAsync(true);
+
+        var jwtService = new Mock<IJwtTokenService>();
+        jwtService.Setup(service => service.GenerateToken(It.Is<User>(u => u.Id == 1 && u.Role == "Manager")))
+            .Returns(new AuthResponseDTO
+            {
+                UserId = 1,
+                AccessToken = "new-token",
+                ExpiresAtUtc = DateTime.UtcNow.AddMinutes(60),
+                Username = "admin",
+                Role = "Manager"
+            });
+
+        var controller = CreateController(userRepo, jwtService);
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim("sub", "1"),
+                    new Claim(ClaimTypes.Role, "Admin")
+                ], "TestAuth"))
+            }
+        };
+
+        var result = await controller.UpdateUserRole(1, new UserRoleUpdateDTO { Role = "Manager" });
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
+        jwtService.Verify(service => service.GenerateToken(It.IsAny<User>()), Times.Once);
     }
 }

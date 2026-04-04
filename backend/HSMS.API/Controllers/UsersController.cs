@@ -4,6 +4,8 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace HSMS.API.Controllers;
 
@@ -13,11 +15,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IJwtTokenService _jwtTokenService;
 
-    public UsersController(IUserRepository userRepository, IPasswordHasher passwordHasher)
+    public UsersController(IUserRepository userRepository, IPasswordHasher passwordHasher, IJwtTokenService jwtTokenService)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
+        _jwtTokenService = jwtTokenService;
     }
 
     [Authorize(Policy = AuthPolicies.UsersManage)]
@@ -56,6 +60,57 @@ public class UsersController : ControllerBase
             username,
             role
         });
+    }
+
+    [Authorize(Policy = AuthPolicies.UsersManage)]
+    [HttpPut("{id:int}/role")]
+    public async Task<IActionResult> UpdateUserRole(int id, UserRoleUpdateDTO dto)
+    {
+        string role = NormalizeRole(dto.Role);
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            return BadRequest("Role must be one of 'Admin', 'Manager', or 'Cashier'.");
+        }
+
+        var existingUser = await _userRepository.GetByIdAsync(id);
+        if (existingUser is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        bool updated = await _userRepository.UpdateRoleAsync(id, role);
+        if (!updated)
+        {
+            return NotFound("User not found.");
+        }
+
+        existingUser.Role = role;
+
+        int? currentUserId = GetCurrentUserId();
+        if (currentUserId.HasValue && currentUserId.Value == id)
+        {
+            var refreshedAuth = _jwtTokenService.GenerateToken(existingUser);
+            return Ok(new
+            {
+                message = "User role updated successfully. Session token refreshed.",
+                auth = refreshedAuth
+            });
+        }
+
+        return Ok("User role updated successfully.");
+    }
+
+    private int? GetCurrentUserId()
+    {
+        string? subject = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (int.TryParse(subject, out int userId))
+        {
+            return userId;
+        }
+
+        return null;
     }
 
     private static string NormalizeRole(string role)
