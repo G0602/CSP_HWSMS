@@ -6,6 +6,11 @@ export type DailySalesReportItem = {
   totalAmount: number;
 };
 
+export type MonthlySalesReportItem = {
+  month: string;
+  totalAmount: number;
+};
+
 const resolveApiBaseUrl = () => {
   const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (explicitBaseUrl) {
@@ -25,6 +30,13 @@ const REPORTS_API_URL = `${API_BASE_URL}/api/reports`;
 
 export const getDailySalesReport = async () => {
   const { data } = await axios.get<DailySalesReportItem[]>(`${REPORTS_API_URL}/daily`, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const getMonthlySalesReport = async () => {
+  const { data } = await axios.get<MonthlySalesReportItem[]>(`${REPORTS_API_URL}/monthly`, {
     headers: getAuthHeader(),
   });
   return data;
