@@ -21,4 +21,7 @@ public class ProductUpdateDTO
 
     /// <summary>The updated product category.</summary>
     public string Category { get; set; } = string.Empty;
+
+    /// <summary>The updated supplier Id linked to this product (or null to unlink).</summary>
+    public int? SupplierId { get; set; }
 }

@@ -65,6 +65,28 @@ public class ProductControllerTests
     }
 
     [Fact]
+    public async Task AddProduct_Should_Return_BadRequest_When_SupplierId_Is_Invalid()
+    {
+        var mockRepo = new Mock<IProductRepository>();
+        var controller = new ProductController(mockRepo.Object);
+
+        var dto = new ProductCreateDTO
+        {
+            Name = "Hammer",
+            SKU = "HM-100",
+            Price = 1500,
+            Quantity = 10,
+            Category = "Hand Tools",
+            SupplierId = 0
+        };
+
+        var result = await controller.AddProduct(dto);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
+    }
+
+    [Fact]
     public async Task DeleteProduct_Should_Return_Ok_When_Deleted()
     {
         var mockRepo = new Mock<IProductRepository>();
@@ -96,6 +118,23 @@ public class ProductControllerTests
 
         var notFound = Assert.IsType<NotFoundObjectResult>(result);
         Assert.Equal(404, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_Should_Return_BadRequest_When_SupplierId_Is_Invalid()
+    {
+        var mockRepo = new Mock<IProductRepository>();
+        var controller = new ProductController(mockRepo.Object);
+
+        var dto = new ProductUpdateDTO
+        {
+            SupplierId = -10
+        };
+
+        var result = await controller.UpdateProduct(1, dto);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(400, badRequest.StatusCode);
     }
 
     [Fact]

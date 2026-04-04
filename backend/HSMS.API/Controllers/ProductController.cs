@@ -49,6 +49,9 @@ public class ProductController : ControllerBase
         if (dto.Quantity < 0)
             return BadRequest("Quantity cannot be negative.");
 
+        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
+            return BadRequest("SupplierId must be greater than zero.");
+
         int id = await _repository.AddProduct(dto);
         return CreatedAtAction(nameof(GetProductById), new { id }, dto);
     }
@@ -83,6 +86,7 @@ public class ProductController : ControllerBase
             Quantity = product.Quantity,
             Category = product.Category,
             Price = product.Price,
+            SupplierId = product.SupplierId,
             IsLowStock = product.Quantity < _lowStockThreshold
         });
 
@@ -108,6 +112,7 @@ public class ProductController : ControllerBase
                 Quantity = product.Quantity,
                 Category = product.Category,
                 Price = product.Price,
+                SupplierId = product.SupplierId,
                 IsLowStock = true
             });
 
@@ -159,6 +164,9 @@ public class ProductController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, ProductUpdateDTO dto)
     {
+        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
+            return BadRequest("SupplierId must be greater than zero.");
+
         bool updated = await _repository.UpdateProduct(id, dto);
         if (!updated)
             return NotFound("Product not found.");

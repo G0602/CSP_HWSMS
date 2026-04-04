@@ -40,6 +40,12 @@ public class Product
     public string Category { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional supplier relationship for this product.
+    /// Null when no supplier has been assigned.
+    /// </summary>
+    public int? SupplierId { get; set; }
+
+    /// <summary>
     /// The UTC timestamp of when the product record was created in the database.
     /// Set automatically by MySQL's DEFAULT CURRENT_TIMESTAMP.
     /// </summary>

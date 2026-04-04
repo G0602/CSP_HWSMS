@@ -17,6 +17,14 @@ public class SuppliersController : ControllerBase
         _supplierRepository = supplierRepository;
     }
 
+    [Authorize(Policy = AuthPolicies.InventoryRead)]
+    [HttpGet]
+    public async Task<IActionResult> GetSuppliers()
+    {
+        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        return Ok(suppliers);
+    }
+
     [Authorize(Policy = AuthPolicies.InventoryWrite)]
     [HttpPost]
     public async Task<IActionResult> AddSupplier(SupplierCreateDTO dto)

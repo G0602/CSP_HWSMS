@@ -1,5 +1,6 @@
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
+using HSMS.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 
@@ -13,6 +14,33 @@ public class SupplierRepository : ISupplierRepository
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
         EnsureSuppliersTableExists();
+    }
+
+    public async Task<List<Supplier>> GetSuppliersAsync()
+    {
+        var suppliers = new List<Supplier>();
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT Id, Name, CreatedAt
+                               FROM Suppliers
+                               ORDER BY Name ASC";
+
+        using var command = new MySqlCommand(query, connection);
+        using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            suppliers.Add(new Supplier
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return suppliers;
     }
 
     public async Task<int> AddSupplierAsync(SupplierCreateDTO dto)

@@ -338,6 +338,7 @@ public class SaleRepository : ISaleRepository
                                                                                         Price DECIMAL(10,2) NOT NULL,
                                                                                         Quantity INT NOT NULL,
                                                                                         Category VARCHAR(255) NOT NULL,
+                                                                                        SupplierId INT NULL,
                                                                                         CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                                                                     );";
 

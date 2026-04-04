@@ -34,8 +34,8 @@ public class ProductRepository : IProductRepository
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        string query = @"INSERT INTO Products (Name, SKU, Price, Quantity, Category)
-                         VALUES (@Name, @SKU, @Price, @Quantity, @Category);
+        string query = @"INSERT INTO Products (Name, SKU, Price, Quantity, Category, SupplierId)
+                         VALUES (@Name, @SKU, @Price, @Quantity, @Category, @SupplierId);
                          SELECT LAST_INSERT_ID();";
 
         using var command = new MySqlCommand(query, connection);
@@ -44,6 +44,7 @@ public class ProductRepository : IProductRepository
         command.Parameters.AddWithValue("@Price", product.Price);
         command.Parameters.AddWithValue("@Quantity", product.Quantity);
         command.Parameters.AddWithValue("@Category", product.Category);
+        command.Parameters.AddWithValue("@SupplierId", (object?)product.SupplierId ?? DBNull.Value);
 
         var result = await command.ExecuteScalarAsync();
         return Convert.ToInt32(result);
@@ -71,6 +72,7 @@ public class ProductRepository : IProductRepository
                 Price = Convert.ToDecimal(reader["Price"]),
                 Quantity = Convert.ToInt32(reader["Quantity"]),
                 Category = reader["Category"].ToString()!,
+                SupplierId = reader["SupplierId"] == DBNull.Value ? null : Convert.ToInt32(reader["SupplierId"]),
                 CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
             });
         }
@@ -109,6 +111,7 @@ public class ProductRepository : IProductRepository
                 Price = Convert.ToDecimal(reader["Price"]),
                 Quantity = Convert.ToInt32(reader["Quantity"]),
                 Category = reader["Category"].ToString()!,
+                SupplierId = reader["SupplierId"] == DBNull.Value ? null : Convert.ToInt32(reader["SupplierId"]),
                 CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
             });
         }
@@ -138,6 +141,7 @@ public class ProductRepository : IProductRepository
                 Price = Convert.ToDecimal(reader["Price"]),
                 Quantity = Convert.ToInt32(reader["Quantity"]),
                 Category = reader["Category"].ToString()!,
+                SupplierId = reader["SupplierId"] == DBNull.Value ? null : Convert.ToInt32(reader["SupplierId"]),
                 CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
             };
         }
@@ -154,7 +158,7 @@ public class ProductRepository : IProductRepository
 
         string query = @"UPDATE Products
                          SET Name=@Name, SKU=@SKU, Price=@Price,
-                             Quantity=@Quantity, Category=@Category
+                             Quantity=@Quantity, Category=@Category, SupplierId=@SupplierId
                          WHERE Id=@Id";
 
         using var command = new MySqlCommand(query, connection);
@@ -164,6 +168,7 @@ public class ProductRepository : IProductRepository
         command.Parameters.AddWithValue("@Price", product.Price);
         command.Parameters.AddWithValue("@Quantity", product.Quantity);
         command.Parameters.AddWithValue("@Category", product.Category);
+        command.Parameters.AddWithValue("@SupplierId", (object?)product.SupplierId ?? DBNull.Value);
 
         int rows = await command.ExecuteNonQueryAsync();
         return rows > 0;
@@ -257,6 +262,7 @@ public class ProductRepository : IProductRepository
                                     Price DECIMAL(10,2) NOT NULL,
                                     Quantity INT NOT NULL,
                                     Category VARCHAR(255) NOT NULL,
+                                    SupplierId INT NULL,
                                     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                   );";
 
@@ -266,10 +272,52 @@ public class ProductRepository : IProductRepository
         const string ensureColumnsSql = @"ALTER TABLE Products
                                           ADD COLUMN IF NOT EXISTS Price DECIMAL(10,2) NOT NULL DEFAULT 0,
                                           ADD COLUMN IF NOT EXISTS Quantity INT NOT NULL DEFAULT 0,
-                                          ADD COLUMN IF NOT EXISTS Category VARCHAR(255) NOT NULL DEFAULT '';";
+                                          ADD COLUMN IF NOT EXISTS Category VARCHAR(255) NOT NULL DEFAULT '',
+                                          ADD COLUMN IF NOT EXISTS SupplierId INT NULL;";
 
         using var ensureColumnsCommand = new MySqlCommand(ensureColumnsSql, connection);
         ensureColumnsCommand.ExecuteNonQuery();
+
+        const string suppliersTableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
+                                            Id INT AUTO_INCREMENT PRIMARY KEY,
+                                            Name VARCHAR(255) NOT NULL,
+                                            CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                          );";
+        using var suppliersTableCommand = new MySqlCommand(suppliersTableSql, connection);
+        suppliersTableCommand.ExecuteNonQuery();
+
+        const string indexExistsSql = @"SELECT COUNT(*)
+                                        FROM INFORMATION_SCHEMA.STATISTICS
+                                        WHERE TABLE_SCHEMA = DATABASE()
+                                          AND TABLE_NAME = 'Products'
+                                          AND INDEX_NAME = 'IX_Products_SupplierId';";
+        using var indexExistsCommand = new MySqlCommand(indexExistsSql, connection);
+        int indexExists = Convert.ToInt32(indexExistsCommand.ExecuteScalar());
+        if (indexExists == 0)
+        {
+            const string supplierIndexSql = @"CREATE INDEX IX_Products_SupplierId
+                                              ON Products (SupplierId);";
+            using var supplierIndexCommand = new MySqlCommand(supplierIndexSql, connection);
+            supplierIndexCommand.ExecuteNonQuery();
+        }
+
+        const string fkExistsSql = @"SELECT COUNT(*)
+                                     FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+                                     WHERE CONSTRAINT_SCHEMA = DATABASE()
+                                       AND TABLE_NAME = 'Products'
+                                       AND CONSTRAINT_NAME = 'FK_Products_Suppliers'
+                                       AND CONSTRAINT_TYPE = 'FOREIGN KEY';";
+        using var fkExistsCommand = new MySqlCommand(fkExistsSql, connection);
+        int fkExists = Convert.ToInt32(fkExistsCommand.ExecuteScalar());
+        if (fkExists == 0)
+        {
+            const string addFkSql = @"ALTER TABLE Products
+                                      ADD CONSTRAINT FK_Products_Suppliers
+                                      FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
+                                      ON DELETE SET NULL;";
+            using var addFkCommand = new MySqlCommand(addFkSql, connection);
+            addFkCommand.ExecuteNonQuery();
+        }
 
         const string stockLogTableSql = @"CREATE TABLE IF NOT EXISTS StockLogs (
                                             Id INT AUTO_INCREMENT PRIMARY KEY,
