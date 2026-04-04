@@ -25,6 +25,22 @@ public class UsersController : ControllerBase
     }
 
     [Authorize(Policy = AuthPolicies.UsersManage)]
+    [HttpGet]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await _userRepository.GetAllAsync();
+        var response = users.Select(user => new
+        {
+            id = user.Id,
+            username = user.Username,
+            role = user.Role,
+            createdAt = user.CreatedAt
+        });
+
+        return Ok(response);
+    }
+
+    [Authorize(Policy = AuthPolicies.UsersManage)]
     [HttpPost]
     public async Task<IActionResult> CreateUser(UserCreateDTO dto)
     {
@@ -98,6 +114,19 @@ public class UsersController : ControllerBase
         }
 
         return Ok("User role updated successfully.");
+    }
+
+    [Authorize(Policy = AuthPolicies.UsersManage)]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        bool deleted = await _userRepository.DeleteAsync(id);
+        if (!deleted)
+        {
+            return NotFound("User not found.");
+        }
+
+        return Ok("User deleted successfully.");
     }
 
     private int? GetCurrentUserId()

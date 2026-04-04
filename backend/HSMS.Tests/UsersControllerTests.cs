@@ -35,6 +35,7 @@ public class UsersControllerTests
         var userRepo = new Mock<IUserRepository>();
         userRepo.Setup(repo => repo.GetByUsernameAsync("new-admin"))
             .ReturnsAsync((User?)null);
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         userRepo.Setup(repo => repo.CreateUserAsync(
                 "new-admin",
                 It.IsAny<string>(),
@@ -65,6 +66,7 @@ public class UsersControllerTests
     public async Task CreateUser_Should_Return_BadRequest_When_Role_Invalid()
     {
         var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         var controller = CreateController(userRepo);
 
         var result = await controller.CreateUser(new UserCreateDTO
@@ -110,6 +112,7 @@ public class UsersControllerTests
         var userRepo = new Mock<IUserRepository>();
         userRepo.Setup(repo => repo.GetByUsernameAsync("new-user"))
             .ReturnsAsync((User?)null);
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         userRepo.Setup(repo => repo.CreateUserAsync(
                 "new-user",
                 It.IsAny<string>(),
@@ -130,9 +133,42 @@ public class UsersControllerTests
     }
 
     [Fact]
+    public async Task GetUsers_Should_Return_Ok_With_Sanitized_Users()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync(
+        [
+            new User
+            {
+                Id = 1,
+                Username = "admin",
+                PasswordHash = "hash1",
+                Role = "Admin",
+                CreatedAt = DateTime.UtcNow
+            },
+            new User
+            {
+                Id = 2,
+                Username = "cashier",
+                PasswordHash = "hash2",
+                Role = "Cashier",
+                CreatedAt = DateTime.UtcNow
+            }
+        ]);
+
+        var controller = CreateController(userRepo);
+        var result = await controller.GetUsers();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
     public async Task UpdateUserRole_Should_Return_BadRequest_When_Role_Invalid()
     {
         var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         var controller = CreateController(userRepo);
 
         var result = await controller.UpdateUserRole(10, new UserRoleUpdateDTO { Role = "Supervisor" });
@@ -145,6 +181,7 @@ public class UsersControllerTests
     public async Task UpdateUserRole_Should_Return_NotFound_When_User_Does_Not_Exist()
     {
         var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         userRepo.Setup(repo => repo.GetByIdAsync(10)).ReturnsAsync((User?)null);
 
         var controller = CreateController(userRepo);
@@ -159,6 +196,7 @@ public class UsersControllerTests
     public async Task UpdateUserRole_Should_Return_Ok_When_Another_User_Updated()
     {
         var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         userRepo.Setup(repo => repo.GetByIdAsync(2)).ReturnsAsync(new User
         {
             Id = 2,
@@ -180,6 +218,7 @@ public class UsersControllerTests
     public async Task UpdateUserRole_Should_Return_Refreshed_Token_When_Current_User_Updated()
     {
         var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
         userRepo.Setup(repo => repo.GetByIdAsync(1)).ReturnsAsync(new User
         {
             Id = 1,
@@ -218,5 +257,33 @@ public class UsersControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(200, ok.StatusCode);
         jwtService.Verify(service => service.GenerateToken(It.IsAny<User>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteUser_Should_Return_NotFound_When_User_Does_Not_Exist()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
+        userRepo.Setup(repo => repo.DeleteAsync(99)).ReturnsAsync(false);
+        var controller = CreateController(userRepo);
+
+        var result = await controller.DeleteUser(99);
+
+        var notFound = Assert.IsType<NotFoundObjectResult>(result);
+        Assert.Equal(404, notFound.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteUser_Should_Return_Ok_When_Deleted()
+    {
+        var userRepo = new Mock<IUserRepository>();
+        userRepo.Setup(repo => repo.GetAllAsync()).ReturnsAsync([]);
+        userRepo.Setup(repo => repo.DeleteAsync(2)).ReturnsAsync(true);
+        var controller = CreateController(userRepo);
+
+        var result = await controller.DeleteUser(2);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, ok.StatusCode);
     }
 }

@@ -73,6 +73,35 @@ public class UserRepository : IUserRepository
         };
     }
 
+    public async Task<List<User>> GetAllAsync()
+    {
+        var users = new List<User>();
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT Id, Username, PasswordHash, Role, CreatedAt
+                               FROM Users
+                               ORDER BY CreatedAt DESC";
+
+        using var command = new MySqlCommand(query, connection);
+        using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            users.Add(new User
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Username = reader["Username"].ToString()!,
+                PasswordHash = reader["PasswordHash"].ToString()!,
+                Role = reader["Role"].ToString()!,
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return users;
+    }
+
     public async Task<int> CreateUserAsync(string username, string passwordHash, string role)
     {
         using var connection = new MySqlConnection(_connectionString);
@@ -102,6 +131,21 @@ public class UserRepository : IUserRepository
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Role", role);
+        command.Parameters.AddWithValue("@Id", id);
+
+        int rows = await command.ExecuteNonQueryAsync();
+        return rows > 0;
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"DELETE FROM Users
+                               WHERE Id = @Id";
+
+        using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Id", id);
 
         int rows = await command.ExecuteNonQueryAsync();
