@@ -17,6 +17,8 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 }
 // Environment variables automatically override all JSON configuration files
 
+ApplyRailwayDatabaseConfiguration(builder.Configuration);
+
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -182,6 +184,98 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuration)
+{
+	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
+	string normalizedCurrentConnection = currentConnection ?? string.Empty;
+	bool isMissingConnection = string.IsNullOrWhiteSpace(currentConnection);
+	bool isLocalConnection = !isMissingConnection &&
+		(normalizedCurrentConnection.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+		|| normalizedCurrentConnection.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase));
+
+	if (!isMissingConnection && !isLocalConnection)
+	{
+		return;
+	}
+
+	string? railwayConnection = BuildRailwayConnectionStringFromUrl(configuration["MYSQL_URL"])
+		?? BuildRailwayConnectionStringFromUrl(configuration["DATABASE_URL"])
+		?? BuildRailwayConnectionStringFromParts(configuration);
+
+	if (!string.IsNullOrWhiteSpace(railwayConnection))
+	{
+		configuration["ConnectionStrings:DefaultConnection"] = railwayConnection;
+	}
+}
+
+static string? BuildRailwayConnectionStringFromUrl(string? databaseUrl)
+{
+	if (string.IsNullOrWhiteSpace(databaseUrl))
+	{
+		return null;
+	}
+
+	if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out Uri? uri))
+	{
+		return null;
+	}
+
+	if (!"mysql".Equals(uri.Scheme, StringComparison.OrdinalIgnoreCase))
+	{
+		return null;
+	}
+
+	string userInfo = uri.UserInfo;
+	if (string.IsNullOrWhiteSpace(userInfo))
+	{
+		return null;
+	}
+
+	string username;
+	string password;
+	int separatorIndex = userInfo.IndexOf(':');
+	if (separatorIndex < 0)
+	{
+		username = Uri.UnescapeDataString(userInfo);
+		password = string.Empty;
+	}
+	else
+	{
+		username = Uri.UnescapeDataString(userInfo[..separatorIndex]);
+		password = Uri.UnescapeDataString(userInfo[(separatorIndex + 1)..]);
+	}
+
+	string database = uri.AbsolutePath.Trim('/');
+	if (string.IsNullOrWhiteSpace(database))
+	{
+		return null;
+	}
+
+	int port = uri.IsDefaultPort ? 3306 : uri.Port;
+
+	return $"server={uri.Host};port={port};database={database};user={username};password={password};SslMode=Required;";
+}
+
+static string? BuildRailwayConnectionStringFromParts(IConfiguration configuration)
+{
+	string? host = configuration["MYSQLHOST"] ?? configuration["DB_HOST"];
+	string? port = configuration["MYSQLPORT"] ?? configuration["DB_PORT"];
+	string? database = configuration["MYSQLDATABASE"] ?? configuration["DB_NAME"];
+	string? username = configuration["MYSQLUSER"] ?? configuration["DB_USER"];
+	string? password = configuration["MYSQLPASSWORD"] ?? configuration["DB_PASSWORD"];
+
+	if (string.IsNullOrWhiteSpace(host)
+		|| string.IsNullOrWhiteSpace(database)
+		|| string.IsNullOrWhiteSpace(username)
+		|| string.IsNullOrWhiteSpace(password))
+	{
+		return null;
+	}
+
+	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
+	return $"server={host};port={normalizedPort};database={database};user={username};password={password};SslMode=Required;";
+}
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
 {
