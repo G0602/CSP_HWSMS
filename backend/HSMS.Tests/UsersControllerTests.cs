@@ -58,7 +58,7 @@ public class UsersControllerTests
 
         userRepo.Verify(repo => repo.CreateUserAsync(
             "new-admin",
-            It.Is<string>(hash => hash != dto.Password && hash.Split('.').Length == 3),
+            It.Is<string>(hash => hash != dto.Password && hash.Split(new[] { '.' }, StringSplitOptions.None).Length == 3),
             "Admin"), Times.Once);
     }
 
