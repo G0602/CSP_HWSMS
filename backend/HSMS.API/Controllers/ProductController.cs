@@ -17,6 +17,7 @@ namespace HSMS.API.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
+    private readonly ISupplierRepository? _supplierRepository;
     private readonly int _lowStockThreshold;
 
     /// <summary>
@@ -24,9 +25,13 @@ public class ProductController : ControllerBase
     /// </summary>
     /// <param name="repository">The data-access abstraction for products.</param>
     /// <param name="configuration">Application configuration for runtime thresholds.</param>
-    public ProductController(IProductRepository repository, IConfiguration? configuration = null)
+    public ProductController(
+        IProductRepository repository,
+        IConfiguration? configuration = null,
+        ISupplierRepository? supplierRepository = null)
     {
         _repository = repository;
+        _supplierRepository = supplierRepository;
         _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
     }
 
@@ -51,6 +56,9 @@ public class ProductController : ControllerBase
 
         if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
             return BadRequest("SupplierId must be greater than zero.");
+
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
 
         int id = await _repository.AddProduct(dto);
         return CreatedAtAction(nameof(GetProductById), new { id }, dto);
@@ -167,6 +175,9 @@ public class ProductController : ControllerBase
         if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
             return BadRequest("SupplierId must be greater than zero.");
 
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
+
         bool updated = await _repository.UpdateProduct(id, dto);
         if (!updated)
             return NotFound("Product not found.");
@@ -215,5 +226,14 @@ public class ProductController : ControllerBase
             return NotFound("Product not found.");
 
         return Ok("Product deleted successfully.");
+    }
+
+    private async Task<bool> SupplierExistsAsync(int? supplierId)
+    {
+        if (!supplierId.HasValue || _supplierRepository is null)
+            return true;
+
+        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        return suppliers.Any(supplier => supplier.Id == supplierId.Value);
     }
 }
