@@ -11,6 +11,21 @@ export type RegisterPayload = {
   role?: "Admin" | "Manager" | "Cashier";
 };
 
+export type CreateUserPayload = {
+  username: string;
+  password: string;
+  role: "Admin" | "Manager" | "Cashier";
+};
+
+export type UserRole = "Admin" | "Manager" | "Cashier";
+
+export type ManagedUser = {
+  id: number;
+  username: string;
+  role: UserRole;
+  createdAt?: string;
+};
+
 export type AuthResponse = {
   userId: number;
   accessToken: string;
@@ -45,6 +60,7 @@ const resolveApiBaseUrl = () => {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const AUTH_API_URL = `${API_BASE_URL}/api/Auth`;
+const USERS_API_URL = `${API_BASE_URL}/api/users`;
 
 const persistSession = (response: AuthResponse) => {
   sessionStorage.setItem(TOKEN_KEY, response.accessToken);
@@ -68,6 +84,41 @@ export const register = async (payload: RegisterPayload) => {
 export const login = async (payload: LoginPayload) => {
   const { data } = await axios.post<AuthResponse>(`${AUTH_API_URL}/login`, payload);
   persistSession(data);
+  return data;
+};
+
+export const createUser = async (payload: CreateUserPayload) => {
+  const { data } = await axios.post(USERS_API_URL, payload, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const getUsers = async () => {
+  const { data } = await axios.get<ManagedUser[]>(USERS_API_URL, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const updateUserRole = async (userId: number, role: UserRole) => {
+  const { data } = await axios.put<{ message?: string; auth?: AuthResponse } | string>(
+    `${USERS_API_URL}/${userId}/role`,
+    { role },
+    { headers: getAuthHeader() },
+  );
+
+  if (typeof data === "object" && data?.auth) {
+    persistSession(data.auth);
+  }
+
+  return data;
+};
+
+export const deleteUser = async (userId: number) => {
+  const { data } = await axios.delete<string>(`${USERS_API_URL}/${userId}`, {
+    headers: getAuthHeader(),
+  });
   return data;
 };
 

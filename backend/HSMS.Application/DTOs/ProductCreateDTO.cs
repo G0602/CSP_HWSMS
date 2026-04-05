@@ -20,4 +20,7 @@ public class ProductCreateDTO
 
     /// <summary>The product category (e.g., "Hand Tools", "Fasteners").</summary>
     public string Category { get; set; } = string.Empty;
+
+    /// <summary>The optional supplier Id linked to this product.</summary>
+    public int? SupplierId { get; set; }
 }

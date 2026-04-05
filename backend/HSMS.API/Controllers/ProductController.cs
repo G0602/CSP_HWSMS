@@ -12,18 +12,27 @@ namespace HSMS.API.Controllers;
 /// Depends on <see cref="IProductRepository"/> injected via the DI container.
 /// </summary>
 [Route("api/[controller]")]
+[Route("api/products")]
 [ApiController]
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
+    private readonly ISupplierRepository? _supplierRepository;
+    private readonly int _lowStockThreshold;
 
     /// <summary>
     /// Initialises the controller with the product repository.
     /// </summary>
     /// <param name="repository">The data-access abstraction for products.</param>
-    public ProductController(IProductRepository repository)
+    /// <param name="configuration">Application configuration for runtime thresholds.</param>
+    public ProductController(
+        IProductRepository repository,
+        IConfiguration? configuration = null,
+        ISupplierRepository? supplierRepository = null)
     {
         _repository = repository;
+        _supplierRepository = supplierRepository;
+        _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
     }
 
     /// <summary>
@@ -45,6 +54,12 @@ public class ProductController : ControllerBase
         if (dto.Quantity < 0)
             return BadRequest("Quantity cannot be negative.");
 
+        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
+            return BadRequest("SupplierId must be greater than zero.");
+
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
+
         int id = await _repository.AddProduct(dto);
         return CreatedAtAction(nameof(GetProductById), new { id }, dto);
     }
@@ -60,6 +75,56 @@ public class ProductController : ControllerBase
     {
         var products = await _repository.GetAllProducts();
         return Ok(products);
+    }
+
+    /// <summary>
+    /// Returns products for inventory view with low-stock status metadata.
+    /// Accessible only by Manager and Admin roles.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.InventoryManagerRead)]
+    [HttpGet("inventory")]
+    public async Task<IActionResult> GetInventoryProducts()
+    {
+        var products = await _repository.GetAllProducts();
+        var inventory = products.Select(product => new InventoryProductResponseDTO
+        {
+            Id = product.Id,
+            Name = product.Name,
+            SKU = product.SKU,
+            Quantity = product.Quantity,
+            Category = product.Category,
+            Price = product.Price,
+            SupplierId = product.SupplierId,
+            IsLowStock = product.Quantity < _lowStockThreshold
+        });
+
+        return Ok(inventory);
+    }
+
+    /// <summary>
+    /// Returns only low-stock products where quantity is below the configured threshold.
+    /// Accessible only by Manager and Admin roles.
+    /// </summary>
+    [Authorize(Policy = AuthPolicies.InventoryManagerRead)]
+    [HttpGet("low-stock")]
+    public async Task<IActionResult> GetLowStockProducts()
+    {
+        var products = await _repository.GetAllProducts();
+        var lowStockProducts = products
+            .Where(product => product.Quantity < _lowStockThreshold)
+            .Select(product => new InventoryProductResponseDTO
+            {
+                Id = product.Id,
+                Name = product.Name,
+                SKU = product.SKU,
+                Quantity = product.Quantity,
+                Category = product.Category,
+                Price = product.Price,
+                SupplierId = product.SupplierId,
+                IsLowStock = true
+            });
+
+        return Ok(lowStockProducts);
     }
 
     // LOOKUP / SEARCH
@@ -107,11 +172,41 @@ public class ProductController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, ProductUpdateDTO dto)
     {
+        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
+            return BadRequest("SupplierId must be greater than zero.");
+
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
+
         bool updated = await _repository.UpdateProduct(id, dto);
         if (!updated)
             return NotFound("Product not found.");
 
         return Ok("Product updated successfully.");
+    }
+
+    /// <summary>
+    /// Manually updates stock quantity for a product.
+    /// </summary>
+    /// <param name="id">The primary key of the product to update.</param>
+    /// <param name="dto">The new stock quantity and optional reason.</param>
+    /// <returns>
+    /// <c>200 OK</c> on success,
+    /// <c>400 Bad Request</c> if quantity is negative,
+    /// or <c>404 Not Found</c> if the product does not exist.
+    /// </returns>
+    [Authorize(Policy = AuthPolicies.InventoryWrite)]
+    [HttpPut("{id}/stock")]
+    public async Task<IActionResult> UpdateProductStock(int id, ProductStockUpdateDTO dto)
+    {
+        if (dto.Quantity < 0)
+            return BadRequest("Quantity cannot be negative.");
+
+        bool updated = await _repository.UpdateProductStock(id, dto);
+        if (!updated)
+            return NotFound("Product not found.");
+
+        return Ok("Product stock updated successfully.");
     }
 
     /// <summary>
@@ -131,5 +226,14 @@ public class ProductController : ControllerBase
             return NotFound("Product not found.");
 
         return Ok("Product deleted successfully.");
+    }
+
+    private async Task<bool> SupplierExistsAsync(int? supplierId)
+    {
+        if (!supplierId.HasValue || _supplierRepository is null)
+            return true;
+
+        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        return suppliers.Any(supplier => supplier.Id == supplierId.Value);
     }
 }

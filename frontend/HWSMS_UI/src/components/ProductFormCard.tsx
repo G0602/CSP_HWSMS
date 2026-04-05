@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { Product, ProductPayload } from "../services/productService";
+import type { Supplier } from "../services/supplierService";
 
 type ProductFormCardProps = {
   onSubmit: (payload: ProductPayload) => Promise<void>;
   editingProduct: Product | null;
+  suppliers: Supplier[];
 };
 
 const emptyForm: ProductPayload = {
@@ -12,9 +14,10 @@ const emptyForm: ProductPayload = {
   category: "",
   price: 0,
   quantity: 0,
+  supplierId: null,
 };
 
-const ProductFormCard = ({ onSubmit, editingProduct }: ProductFormCardProps) => {
+const ProductFormCard = ({ onSubmit, editingProduct, suppliers }: ProductFormCardProps) => {
   const [form, setForm] = useState<ProductPayload>(emptyForm);
 
   useEffect(() => {
@@ -25,6 +28,7 @@ const ProductFormCard = ({ onSubmit, editingProduct }: ProductFormCardProps) => 
         category: editingProduct.category,
         price: editingProduct.price,
         quantity: editingProduct.quantity,
+        supplierId: editingProduct.supplierId ?? null,
       });
       return;
     }
@@ -83,6 +87,24 @@ const ProductFormCard = ({ onSubmit, editingProduct }: ProductFormCardProps) => 
             onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
           />
         </div>
+
+        <select
+          value={form.supplierId ?? ""}
+          className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200"
+          onChange={(e) =>
+            setForm({
+              ...form,
+              supplierId: e.target.value === "" ? null : Number(e.target.value),
+            })
+          }
+        >
+          <option value="">Select Supplier (Optional)</option>
+          {suppliers.map((supplier) => (
+            <option key={supplier.id} value={supplier.id}>
+              {supplier.name}
+            </option>
+          ))}
+        </select>
 
         <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition">
           {editingProduct ? "Update Product" : "+ Add Product"}

@@ -17,3 +17,7 @@ export const canAccessSales = (role?: string) => {
 export const canAccessTransactions = (role?: string) => {
   return role === AppRoles.Admin || role === AppRoles.Manager;
 };
+
+export const canManageUsers = (role?: string) => {
+  return role === AppRoles.Admin;
+};

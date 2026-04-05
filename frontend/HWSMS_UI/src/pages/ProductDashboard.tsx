@@ -7,6 +7,7 @@ import Navbar from "../components/Navbar";
 import ProductFormCard from "../components/ProductFormCard";
 import StatsCard from "../components/StatsCard";
 import { getCurrentUser, logout } from "../services/authService";
+import { getSuppliers, type Supplier } from "../services/supplierService";
 import {
   addProduct,
   deleteProduct,
@@ -19,6 +20,7 @@ import {
 const ProductDashboard = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -45,8 +47,23 @@ const ProductDashboard = () => {
     }
   };
 
+  const loadSuppliers = async () => {
+    try {
+      const data = await getSuppliers();
+      setSuppliers(data);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      setSuppliers([]);
+    }
+  };
+
   useEffect(() => {
     void loadProducts();
+    void loadSuppliers();
   }, []);
 
   const handleSubmit = async (newProduct: ProductPayload) => {
@@ -64,6 +81,7 @@ const ProductDashboard = () => {
           category: newProduct.category || existingProduct.category,
           price: newProduct.price > 0 ? newProduct.price : existingProduct.price,
           quantity: existingProduct.quantity + Math.max(0, newProduct.quantity),
+          supplierId: newProduct.supplierId ?? existingProduct.supplierId ?? null,
         };
 
         await updateProduct(existingProduct.id, mergedProduct);
@@ -89,6 +107,14 @@ const ProductDashboard = () => {
   );
 
   const totalValuation = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const supplierNameById = useMemo(
+    () =>
+      suppliers.reduce<Record<number, string>>((acc, supplier) => {
+        acc[supplier.id] = supplier.name;
+        return acc;
+      }, {}),
+    [suppliers],
+  );
   const totalValuationFormatted = new Intl.NumberFormat("en-LK", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -105,10 +131,15 @@ const ProductDashboard = () => {
         <DashboardHeader totalValuation={totalValuationFormatted} />
 
         <div className="grid grid-cols-3 gap-8">
-          <ProductFormCard onSubmit={handleSubmit} editingProduct={editingProduct} />
+          <ProductFormCard onSubmit={handleSubmit} editingProduct={editingProduct} suppliers={suppliers} />
 
           <div className="col-span-2">
-            <InventoryTableCard products={filteredProducts} onEdit={setEditingProduct} onDelete={handleDelete} />
+            <InventoryTableCard
+              products={filteredProducts}
+              supplierNameById={supplierNameById}
+              onEdit={setEditingProduct}
+              onDelete={handleDelete}
+            />
           </div>
         </div>
 

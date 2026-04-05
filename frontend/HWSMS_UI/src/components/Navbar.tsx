@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { canAccessInventory, canAccessSales, canAccessTransactions } from "../auth/roles";
+import { canAccessInventory, canAccessSales, canAccessTransactions, canManageUsers } from "../auth/roles";
 import { getCurrentUser } from "../services/authService";
 
 type NavbarProps = {
@@ -21,7 +21,7 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
         <div className="ml-5 flex gap-2">
           {canAccessInventory(role) && (
             <NavLink
-              to="/dashboard"
+              to="/inventory"
               className={({ isActive }) =>
                 `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
               }
@@ -39,6 +39,16 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
               Sales
             </NavLink>
           )}
+          {canAccessInventory(role) && (
+            <NavLink
+              to="/suppliers"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Suppliers
+            </NavLink>
+          )}
           {canAccessTransactions(role) && (
             <NavLink
               to="/transactions"
@@ -47,6 +57,26 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
               }
             >
               Transactions
+            </NavLink>
+          )}
+          {canAccessTransactions(role) && (
+            <NavLink
+              to="/reports/daily"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Reports
+            </NavLink>
+          )}
+          {canManageUsers(role) && (
+            <NavLink
+              to="/users"
+              className={({ isActive }) =>
+                `text-sm px-3 py-1.5 rounded-lg ${isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"}`
+              }
+            >
+              Users
             </NavLink>
           )}
         </div>
