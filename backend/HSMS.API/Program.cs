@@ -15,6 +15,29 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 {
 	builder.Configuration.AddJsonFile("appsettings.Production.json", optional: true);
 }
+
+// ----- CRITICAL: Validate mandatory configuration at startup -----
+string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+	throw new InvalidOperationException(
+		"CRITICAL: ConnectionStrings:DefaultConnection is empty or not set.\n" +
+		"Set the environment variable: ConnectionStrings__DefaultConnection=\"Server=...;Database=CSP_HSMS;...\""
+	);
+}
+
+// Validate JWT secret in production
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
+	if (jwtSecretValue == "CHANGE_THIS_IN_PRODUCTION" || string.IsNullOrWhiteSpace(jwtSecretValue))
+	{
+		throw new InvalidOperationException(
+			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
+			"Set the environment variable: Jwt__Secret=\"your-secure-secret-key\""
+		);
+	}
+}
 // Environment variables automatically override all JSON configuration files
 
 ApplyRailwayDatabaseConfiguration(builder.Configuration);
@@ -123,16 +146,26 @@ if (!string.IsNullOrWhiteSpace(backendPublicUrl))
 	originCandidates.Add(backendPublicUrl.Trim().TrimEnd('/'));
 }
 
-// Development-safe defaults so local startup works even without env values.
+// Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
 {
-	originCandidates.AddRange(
-	[
-		"http://localhost:5173",
-		"http://localhost:3000",
-		"https://csp-hwsms.vercel.app"
-	]
-	);
+	if (builder.Environment.IsDevelopment())
+	{
+		originCandidates.AddRange(
+		[
+			"http://localhost:5173",
+			"http://localhost:3000"
+		]
+		);
+	}
+	else
+	{
+		// Production must have explicit CORS configuration
+		throw new InvalidOperationException(
+			"PRODUCTION ERROR: CORS is not configured.\n" +
+			"Set environment variables: CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL"
+		);
+	}
 }
 
 var allowedOrigins = originCandidates
@@ -166,16 +199,20 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-// Seed default users only if enabled via environment variable
-bool seedDefaultUsers = builder.Configuration.GetValue<bool>("SEED_DEFAULT_USERS", true);
+// Seed default users ONLY in development environment
+bool seedDefaultUsers = app.Environment.IsDevelopment();
 if (seedDefaultUsers)
 {
 	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
 }
 
 // ----- Middleware Pipeline -----
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger only exposed in development for security
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
 
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
