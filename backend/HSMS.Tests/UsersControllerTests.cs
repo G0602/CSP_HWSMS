@@ -4,7 +4,11 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using Moq;
 
 namespace HSMS.Tests;
@@ -13,7 +17,8 @@ public class UsersControllerTests
 {
     private static UsersController CreateController(
         Mock<IUserRepository> userRepo,
-        Mock<IJwtTokenService>? jwtService = null)
+        Mock<IJwtTokenService>? jwtService = null,
+        int? currentUserId = null)
     {
         jwtService ??= new Mock<IJwtTokenService>();
         jwtService.Setup(service => service.GenerateToken(It.IsAny<User>()))
@@ -26,7 +31,26 @@ public class UsersControllerTests
                 Role = "Admin"
             });
 
-        return new UsersController(userRepo.Object, new PasswordHasher(), jwtService.Object);
+        var controller = new UsersController(userRepo.Object, new PasswordHasher(), jwtService.Object);
+        
+        // Set up mock User context if currentUserId is provided
+        if (currentUserId.HasValue)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, currentUserId.Value.ToString())
+            };
+            var identity = new ClaimsIdentity(claims, "TestScheme");
+            var principal = new ClaimsPrincipal(identity);
+            
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(ctx => ctx.User).Returns(principal);
+            
+            var controllerContext = new ControllerContext { HttpContext = mockHttpContext.Object };
+            controller.ControllerContext = controllerContext;
+        }
+        
+        return controller;
     }
 
     [Fact]
@@ -206,7 +230,7 @@ public class UsersControllerTests
         });
         userRepo.Setup(repo => repo.UpdateRoleAsync(2, "Manager")).ReturnsAsync(true);
 
-        var controller = CreateController(userRepo);
+        var controller = CreateController(userRepo, currentUserId: 1); // Admin user updating another
 
         var result = await controller.UpdateUserRole(2, new UserRoleUpdateDTO { Role = "Manager" });
 

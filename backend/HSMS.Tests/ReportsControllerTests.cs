@@ -3,7 +3,12 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using Moq;
 
 namespace HSMS.Tests;
@@ -13,11 +18,35 @@ public class ReportsControllerTests
     private static ReportsController CreateController(
         Mock<ISaleRepository> saleRepo,
         Mock<IProductRepository>? productRepo = null,
-        IConfiguration? config = null)
+        IConfiguration? config = null,
+        int? currentUserId = null)
     {
-        productRepo ??= new Mock<IProductRepository>();
-        productRepo.Setup(repo => repo.GetAllProducts()).ReturnsAsync([]);
-        return new ReportsController(saleRepo.Object, productRepo.Object, config);
+        if (productRepo == null)
+        {
+            productRepo = new Mock<IProductRepository>();
+            productRepo.Setup(repo => repo.GetAllProducts()).ReturnsAsync([]);
+        }
+        
+        var controller = new ReportsController(saleRepo.Object, productRepo.Object, config);
+        
+        // Set up mock User context if currentUserId is provided
+        if (currentUserId.HasValue)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, currentUserId.Value.ToString())
+            };
+            var identity = new ClaimsIdentity(claims, "TestScheme");
+            var principal = new ClaimsPrincipal(identity);
+            
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(ctx => ctx.User).Returns(principal);
+            
+            var controllerContext = new ControllerContext { HttpContext = mockHttpContext.Object };
+            controller.ControllerContext = controllerContext;
+        }
+        
+        return controller;
     }
 
     [Fact]
@@ -153,8 +182,8 @@ public class ReportsControllerTests
         var saleRepo = new Mock<ISaleRepository>();
         var productRepo = new Mock<IProductRepository>();
 
-        var controller = new ReportsController(saleRepo.Object, productRepo.Object);
-        var result = await controller.ExportReport("monthly");
+        var controller = CreateController(saleRepo, productRepo, currentUserId: 1); // Provide User context
+        var result = await controller.ExportReport("unsupported"); // Use an unsupported type
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal(400, badRequest.StatusCode);
