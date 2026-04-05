@@ -23,7 +23,7 @@ public class SupplierRepository : ISupplierRepository
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string query = @"SELECT Id, Name, CreatedAt
+        const string query = @"SELECT Id, Name, ContactInfo, CreatedAt
                                FROM Suppliers
                                ORDER BY Name ASC";
 
@@ -36,6 +36,7 @@ public class SupplierRepository : ISupplierRepository
             {
                 Id = Convert.ToInt32(reader["Id"]),
                 Name = reader["Name"].ToString()!,
+                ContactInfo = reader["ContactInfo"] == DBNull.Value ? null : reader["ContactInfo"].ToString(),
                 CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
             });
         }
@@ -48,12 +49,25 @@ public class SupplierRepository : ISupplierRepository
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string query = @"INSERT INTO Suppliers (Name)
-                               VALUES (@Name);
+        // Check for duplicate supplier name
+        const string checkDuplicateSql = "SELECT COUNT(*) FROM Suppliers WHERE LOWER(Name) = LOWER(@Name)";
+        using (var checkCommand = new MySqlCommand(checkDuplicateSql, connection))
+        {
+            checkCommand.Parameters.AddWithValue("@Name", dto.Name);
+            int count = Convert.ToInt32(await checkCommand.ExecuteScalarAsync());
+            if (count > 0)
+            {
+                throw new InvalidOperationException($"Supplier with name '{dto.Name}' already exists.");
+            }
+        }
+
+        const string query = @"INSERT INTO Suppliers (Name, ContactInfo)
+                               VALUES (@Name, @ContactInfo);
                                SELECT LAST_INSERT_ID();";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Name", dto.Name);
+        command.Parameters.AddWithValue("@ContactInfo", (object?)dto.ContactInfo ?? DBNull.Value);
 
         var result = await command.ExecuteScalarAsync();
         return Convert.ToInt32(result);
@@ -64,13 +78,39 @@ public class SupplierRepository : ISupplierRepository
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
+        // Check if supplier exists
+        const string existsSql = "SELECT COUNT(*) FROM Suppliers WHERE Id = @Id";
+        using (var existsCommand = new MySqlCommand(existsSql, connection))
+        {
+            existsCommand.Parameters.AddWithValue("@Id", id);
+            int count = Convert.ToInt32(await existsCommand.ExecuteScalarAsync());
+            if (count == 0)
+            {
+                return false;
+            }
+        }
+
+        // Check for duplicate name (excluding current record)
+        const string checkDuplicateSql = "SELECT COUNT(*) FROM Suppliers WHERE LOWER(Name) = LOWER(@Name) AND Id != @Id";
+        using (var checkCommand = new MySqlCommand(checkDuplicateSql, connection))
+        {
+            checkCommand.Parameters.AddWithValue("@Name", dto.Name);
+            checkCommand.Parameters.AddWithValue("@Id", id);
+            int count = Convert.ToInt32(await checkCommand.ExecuteScalarAsync());
+            if (count > 0)
+            {
+                throw new InvalidOperationException($"Another supplier with name '{dto.Name}' already exists.");
+            }
+        }
+
         const string query = @"UPDATE Suppliers
-                               SET Name = @Name
+                               SET Name = @Name, ContactInfo = @ContactInfo
                                WHERE Id = @Id";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Id", id);
         command.Parameters.AddWithValue("@Name", dto.Name);
+        command.Parameters.AddWithValue("@ContactInfo", (object?)dto.ContactInfo ?? DBNull.Value);
 
         int rows = await command.ExecuteNonQueryAsync();
         return rows > 0;
@@ -135,11 +175,26 @@ public class SupplierRepository : ISupplierRepository
 
         const string tableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
                                     Id INT AUTO_INCREMENT PRIMARY KEY,
-                                    Name VARCHAR(255) NOT NULL,
+                                    Name VARCHAR(255) NOT NULL UNIQUE,
+                                    ContactInfo VARCHAR(255),
                                     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                   );";
 
         using var command = new MySqlCommand(tableSql, connection);
         command.ExecuteNonQuery();
+
+        // Add ContactInfo column if it doesn't exist (migration support)
+        const string alterTableSql = @"ALTER TABLE Suppliers
+                                        ADD COLUMN IF NOT EXISTS ContactInfo VARCHAR(255);";
+
+        using var alterCommand = new MySqlCommand(alterTableSql, connection);
+        try
+        {
+            alterCommand.ExecuteNonQuery();
+        }
+        catch
+        {
+            // Column might already exist, safe to ignore
+        }
     }
 }

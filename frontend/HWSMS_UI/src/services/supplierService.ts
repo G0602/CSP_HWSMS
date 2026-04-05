@@ -9,6 +9,7 @@ export type SupplierPayload = {
 export type Supplier = {
   id: number;
   name: string;
+  contactInfo?: string;
   createdAt?: string;
 };
 

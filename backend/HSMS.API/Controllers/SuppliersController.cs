@@ -35,8 +35,19 @@ public class SuppliersController : ControllerBase
             return BadRequest("Name is required.");
         }
 
-        int id = await _supplierRepository.AddSupplierAsync(new SupplierCreateDTO { Name = name });
-        return Created($"/api/suppliers/{id}", new { id, name });
+        try
+        {
+            int id = await _supplierRepository.AddSupplierAsync(new SupplierCreateDTO 
+            { 
+                Name = name,
+                ContactInfo = dto.ContactInfo?.Trim()
+            });
+            return Created($"/api/suppliers/{id}", new { id, name });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
     [Authorize(Policy = AuthPolicies.InventoryWrite)]
@@ -49,13 +60,24 @@ public class SuppliersController : ControllerBase
             return BadRequest("Name is required.");
         }
 
-        bool updated = await _supplierRepository.UpdateSupplierAsync(id, new SupplierUpdateDTO { Name = name });
-        if (!updated)
+        try
         {
-            return NotFound("Supplier not found.");
-        }
+            bool updated = await _supplierRepository.UpdateSupplierAsync(id, new SupplierUpdateDTO 
+            { 
+                Name = name,
+                ContactInfo = dto.ContactInfo?.Trim()
+            });
+            if (!updated)
+            {
+                return NotFound("Supplier not found.");
+            }
 
-        return Ok("Supplier updated successfully.");
+            return Ok("Supplier updated successfully.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
     [Authorize(Policy = AuthPolicies.InventoryWrite)]
