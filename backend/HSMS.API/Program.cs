@@ -3,6 +3,7 @@ using HSMS.API.Auth;
 using HSMS.API.Services;
 using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -104,25 +105,32 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy(AuthPolicies.InventoryRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier)));
 
 	options.AddPolicy(AuthPolicies.InventoryManagerRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.InventoryWrite, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.InventoryDelete, policy =>
-		policy.RequireRole(AppRoles.Admin));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin)));
 
 	options.AddPolicy(AuthPolicies.SalesCreate, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier)));
 
 	options.AddPolicy(AuthPolicies.SalesRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.UsersManage, policy =>
-		policy.RequireRole(AppRoles.Admin));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin)));
 });
 
 // ----- CORS -----
@@ -200,6 +208,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthorizationHandler, CurrentUserRoleHandler>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
