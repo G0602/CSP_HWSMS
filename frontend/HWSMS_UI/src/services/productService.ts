@@ -15,6 +15,22 @@ export type Product = ProductPayload & {
   createdAt?: string;
 };
 
+export type InventoryProduct = {
+  id: number;
+  name: string;
+  sku: string;
+  quantity: number;
+  category: string;
+  price: number;
+  supplierId?: number | null;
+  isLowStock: boolean;
+};
+
+export type ProductStockUpdatePayload = {
+  quantity: number;
+  reason?: string;
+};
+
 const resolveApiBaseUrl = () => {
   const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (explicitBaseUrl) {
@@ -38,9 +54,15 @@ export const getProducts = async () => {
   });
 };
 
-export const searchProducts = async (query: string) => {
-  const response = await axios.get<Product[]>(`${PRODUCTS_API_URL}/search`, {
+export const getInventoryProducts = async () => {
+  const response = await axios.get<InventoryProduct[]>(`${API_URL}/inventory`, {
     headers: getAuthHeader(),
+  });
+  return response.data;
+};
+
+export const searchProducts = async (query: string) => {
+  const response = await axios.get<Product[]>(`${API_URL}/search`, {
     params: { query },
     headers: getAuthHeader(),
   });
@@ -55,6 +77,12 @@ export const addProduct = async (product: ProductPayload) => {
 
 export const updateProduct = async (id: number, product: ProductPayload) => {
   return await axios.put(`${API_URL}/${id}`, product, {
+    headers: getAuthHeader(),
+  });
+};
+
+export const updateProductStock = async (id: number, payload: ProductStockUpdatePayload) => {
+  return await axios.put(`${API_URL}/${id}/stock`, payload, {
     headers: getAuthHeader(),
   });
 };

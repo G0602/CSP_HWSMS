@@ -15,6 +15,8 @@ namespace HSMS.Infrastructure.Repositories;
 public class ProductRepository : IProductRepository
 {
     private readonly string _connectionString;
+    private static readonly object SchemaLock = new();
+    private static bool _schemaInitialized;
 
     /// <summary>
     /// Resolves the connection string from application configuration and ensures the
@@ -252,6 +254,18 @@ public class ProductRepository : IProductRepository
     /// </summary>
     private void EnsureProductsTableExists()
     {
+        if (_schemaInitialized)
+        {
+            return;
+        }
+
+        lock (SchemaLock)
+        {
+            if (_schemaInitialized)
+            {
+                return;
+            }
+
         using var connection = new MySqlConnection(_connectionString);
         connection.Open();
 
@@ -269,22 +283,31 @@ public class ProductRepository : IProductRepository
         using var command = new MySqlCommand(tableSql, connection);
         command.ExecuteNonQuery();
 
-        const string ensureColumnsSql = @"ALTER TABLE Products
-                                          ADD COLUMN IF NOT EXISTS Price DECIMAL(10,2) NOT NULL DEFAULT 0,
-                                          ADD COLUMN IF NOT EXISTS Quantity INT NOT NULL DEFAULT 0,
-                                          ADD COLUMN IF NOT EXISTS Category VARCHAR(255) NOT NULL DEFAULT '',
-                                          ADD COLUMN IF NOT EXISTS SupplierId INT NULL;";
-
-        using var ensureColumnsCommand = new MySqlCommand(ensureColumnsSql, connection);
-        ensureColumnsCommand.ExecuteNonQuery();
+        EnsureColumnExists(connection, "Products", "Price", "ALTER TABLE Products ADD COLUMN Price DECIMAL(10,2) NOT NULL DEFAULT 0;");
+        EnsureColumnExists(connection, "Products", "Quantity", "ALTER TABLE Products ADD COLUMN Quantity INT NOT NULL DEFAULT 0;");
+        EnsureColumnExists(connection, "Products", "Category", "ALTER TABLE Products ADD COLUMN Category VARCHAR(255) NOT NULL DEFAULT '';");
+        EnsureColumnExists(connection, "Products", "SupplierId", "ALTER TABLE Products ADD COLUMN SupplierId INT NULL;");
 
         const string suppliersTableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
                                             Id INT AUTO_INCREMENT PRIMARY KEY,
                                             Name VARCHAR(255) NOT NULL,
+                                            ContactInfo VARCHAR(255) NULL,
                                             CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                                           );";
         using var suppliersTableCommand = new MySqlCommand(suppliersTableSql, connection);
         suppliersTableCommand.ExecuteNonQuery();
+
+        EnsureColumnExists(connection, "Suppliers", "ContactInfo", "ALTER TABLE Suppliers ADD COLUMN ContactInfo VARCHAR(255) NULL;");
+
+        // Old databases may contain supplier ids that don't exist in Suppliers yet.
+        // Null them out before enforcing the foreign key so reads don't fail on startup.
+        const string clearOrphanedSupplierIdsSql = @"UPDATE Products p
+                                                     LEFT JOIN Suppliers s ON s.Id = p.SupplierId
+                                                     SET p.SupplierId = NULL
+                                                     WHERE p.SupplierId IS NOT NULL
+                                                       AND s.Id IS NULL;";
+        using var clearOrphanedSupplierIdsCommand = new MySqlCommand(clearOrphanedSupplierIdsSql, connection);
+        clearOrphanedSupplierIdsCommand.ExecuteNonQuery();
 
         const string indexExistsSql = @"SELECT COUNT(*)
                                         FROM INFORMATION_SCHEMA.STATISTICS
@@ -335,5 +358,29 @@ public class ProductRepository : IProductRepository
 
         using var stockLogCommand = new MySqlCommand(stockLogTableSql, connection);
         stockLogCommand.ExecuteNonQuery();
+        _schemaInitialized = true;
+        }
+    }
+
+    private static void EnsureColumnExists(MySqlConnection connection, string tableName, string columnName, string alterSql)
+    {
+        const string columnExistsSql = @"SELECT COUNT(*)
+                                         FROM INFORMATION_SCHEMA.COLUMNS
+                                         WHERE TABLE_SCHEMA = DATABASE()
+                                           AND TABLE_NAME = @TableName
+                                           AND COLUMN_NAME = @ColumnName;";
+
+        using var columnExistsCommand = new MySqlCommand(columnExistsSql, connection);
+        columnExistsCommand.Parameters.AddWithValue("@TableName", tableName);
+        columnExistsCommand.Parameters.AddWithValue("@ColumnName", columnName);
+
+        int columnExists = Convert.ToInt32(columnExistsCommand.ExecuteScalar());
+        if (columnExists > 0)
+        {
+            return;
+        }
+
+        using var alterCommand = new MySqlCommand(alterSql, connection);
+        alterCommand.ExecuteNonQuery();
     }
 }
