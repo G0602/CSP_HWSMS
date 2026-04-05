@@ -22,6 +22,8 @@ export type LowStockReportItem = {
   isLowStock: boolean;
 };
 
+export type ReportExportType = "daily" | "monthly" | "low-stock";
+
 const resolveApiBaseUrl = () => {
   const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (explicitBaseUrl) {
@@ -60,16 +62,16 @@ export const getLowStockReport = async () => {
   return data;
 };
 
-export const exportDailySalesCsv = async () => {
+export const exportReportCsv = async (type: ReportExportType) => {
   const response = await axios.get(`${REPORTS_API_URL}/export`, {
     headers: getAuthHeader(),
-    params: { type: "daily" },
+    params: { type },
     responseType: "blob",
   });
 
   const disposition = response.headers["content-disposition"] as string | undefined;
   const fileNameMatch = disposition?.match(/filename="?([^"]+)"?/i);
-  const fileName = fileNameMatch?.[1] ?? `daily-sales-report-${new Date().toISOString().slice(0, 10)}.csv`;
+  const fileName = fileNameMatch?.[1] ?? `${type}-report-${new Date().toISOString().slice(0, 10)}.csv`;
 
   return {
     blob: response.data as Blob,

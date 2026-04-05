@@ -4,13 +4,14 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { getCurrentUser, logout } from "../services/authService";
 import {
-  exportDailySalesCsv,
+  exportReportCsv,
   getDailySalesReport,
   getLowStockReport,
   getMonthlySalesReport,
   type DailySalesReportItem,
   type LowStockReportItem,
   type MonthlySalesReportItem,
+  type ReportExportType,
 } from "../services/reportService";
 
 const DailySalesReportPage = () => {
@@ -62,12 +63,12 @@ const DailySalesReportPage = () => {
     void loadReport();
   }, []);
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = async (type: ReportExportType) => {
     setError("");
     setIsExporting(true);
 
     try {
-      const { blob, fileName } = await exportDailySalesCsv();
+      const { blob, fileName } = await exportReportCsv(type);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -111,14 +112,30 @@ const DailySalesReportPage = () => {
         <div className="mb-6">
           <h2 className="text-3xl font-bold text-slate-900">Sales Reports</h2>
           <p className="text-slate-600 mt-1">Daily and monthly aggregated sales totals.</p>
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => void handleExportCsv()}
+              onClick={() => void handleExportCsv("daily")}
               disabled={isExporting}
               className="rounded-lg bg-emerald-600 px-4 py-2 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isExporting ? "Exporting..." : "Export CSV"}
+              {isExporting ? "Exporting..." : "Export Daily CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExportCsv("monthly")}
+              disabled={isExporting}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isExporting ? "Exporting..." : "Export Monthly CSV"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExportCsv("low-stock")}
+              disabled={isExporting}
+              className="rounded-lg bg-amber-600 px-4 py-2 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isExporting ? "Exporting..." : "Export Low-Stock CSV"}
             </button>
           </div>
         </div>

@@ -68,24 +68,84 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> ExportReport([FromQuery] string type = "daily")
     {
         string reportType = type.Trim().ToLowerInvariant();
-        if (reportType != "daily")
+        string csvContent;
+        string fileNamePrefix;
+
+        switch (reportType)
         {
-            return BadRequest("Unsupported export type. Use type=daily.");
+            case "daily":
+            {
+                var dailyReport = await _saleRepository.GetDailySalesReportAsync();
+                var csv = new StringBuilder();
+                csv.AppendLine("Date,TotalSales");
+
+                foreach (var item in dailyReport)
+                {
+                    csv.AppendLine($"{item.Date:yyyy-MM-dd},{item.TotalAmount:0.00}");
+                }
+
+                csvContent = csv.ToString();
+                fileNamePrefix = "daily-sales-report";
+                break;
+            }
+            case "monthly":
+            {
+                var monthlyReport = await _saleRepository.GetMonthlySalesReportAsync();
+                var csv = new StringBuilder();
+                csv.AppendLine("Month,TotalSales");
+
+                foreach (var item in monthlyReport)
+                {
+                    csv.AppendLine($"{item.Month:yyyy-MM},{item.TotalAmount:0.00}");
+                }
+
+                csvContent = csv.ToString();
+                fileNamePrefix = "monthly-sales-report";
+                break;
+            }
+            case "low-stock":
+            {
+                var products = await _productRepository.GetAllProducts();
+                var lowStockProducts = products
+                    .Where(product => product.Quantity < _lowStockThreshold)
+                    .OrderBy(product => product.Name)
+                    .ToList();
+
+                var csv = new StringBuilder();
+                csv.AppendLine("Product,SKU,Category,Quantity,Price");
+
+                foreach (var product in lowStockProducts)
+                {
+                    csv.AppendLine($"{EscapeCsv(product.Name)},{EscapeCsv(product.SKU)},{EscapeCsv(product.Category)},{product.Quantity},{product.Price:0.00}");
+                }
+
+                csvContent = csv.ToString();
+                fileNamePrefix = "low-stock-report";
+                break;
+            }
+            default:
+                return BadRequest("Unsupported export type. Use type=daily, type=monthly, or type=low-stock.");
         }
 
-        var dailyReport = await _saleRepository.GetDailySalesReportAsync();
-
-        var csv = new StringBuilder();
-        csv.AppendLine("Date,TotalSales");
-
-        foreach (var item in dailyReport)
-        {
-            csv.AppendLine($"{item.Date:yyyy-MM-dd},{item.TotalAmount:0.00}");
-        }
-
-        var bytes = Encoding.UTF8.GetBytes(csv.ToString());
-        var fileName = $"daily-sales-report-{DateTime.UtcNow:yyyyMMdd}.csv";
+        var bytes = Encoding.UTF8.GetBytes(csvContent);
+        var fileName = $"{fileNamePrefix}-{DateTime.UtcNow:yyyyMMdd}.csv";
 
         return File(bytes, "text/csv", fileName);
+    }
+
+    private static string EscapeCsv(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        bool requiresQuotes = value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
+        if (!requiresQuotes)
+        {
+            return value;
+        }
+
+        return $"\"{value.Replace("\"", "\"\"")}\"";
     }
 }
