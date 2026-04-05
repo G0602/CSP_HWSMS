@@ -15,7 +15,32 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 {
 	builder.Configuration.AddJsonFile("appsettings.Production.json", optional: true);
 }
+
+// ----- CRITICAL: Validate mandatory configuration at startup -----
+string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+	throw new InvalidOperationException(
+		"CRITICAL: ConnectionStrings:DefaultConnection is empty or not set.\n" +
+		"Set the environment variable: ConnectionStrings__DefaultConnection=\"Server=...;Database=CSP_HSMS;...\""
+	);
+}
+
+// Validate JWT secret in production
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
+	if (jwtSecretValue == "CHANGE_THIS_IN_PRODUCTION" || string.IsNullOrWhiteSpace(jwtSecretValue))
+	{
+		throw new InvalidOperationException(
+			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
+			"Set the environment variable: Jwt__Secret=\"your-secure-secret-key\""
+		);
+	}
+}
 // Environment variables automatically override all JSON configuration files
+
+ApplyRailwayDatabaseConfiguration(builder.Configuration);
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -95,13 +120,65 @@ builder.Services.AddAuthorization(options =>
 });
 
 // ----- CORS -----
-// Read allowed origins from environment variable for easy deployment
-// Format: comma-separated list (e.g., "http://localhost:5173,https://yourdomain.com")
-string corsOrigins = builder.Configuration["CORS_ORIGINS"]
-	?? throw new InvalidOperationException("CORS_ORIGINS environment variable is missing");
-var allowedOrigins = corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
-	.Select(o => o.Trim())
+// Allowed browser origins for API calls.
+// Database hosts are not browser origins and are not part of CORS.
+string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
+string? frontendUrl = builder.Configuration["FRONTEND_URL"];
+string? backendPublicUrl = builder.Configuration["BACKEND_PUBLIC_URL"];
+
+var originCandidates = new List<string>();
+
+if (!string.IsNullOrWhiteSpace(corsOrigins))
+{
+	originCandidates.AddRange(
+		corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
+			.Select(o => o.Trim())
+	);
+}
+
+if (!string.IsNullOrWhiteSpace(frontendUrl))
+{
+	originCandidates.Add(frontendUrl.Trim().TrimEnd('/'));
+}
+
+if (!string.IsNullOrWhiteSpace(backendPublicUrl))
+{
+	originCandidates.Add(backendPublicUrl.Trim().TrimEnd('/'));
+}
+
+// Development-safe defaults - only used in development environment
+if (originCandidates.Count == 0)
+{
+	if (builder.Environment.IsDevelopment())
+	{
+		originCandidates.AddRange(
+		[
+			"http://localhost:5173",
+			"http://localhost:3000"
+		]
+		);
+	}
+	else
+	{
+		// Production must have explicit CORS configuration
+		throw new InvalidOperationException(
+			"PRODUCTION ERROR: CORS is not configured.\n" +
+			"Set environment variables: CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL"
+		);
+	}
+}
+
+var allowedOrigins = originCandidates
+	.Where(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+		&& (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+	.Select(origin => origin.TrimEnd('/'))
+	.Distinct(StringComparer.OrdinalIgnoreCase)
 	.ToArray();
+
+if (allowedOrigins.Length == 0)
+{
+	throw new InvalidOperationException("No valid CORS origins found. Configure CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL.");
+}
 
 builder.Services.AddCors(options =>
 {
@@ -122,16 +199,20 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-// Seed default users only if enabled via environment variable
-bool seedDefaultUsers = builder.Configuration.GetValue<bool>("SEED_DEFAULT_USERS", true);
+// Seed default users ONLY in development environment
+bool seedDefaultUsers = app.Environment.IsDevelopment();
 if (seedDefaultUsers)
 {
 	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
 }
 
 // ----- Middleware Pipeline -----
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger only exposed in development for security
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
 
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
@@ -140,6 +221,98 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuration)
+{
+	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
+	string normalizedCurrentConnection = currentConnection ?? string.Empty;
+	bool isMissingConnection = string.IsNullOrWhiteSpace(currentConnection);
+	bool isLocalConnection = !isMissingConnection &&
+		(normalizedCurrentConnection.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+		|| normalizedCurrentConnection.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase));
+
+	if (!isMissingConnection && !isLocalConnection)
+	{
+		return;
+	}
+
+	string? railwayConnection = BuildRailwayConnectionStringFromUrl(configuration["MYSQL_URL"])
+		?? BuildRailwayConnectionStringFromUrl(configuration["DATABASE_URL"])
+		?? BuildRailwayConnectionStringFromParts(configuration);
+
+	if (!string.IsNullOrWhiteSpace(railwayConnection))
+	{
+		configuration["ConnectionStrings:DefaultConnection"] = railwayConnection;
+	}
+}
+
+static string? BuildRailwayConnectionStringFromUrl(string? databaseUrl)
+{
+	if (string.IsNullOrWhiteSpace(databaseUrl))
+	{
+		return null;
+	}
+
+	if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out Uri? uri))
+	{
+		return null;
+	}
+
+	if (!"mysql".Equals(uri.Scheme, StringComparison.OrdinalIgnoreCase))
+	{
+		return null;
+	}
+
+	string userInfo = uri.UserInfo;
+	if (string.IsNullOrWhiteSpace(userInfo))
+	{
+		return null;
+	}
+
+	string username;
+	string password;
+	int separatorIndex = userInfo.IndexOf(':');
+	if (separatorIndex < 0)
+	{
+		username = Uri.UnescapeDataString(userInfo);
+		password = string.Empty;
+	}
+	else
+	{
+		username = Uri.UnescapeDataString(userInfo[..separatorIndex]);
+		password = Uri.UnescapeDataString(userInfo[(separatorIndex + 1)..]);
+	}
+
+	string database = uri.AbsolutePath.Trim('/');
+	if (string.IsNullOrWhiteSpace(database))
+	{
+		return null;
+	}
+
+	int port = uri.IsDefaultPort ? 3306 : uri.Port;
+
+	return $"server={uri.Host};port={port};database={database};user={username};password={password};SslMode=Required;";
+}
+
+static string? BuildRailwayConnectionStringFromParts(IConfiguration configuration)
+{
+	string? host = configuration["MYSQLHOST"] ?? configuration["DB_HOST"];
+	string? port = configuration["MYSQLPORT"] ?? configuration["DB_PORT"];
+	string? database = configuration["MYSQLDATABASE"] ?? configuration["DB_NAME"];
+	string? username = configuration["MYSQLUSER"] ?? configuration["DB_USER"];
+	string? password = configuration["MYSQLPASSWORD"] ?? configuration["DB_PASSWORD"];
+
+	if (string.IsNullOrWhiteSpace(host)
+		|| string.IsNullOrWhiteSpace(database)
+		|| string.IsNullOrWhiteSpace(username)
+		|| string.IsNullOrWhiteSpace(password))
+	{
+		return null;
+	}
+
+	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
+	return $"server={host};port={normalizedPort};database={database};user={username};password={password};SslMode=Required;";
+}
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
 {

@@ -32,26 +32,33 @@ const API_BASE_URL = resolveApiBaseUrl();
 const API_URL = `${API_BASE_URL}/api/Product`;
 
 export const getProducts = async () => {
-  return await axios.get<Product[]>(API_URL, { headers: getAuthHeader() });
+  return await axios.get<Product[]>(API_URL, {
+    headers: getAuthHeader(),
+  });
 };
 
-export const searchProducts = async (query: string, limit = 20) => {
-  const { data } = await axios.get<Product[]>(`${API_URL}/search`, {
+export const searchProducts = async (query: string) => {
+  const response = await axios.get<Product[]>(`${API_URL}/search`, {
+    params: { query },
     headers: getAuthHeader(),
-    params: { query, limit },
   });
-
-  return data;
+  return response.data;
 };
 
 export const addProduct = async (product: ProductPayload) => {
-  return await axios.post(API_URL, product, { headers: getAuthHeader() });
+  return await axios.post(API_URL, product, {
+    headers: getAuthHeader(),
+  });
 };
 
 export const updateProduct = async (id: number, product: ProductPayload) => {
-  return await axios.put(`${API_URL}/${id}`, product, { headers: getAuthHeader() });
+  return await axios.put(`${API_URL}/${id}`, product, {
+    headers: getAuthHeader(),
+  });
 };
 
 export const deleteProduct = async (id: number) => {
-  return await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+  return await axios.delete(`${API_URL}/${id}`, {
+    headers: getAuthHeader(),
+  });
 };
