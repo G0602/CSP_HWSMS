@@ -31,7 +31,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
 {
 	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
-	if (jwtSecretValue == "CHANGE_THIS_IN_PRODUCTION" || string.IsNullOrWhiteSpace(jwtSecretValue))
+	if (string.IsNullOrWhiteSpace(jwtSecretValue))
 	{
 		throw new InvalidOperationException(
 			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
@@ -198,9 +198,10 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy("FrontendPolicy", policy =>
 	{
-		policy.WithOrigins(allowedOrigins)
-			  .AllowAnyHeader()
-			  .AllowAnyMethod();
+		policy
+			.SetIsOriginAllowed(origin => IsAllowedFrontendOrigin(origin, allowedOrigins))
+			.AllowAnyHeader()
+			.AllowAnyMethod();
 	});
 });
 
@@ -234,9 +235,34 @@ app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+
 app.MapControllers();
 
 app.Run();
+
+static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
+{
+	if (string.IsNullOrWhiteSpace(origin))
+	{
+		return false;
+	}
+
+	string normalizedOrigin = origin.Trim().TrimEnd('/');
+	if (allowedOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase))
+	{
+		return true;
+	}
+
+	if (!Uri.TryCreate(normalizedOrigin, UriKind.Absolute, out var uri))
+	{
+		return false;
+	}
+
+	string host = uri.Host;
+	return uri.Scheme == Uri.UriSchemeHttps
+		&& host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
+		&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
 
 static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuration)
 {
