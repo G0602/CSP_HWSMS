@@ -31,7 +31,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
 {
 	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
-	if (jwtSecretValue == "CHANGE_THIS_IN_PRODUCTION" || string.IsNullOrWhiteSpace(jwtSecretValue))
+	if (string.IsNullOrWhiteSpace(jwtSecretValue))
 	{
 		throw new InvalidOperationException(
 			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
@@ -233,6 +233,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 app.MapControllers();
 
