@@ -67,7 +67,7 @@ function loadConfig() {
     merged.ConnectionStrings__DefaultConnection ||
     merged.CONNECTIONSTRINGS__DEFAULTCONNECTION ||
     merged.DEFAULT_CONNECTION_STRING ||
-    "";
+    "server=localhost;database=CSP_HSMS;user=CSP;password=sql123;AllowUserVariables=True;";
 
   const parsedConnection = connectionString ? parseConnectionString(connectionString) : null;
 

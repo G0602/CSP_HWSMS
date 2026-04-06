@@ -105,3 +105,4 @@ docker-compose.override.yml
 #Test files
 ############################################
 postman/
+jmeter/
