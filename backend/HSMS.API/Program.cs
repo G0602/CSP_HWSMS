@@ -198,9 +198,10 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy("FrontendPolicy", policy =>
 	{
-		policy.WithOrigins(allowedOrigins)
-			  .AllowAnyHeader()
-			  .AllowAnyMethod();
+		policy
+			.SetIsOriginAllowed(origin => IsAllowedFrontendOrigin(origin, allowedOrigins))
+			.AllowAnyHeader()
+			.AllowAnyMethod();
 	});
 });
 
@@ -238,6 +239,30 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
+{
+	if (string.IsNullOrWhiteSpace(origin))
+	{
+		return false;
+	}
+
+	string normalizedOrigin = origin.Trim().TrimEnd('/');
+	if (allowedOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase))
+	{
+		return true;
+	}
+
+	if (!Uri.TryCreate(normalizedOrigin, UriKind.Absolute, out var uri))
+	{
+		return false;
+	}
+
+	string host = uri.Host;
+	return uri.Scheme == Uri.UriSchemeHttps
+		&& host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
+		&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
 
 static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuration)
 {

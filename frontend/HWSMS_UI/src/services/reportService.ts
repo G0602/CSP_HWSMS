@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAuthHeader } from "./authService";
+import { API_BASE_URL } from "../config/api";
 
 export type DailySalesReportItem = {
   date: string;
@@ -24,21 +25,6 @@ export type LowStockReportItem = {
 
 export type ReportExportType = "daily" | "monthly" | "low-stock";
 
-const resolveApiBaseUrl = () => {
-  const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (explicitBaseUrl) {
-    return explicitBaseUrl.replace(/\/$/, "");
-  }
-
-  const legacyProductUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (legacyProductUrl) {
-    return legacyProductUrl.replace(/\/api\/Product\/?$/i, "").replace(/\/$/, "");
-  }
-
-  return "http://localhost:5162";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
 const REPORTS_API_URL = `${API_BASE_URL}/api/reports`;
 
 export const getDailySalesReport = async () => {
