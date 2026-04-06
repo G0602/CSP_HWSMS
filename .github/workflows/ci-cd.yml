@@ -2,11 +2,9 @@ name: HSMS CI/CD
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
     branches: ["develop", "main"]
   push:
     branches: ["develop", "main"]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,24 +15,9 @@ concurrency:
 
 jobs:
   backend_ci:
-    name: Backend CI (Build + Unit + Integration Tests)
+    name: Backend CI (Build + Test)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: hsms_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-    env:
-      HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
 
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +25,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ vars.DOTNET_VERSION || '8.0.x' }}
+          dotnet-version: ${{ vars.DOTNET_VERSION }}
 
       - name: Cache NuGet
         uses: actions/cache@v4
@@ -58,11 +41,11 @@ jobs:
       - name: Build
         run: dotnet build backend/HSMS.sln -c Release --no-restore
 
-      - name: Run backend tests
+      - name: Test
         run: dotnet test backend/HSMS.Tests/HSMS.Tests.csproj -c Release --no-build --verbosity normal
 
   frontend_ci:
-    name: Frontend CI (Build)
+    name: Frontend CI (Install + Build)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
 
@@ -72,7 +55,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ vars.NODE_VERSION || '20' }}
+          node-version: ${{ vars.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/HWSMS_UI/package-lock.json
 
@@ -97,7 +80,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ vars.DOTNET_VERSION || '8.0.x' }}
+          dotnet-version: ${{ vars.DOTNET_VERSION }}
 
       - name: Cache NuGet
         uses: actions/cache@v4
@@ -123,7 +106,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ vars.NODE_VERSION || '20' }}
+          node-version: ${{ vars.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/HWSMS_UI/package-lock.json
 

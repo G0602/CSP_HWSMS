@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppRoles } from "./auth/roles";
-import BackendHealthBanner from "./components/BackendHealthBanner";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicOnlyRoute from "./components/PublicOnlyRoute";
 import AccessDeniedPage from "./pages/AccessDeniedPage";
@@ -18,7 +17,6 @@ import UsersPage from "./pages/UsersPage";
 function App() {
   return (
     <BrowserRouter>
-      <BackendHealthBanner />
       <Routes>
         <Route
           path="/login"
@@ -115,5 +113,6 @@ function App() {
 }
 
 export default App;
+
 
 
