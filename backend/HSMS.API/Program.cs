@@ -5,8 +5,11 @@ using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +49,29 @@ ApplyRailwayDatabaseConfiguration(builder.Configuration);
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services
+	.AddHealthChecks()
+	.AddCheck("mysql", () =>
+	{
+		try
+		{
+			string? configuredConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+			if (string.IsNullOrWhiteSpace(configuredConnectionString))
+			{
+				return HealthCheckResult.Unhealthy("ConnectionStrings:DefaultConnection is not configured.");
+			}
+
+			using var connection = new MySqlConnection(configuredConnectionString);
+			connection.Open();
+			return connection.State == System.Data.ConnectionState.Open
+				? HealthCheckResult.Healthy("Database connection is available.")
+				: HealthCheckResult.Unhealthy("Database connection could not be opened.");
+		}
+		catch (Exception ex)
+		{
+			return HealthCheckResult.Unhealthy("Database connectivity check failed.", ex);
+		}
+	});
 
 // ----- Swagger / OpenAPI -----
 // Accessible at /swagger in Development (and any environment in this build).
@@ -237,6 +263,28 @@ app.UseAuthorization();
 
 
 app.MapControllers();
+app.MapHealthChecks("/api/health", new HealthCheckOptions
+{
+	ResponseWriter = async (context, report) =>
+	{
+		context.Response.ContentType = "application/json";
+
+		var response = new
+		{
+			status = report.Status == HealthStatus.Healthy ? "healthy" : "unhealthy",
+			timestamp = DateTime.UtcNow,
+			checks = report.Entries.ToDictionary(
+				entry => entry.Key,
+				entry => new
+				{
+					status = entry.Value.Status.ToString().ToLowerInvariant(),
+					description = entry.Value.Description
+				})
+		};
+
+		await context.Response.WriteAsJsonAsync(response);
+	}
+});
 
 app.Run();
 
