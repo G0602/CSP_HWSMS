@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAuthHeader } from "./authService";
+import { API_BASE_URL } from "../config/api";
 import type { SaleItemResponse, SaleResponse } from "./saleService";
 
 export type TransactionHistoryItem = {
@@ -14,21 +15,6 @@ export type TransactionDetails = SaleResponse & {
   items: SaleItemResponse[];
 };
 
-const resolveApiBaseUrl = () => {
-  const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (explicitBaseUrl) {
-    return explicitBaseUrl.replace(/\/$/, "");
-  }
-
-  const legacyProductUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (legacyProductUrl) {
-    return legacyProductUrl.replace(/\/api\/Product\/?$/i, "").replace(/\/$/, "");
-  }
-
-  return "http://localhost:5162";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
 const SALES_API_URL = `${API_BASE_URL}/api/Sales`;
 
 export const getTransactionHistory = async (params?: {
