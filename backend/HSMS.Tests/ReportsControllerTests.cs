@@ -177,6 +177,68 @@ public class ReportsControllerTests
     }
 
     [Fact]
+    public async Task ExportReport_Should_Include_Monthly_Csv_Content()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+
+        saleRepo.Setup(repo => repo.GetMonthlySalesReportAsync())
+            .ReturnsAsync(
+            [
+                new MonthlySalesReportItemDTO
+                {
+                    Month = new DateTime(2026, 4, 1),
+                    TotalAmount = 320000m
+                }
+            ]);
+
+        var controller = new ReportsController(saleRepo.Object, productRepo.Object);
+        var result = await controller.ExportReport("monthly");
+
+        var file = Assert.IsType<FileContentResult>(result);
+        string content = System.Text.Encoding.UTF8.GetString(file.FileContents);
+
+        Assert.Contains("Month,TotalSales", content);
+        Assert.Contains("2026-04,320000.00", content);
+    }
+
+    [Fact]
+    public async Task ExportReport_Should_Escape_Csv_Fields_For_LowStock_Report()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+        productRepo.Setup(repo => repo.GetAllProducts())
+            .ReturnsAsync(
+            [
+                new Product
+                {
+                    Id = 1,
+                    Name = "Hammer, Heavy Duty",
+                    SKU = "HM-1",
+                    Quantity = 3,
+                    Category = "Hand \"Tools\"",
+                    Price = 1500m
+                }
+            ]);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LOW_STOCK_THRESHOLD"] = "10"
+            })
+            .Build();
+
+        var controller = new ReportsController(saleRepo.Object, productRepo.Object, config);
+        var result = await controller.ExportReport("low-stock");
+
+        var file = Assert.IsType<FileContentResult>(result);
+        string content = System.Text.Encoding.UTF8.GetString(file.FileContents);
+
+        Assert.Contains("Product,SKU,Category,Quantity,Price", content);
+        Assert.Contains("\"Hammer, Heavy Duty\",HM-1,\"Hand \"\"Tools\"\"\",3,1500.00", content);
+    }
+
+    [Fact]
     public async Task ExportReport_Should_Return_BadRequest_When_Type_Is_Unsupported()
     {
         var saleRepo = new Mock<ISaleRepository>();
