@@ -241,10 +241,10 @@ public class SaleRepository : ISaleRepository
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string query = @"SELECT DATE_FORMAT(SoldAt, '%Y-%m-01') AS ReportMonth,
+        const string query = @"SELECT DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY) AS ReportMonth,
                                       SUM(TotalAmount) AS TotalAmount
                                FROM Sales
-                               GROUP BY YEAR(SoldAt), MONTH(SoldAt)
+                               GROUP BY DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY)
                                ORDER BY ReportMonth DESC";
 
         await using var command = new MySqlCommand(query, connection);
