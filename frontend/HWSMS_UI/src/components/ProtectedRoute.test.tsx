@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProtectedRoute from "./ProtectedRoute";
+import type { AppRole } from "../auth/roles";
 
 const authServiceMocks = vi.hoisted(() => ({
   isAuthenticated: vi.fn(),
@@ -13,7 +14,7 @@ vi.mock("../services/authService", () => ({
   getCurrentUser: authServiceMocks.getCurrentUser,
 }));
 
-const renderRoute = (allowedRoles?: string[]) =>
+const renderRoute = (allowedRoles?: AppRole[]) =>
   render(
     <MemoryRouter initialEntries={["/protected"]}>
       <Routes>
