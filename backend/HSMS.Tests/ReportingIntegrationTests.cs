@@ -288,9 +288,7 @@ public class ReportingIntegrationTests
 
         // First delete any sale items referencing this product
         const string deleteSaleItems = @"DELETE FROM SaleItems 
-                                         WHERE ProductId IN (
-                                             SELECT ProductId FROM SaleItems WHERE ProductId = @ProductId
-                                         )";
+                                         WHERE ProductId = @ProductId";
         using var cmd1 = new MySqlCommand(deleteSaleItems, connection);
         cmd1.Parameters.AddWithValue("@ProductId", productId);
         await cmd1.ExecuteNonQueryAsync();
