@@ -16,6 +16,7 @@ namespace HSMS.Tests;
 /// Tests report data accuracy, calculations, and database queries
 /// Requires: HSMS_TEST_CONNECTION_STRING environment variable
 /// </summary>
+[Collection("DatabaseIntegration")]
 public class ReportingIntegrationTests
 {
     private static string? GetConnectionString()
@@ -286,18 +287,35 @@ public class ReportingIntegrationTests
         using var connection = new MySqlConnection(connectionString);
         await connection.OpenAsync();
 
-        // First delete any sale items referencing this product
-        const string deleteSaleItems = @"DELETE FROM SaleItems 
-                                         WHERE ProductId = @ProductId";
-        using var cmd1 = new MySqlCommand(deleteSaleItems, connection);
-        cmd1.Parameters.AddWithValue("@ProductId", productId);
-        await cmd1.ExecuteNonQueryAsync();
+        if (await TableExistsAsync(connection, "SaleItems"))
+        {
+            // Some reporting tests create sales and therefore need dependent sale items removed first.
+            const string deleteSaleItems = @"DELETE FROM SaleItems
+                                             WHERE ProductId = @ProductId";
+            using var cmd1 = new MySqlCommand(deleteSaleItems, connection);
+            cmd1.Parameters.AddWithValue("@ProductId", productId);
+            await cmd1.ExecuteNonQueryAsync();
+        }
 
         // Then delete the product
         const string deleteProduct = "DELETE FROM Products WHERE Id = @Id";
         using var cmd2 = new MySqlCommand(deleteProduct, connection);
         cmd2.Parameters.AddWithValue("@Id", productId);
         await cmd2.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<bool> TableExistsAsync(MySqlConnection connection, string tableName)
+    {
+        const string sql = @"SELECT COUNT(*)
+                             FROM INFORMATION_SCHEMA.TABLES
+                             WHERE TABLE_SCHEMA = DATABASE()
+                               AND TABLE_NAME = @TableName";
+
+        using var command = new MySqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@TableName", tableName);
+
+        var result = await command.ExecuteScalarAsync();
+        return Convert.ToInt32(result) > 0;
     }
 
     #endregion
