@@ -17,6 +17,7 @@ namespace HSMS.Tests;
 /// Tests user creation, role updates, and database persistence
 /// Requires: HSMS_TEST_CONNECTION_STRING environment variable
 /// </summary>
+[Collection("DatabaseIntegration")]
 public class UserManagementIntegrationTests
 {
     private static string? GetConnectionString()

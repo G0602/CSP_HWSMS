@@ -15,6 +15,7 @@ namespace HSMS.Tests;
 /// Tests database persistence and transaction safety
 /// Requires: HSMS_TEST_CONNECTION_STRING environment variable
 /// </summary>
+[Collection("DatabaseIntegration")]
 public class InventoryIntegrationTests
 {
     private static string? GetConnectionString()

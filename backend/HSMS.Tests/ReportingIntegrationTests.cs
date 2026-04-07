@@ -16,6 +16,7 @@ namespace HSMS.Tests;
 /// Tests report data accuracy, calculations, and database queries
 /// Requires: HSMS_TEST_CONNECTION_STRING environment variable
 /// </summary>
+[Collection("DatabaseIntegration")]
 public class ReportingIntegrationTests
 {
     private static string? GetConnectionString()

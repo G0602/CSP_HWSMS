@@ -16,6 +16,7 @@ namespace HSMS.Tests;
 /// Tests database persistence, referential integrity, and delete protection
 /// Requires: HSMS_TEST_CONNECTION_STRING environment variable
 /// </summary>
+[Collection("DatabaseIntegration")]
 public class SupplierIntegrationTests
 {
     private static string? GetConnectionString()
