@@ -80,6 +80,10 @@ jobs:
         working-directory: frontend/HWSMS_UI
         run: npm ci
 
+      - name: Clean TypeScript build cache
+        working-directory: frontend/HWSMS_UI
+        run: rm -rf node_modules/.tmp dist
+
       - name: Build
         working-directory: frontend/HWSMS_UI
         run: npm run build
