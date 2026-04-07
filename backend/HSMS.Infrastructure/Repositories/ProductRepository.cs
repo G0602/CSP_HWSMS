@@ -194,6 +194,12 @@ public class ProductRepository : IProductRepository
     /// <inheritdoc/>
     public async Task<bool> UpdateProductStock(int id, ProductStockUpdateDTO stockUpdate)
     {
+        // Validate that quantity is non-negative
+        if (stockUpdate.Quantity < 0)
+        {
+            return false;
+        }
+
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
