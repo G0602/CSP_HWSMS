@@ -8,6 +8,10 @@ const { spawnSync } = require("child_process");
 const rootDir = path.resolve(__dirname, "..");
 const backendEnvFile = path.join(rootDir, "backend", ".env");
 
+function hasFlag(flag) {
+  return process.argv.includes(flag);
+}
+
 function parseDotEnv(filePath) {
   if (!fs.existsSync(filePath)) {
     return {};
@@ -60,9 +64,75 @@ function parseConnectionString(connectionString) {
   };
 }
 
+function parseDatabaseUrl(databaseUrl) {
+  if (!databaseUrl) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(databaseUrl);
+    return {
+      host: parsed.hostname || "",
+      port: parsed.port || "3306",
+      database: parsed.pathname ? parsed.pathname.replace(/^\//, "") : "",
+      user: decodeURIComponent(parsed.username || ""),
+      password: decodeURIComponent(parsed.password || "")
+    };
+  } catch {
+    const parsedConnection = parseConnectionString(databaseUrl);
+    if (!parsedConnection) {
+      return null;
+    }
+
+    return {
+      host: parsedConnection.host || "",
+      port: parsedConnection.port || "3306",
+      database: parsedConnection.database || "",
+      user: parsedConnection.user || "",
+      password: parsedConnection.password || ""
+    };
+  }
+}
+
 function loadConfig() {
   const fileEnv = parseDotEnv(backendEnvFile);
   const merged = { ...fileEnv, ...process.env };
+  const online = hasFlag("--online");
+  const dryRun = hasFlag("--dry-run");
+  const help = hasFlag("--help") || hasFlag("-h");
+
+  const onlineDatabaseUrl =
+    merged.ONLINE_DB_URL ||
+    merged.RAILWAY_DB_URL ||
+    merged.MYSQL_URL ||
+    merged.DATABASE_URL ||
+    "server=mysql.railway.internal;port=3306;database=railway;user=root;password=TBBbMYKLgQsXwRBstzsMnsuXblkFidih;SslMode=None;";
+  const parsedOnlineUrl = parseDatabaseUrl(onlineDatabaseUrl);
+
+  const onlineConfig = {
+    host:
+      merged.ONLINE_DB_SERVER ||
+      merged.MYSQLHOST ||
+      merged.RAILWAY_TCP_PROXY_DOMAIN ||
+      parsedOnlineUrl?.host ||
+      "",
+    port:
+      merged.ONLINE_DB_PORT ||
+      merged.MYSQLPORT ||
+      merged.RAILWAY_TCP_PROXY_PORT ||
+      parsedOnlineUrl?.port ||
+      "3306",
+    database:
+      merged.ONLINE_DB_NAME ||
+      merged.MYSQLDATABASE ||
+      merged.RAILWAY_DATABASE ||
+      merged.PGDATABASE ||
+      parsedOnlineUrl?.database ||
+      "",
+    user: merged.ONLINE_DB_USER || merged.MYSQLUSER || parsedOnlineUrl?.user || "",
+    password: merged.ONLINE_DB_PASSWORD || merged.MYSQLPASSWORD || parsedOnlineUrl?.password || ""
+  };
+
   const connectionString =
     merged.ConnectionStrings__DefaultConnection ||
     merged.CONNECTIONSTRINGS__DEFAULTCONNECTION ||
@@ -71,14 +141,21 @@ function loadConfig() {
 
   const parsedConnection = connectionString ? parseConnectionString(connectionString) : null;
 
-  return {
+  const localConfig = {
     host: merged.DB_SERVER || parsedConnection?.host || "localhost",
     port: merged.DB_PORT || parsedConnection?.port || "3306",
     database: merged.DB_NAME || parsedConnection?.database || "CSP_HSMS",
     user: merged.DB_USER || parsedConnection?.user || "root",
-    password: merged.DB_PASSWORD || parsedConnection?.password || "",
-    dryRun: process.argv.includes("--dry-run"),
-    help: process.argv.includes("--help") || process.argv.includes("-h")
+    password: merged.DB_PASSWORD || parsedConnection?.password || ""
+  };
+
+  const selected = online ? onlineConfig : localConfig;
+
+  return {
+    ...selected,
+    online,
+    dryRun,
+    help
   };
 }
 
@@ -105,9 +182,9 @@ function buildSeedData() {
   const cashierPassword = "Cashier@123";
 
   const users = [
-    { id: 1, username: "admin_user", password: adminPassword, role: "Admin" },
-    { id: 2, username: "manager_user", password: managerPassword, role: "Manager" },
-    { id: 3, username: "cashier_user", password: cashierPassword, role: "Cashier" },
+    { id: 1, username: "admin", password: adminPassword, role: "Admin" },
+    { id: 2, username: "manager", password: managerPassword, role: "Manager" },
+    { id: 3, username: "cashier_1", password: cashierPassword, role: "Cashier" },
     { id: 4, username: "cashier_2", password: "Cashier2@123", role: "Cashier" }
   ];
 
@@ -318,14 +395,24 @@ function printHelp() {
   console.log(`Usage:
   node scripts/reset-and-seed-db.js
   node scripts/reset-and-seed-db.js --dry-run
+  node scripts/reset-and-seed-db.js --online
+  node scripts/reset-and-seed-db.js --online --dry-run
 
 Configuration sources, in order:
-  1. Environment variables in the current shell
-  2. backend/.env
-  3. ConnectionStrings__DefaultConnection
+  Local mode (default):
+    1. Environment variables in the current shell
+    2. backend/.env
+    3. ConnectionStrings__DefaultConnection
+
+  Online mode (--online):
+    1. ONLINE_DB_URL | RAILWAY_DB_URL | MYSQL_URL | DATABASE_URL
+    2. ONLINE_DB_* or Railway MYSQL* variables (MYSQLHOST, MYSQLPORT, MYSQLDATABASE, MYSQLUSER, MYSQLPASSWORD)
 
 Supported environment variables:
-  DB_SERVER, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+  Local:  DB_SERVER, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+  Online: ONLINE_DB_URL, RAILWAY_DB_URL, MYSQL_URL, DATABASE_URL
+          ONLINE_DB_SERVER, ONLINE_DB_PORT, ONLINE_DB_NAME, ONLINE_DB_USER, ONLINE_DB_PASSWORD
+          MYSQLHOST, MYSQLPORT, MYSQLDATABASE, MYSQLUSER, MYSQLPASSWORD
 
 This script will:
   - create required tables if missing
@@ -369,14 +456,32 @@ function main() {
   }
 
   if (!config.database) {
-    throw new Error("Database name is missing. Set DB_NAME or ConnectionStrings__DefaultConnection.");
+    throw new Error(
+      config.online
+        ? "Database name is missing for online mode. Set MYSQL_URL/DATABASE_URL (or ONLINE_DB_NAME)."
+        : "Database name is missing. Set DB_NAME or ConnectionStrings__DefaultConnection."
+    );
+  }
+
+  if (config.online && (!config.host || !config.user)) {
+    throw new Error("Online mode requires host and user. Set MYSQL_URL/DATABASE_URL or ONLINE_DB_* / MYSQL* variables.");
+  }
+
+  if (config.online && config.host && config.host.endsWith(".railway.internal")) {
+    throw new Error(
+      "The host '" +
+        config.host +
+        "' is a private Railway hostname and cannot be reached from your local machine. " +
+        "Use Railway public TCP proxy values (MYSQLHOST, MYSQLPORT, MYSQLDATABASE, MYSQLUSER, MYSQLPASSWORD) " +
+        "or ONLINE_DB_SERVER/ONLINE_DB_PORT/ONLINE_DB_NAME/ONLINE_DB_USER/ONLINE_DB_PASSWORD."
+    );
   }
 
   const seed = buildSeedData();
   const sql = buildSql(seed);
 
   if (config.dryRun) {
-    console.log("Dry run only. Parsed database config:");
+    console.log(`Dry run only. Parsed database config (${config.online ? "online" : "local"} mode):`);
     console.log(JSON.stringify({
       host: config.host,
       port: config.port,
@@ -393,7 +498,7 @@ function main() {
 
   runMysql(config, sql);
 
-  console.log(`Database '${config.database}' was cleaned and seeded successfully.`);
+  console.log(`Database '${config.database}' was cleaned and seeded successfully (${config.online ? "online" : "local"} mode).`);
   console.log("Demo login credentials:");
   for (const credential of seed.credentials) {
     console.log(`- ${credential.role}: ${credential.username} / ${credential.password}`);

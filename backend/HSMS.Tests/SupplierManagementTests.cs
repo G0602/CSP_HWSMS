@@ -241,8 +241,7 @@ public class SupplierManagementTests
         var mockSupplierRepo = new Mock<ISupplierRepository>();
 
         mockProductRepo.Setup(r => r.AddProduct(It.IsAny<ProductCreateDTO>())).ReturnsAsync(1);
-        mockSupplierRepo.Setup(r => r.GetSuppliersAsync())
-            .ReturnsAsync(new List<Supplier> { new() { Id = 5, Name = "Supplier A" } });
+        mockSupplierRepo.Setup(r => r.SupplierExistsAsync(5)).ReturnsAsync(true);
 
         var controller = new ProductController(mockProductRepo.Object, null, mockSupplierRepo.Object);
         var dto = new ProductCreateDTO
@@ -272,8 +271,7 @@ public class SupplierManagementTests
         var mockProductRepo = new Mock<IProductRepository>();
         var mockSupplierRepo = new Mock<ISupplierRepository>();
 
-        mockSupplierRepo.Setup(r => r.GetSuppliersAsync())
-            .ReturnsAsync(new List<Supplier> { new() { Id = 5, Name = "Supplier A" } });
+        mockSupplierRepo.Setup(r => r.SupplierExistsAsync(999)).ReturnsAsync(false);
 
         var controller = new ProductController(mockProductRepo.Object, null, mockSupplierRepo.Object);
         var dto = new ProductCreateDTO
@@ -302,12 +300,7 @@ public class SupplierManagementTests
         var mockSupplierRepo = new Mock<ISupplierRepository>();
 
         mockProductRepo.Setup(r => r.UpdateProduct(1, It.IsAny<ProductUpdateDTO>())).ReturnsAsync(true);
-        mockSupplierRepo.Setup(r => r.GetSuppliersAsync())
-            .ReturnsAsync(new List<Supplier>
-            {
-                new() { Id = 5, Name = "Supplier A" },
-                new() { Id = 10, Name = "Supplier B" }
-            });
+        mockSupplierRepo.Setup(r => r.SupplierExistsAsync(10)).ReturnsAsync(true);
 
         var controller = new ProductController(mockProductRepo.Object, null, mockSupplierRepo.Object);
         var dto = new ProductUpdateDTO
@@ -338,8 +331,6 @@ public class SupplierManagementTests
         var mockSupplierRepo = new Mock<ISupplierRepository>();
 
         mockProductRepo.Setup(r => r.UpdateProduct(1, It.IsAny<ProductUpdateDTO>())).ReturnsAsync(true);
-        mockSupplierRepo.Setup(r => r.GetSuppliersAsync()).ReturnsAsync(new List<Supplier>());
-
         var controller = new ProductController(mockProductRepo.Object, null, mockSupplierRepo.Object);
         var dto = new ProductUpdateDTO
         {

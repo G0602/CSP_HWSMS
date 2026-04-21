@@ -5,9 +5,7 @@ import Navbar from "../components/Navbar";
 import { getCurrentUser, logout } from "../services/authService";
 import {
   exportReportCsv,
-  getDailySalesReport,
-  getLowStockReport,
-  getMonthlySalesReport,
+  getReportsSummary,
   type DailySalesReportItem,
   type LowStockReportItem,
   type MonthlySalesReportItem,
@@ -34,14 +32,10 @@ const DailySalesReportPage = () => {
     setIsLoading(true);
 
     try {
-      const [dailyData, monthlyData, lowStockData] = await Promise.all([
-        getDailySalesReport(),
-        getMonthlySalesReport(),
-        getLowStockReport(),
-      ]);
-      setReport(dailyData);
-      setMonthlyReport(monthlyData);
-      setLowStockReport(lowStockData);
+      const summary = await getReportsSummary();
+      setReport(summary.daily);
+      setMonthlyReport(summary.monthly);
+      setLowStockReport(summary.lowStock);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 401) {
         handleLogout();

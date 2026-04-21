@@ -45,9 +45,8 @@ public class ReportsController : ControllerBase
     [HttpGet("low-stock")]
     public async Task<IActionResult> GetLowStockReport()
     {
-        var products = await _productRepository.GetAllProducts();
+        var products = await _productRepository.GetLowStockProducts(_lowStockThreshold);
         var lowStockProducts = products
-            .Where(product => product.Quantity < _lowStockThreshold)
             .Select(product => new InventoryProductResponseDTO
             {
                 Id = product.Id,
@@ -61,6 +60,38 @@ public class ReportsController : ControllerBase
             });
 
         return Ok(lowStockProducts);
+    }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetReportsSummary()
+    {
+        var dailyTask = _saleRepository.GetDailySalesReportAsync();
+        var monthlyTask = _saleRepository.GetMonthlySalesReportAsync();
+        var lowStockTask = _productRepository.GetLowStockProducts(_lowStockThreshold);
+
+        await Task.WhenAll(dailyTask, monthlyTask, lowStockTask);
+
+        var response = new ReportsSummaryResponseDTO
+        {
+            Daily = dailyTask.Result,
+            Monthly = monthlyTask.Result,
+            LowStock = lowStockTask.Result
+                .Select(product => new InventoryProductResponseDTO
+                {
+                    Id = product.Id,
+                    Name = product.Name,
+                    SKU = product.SKU,
+                    Quantity = product.Quantity,
+                    Category = product.Category,
+                    Price = product.Price,
+                    SupplierId = product.SupplierId,
+                    IsLowStock = true
+                })
+                .ToList()
+        };
+
+        return Ok(response);
     }
 
     [Authorize(Policy = AuthPolicies.SalesRead)]
@@ -105,9 +136,7 @@ public class ReportsController : ControllerBase
             }
             case "low-stock":
             {
-                var products = await _productRepository.GetAllProducts();
-                var lowStockProducts = products
-                    .Where(product => product.Quantity < _lowStockThreshold)
+                var lowStockProducts = (await _productRepository.GetLowStockProducts(_lowStockThreshold))
                     .OrderBy(product => product.Name)
                     .ToList();
 

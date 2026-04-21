@@ -25,6 +25,12 @@ export type LowStockReportItem = {
 
 export type ReportExportType = "daily" | "monthly" | "low-stock";
 
+export type ReportsSummary = {
+  daily: DailySalesReportItem[];
+  monthly: MonthlySalesReportItem[];
+  lowStock: LowStockReportItem[];
+};
+
 const REPORTS_API_URL = `${API_BASE_URL}/api/reports`;
 
 export const getDailySalesReport = async () => {
@@ -43,6 +49,13 @@ export const getMonthlySalesReport = async () => {
 
 export const getLowStockReport = async () => {
   const { data } = await axios.get<LowStockReportItem[]>(`${REPORTS_API_URL}/low-stock`, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const getReportsSummary = async () => {
+  const { data } = await axios.get<ReportsSummary>(`${REPORTS_API_URL}/summary`, {
     headers: getAuthHeader(),
   });
   return data;

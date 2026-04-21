@@ -13,7 +13,6 @@ public class SaleRepository : ISaleRepository
     public SaleRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureSalesTablesExist();
     }
 
     public async Task<SaleResponseDTO> CreateSaleAsync(SaleCreateDTO sale, string soldBy)
@@ -380,51 +379,5 @@ public class SaleRepository : ISaleRepository
         }
 
         return invoice;
-    }
-
-    private void EnsureSalesTablesExist()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-                const string productsTableSql = @"CREATE TABLE IF NOT EXISTS Products (
-                                                                                        Id INT AUTO_INCREMENT PRIMARY KEY,
-                                                                                        Name VARCHAR(255) NOT NULL,
-                                                                                        SKU VARCHAR(100) NOT NULL,
-                                                                                        Price DECIMAL(10,2) NOT NULL,
-                                                                                        Quantity INT NOT NULL,
-                                                                                        Category VARCHAR(255) NOT NULL,
-                                                                                        SupplierId INT NULL,
-                                                                                        CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                                                                    );";
-
-        const string salesTableSql = @"CREATE TABLE IF NOT EXISTS Sales (
-                                         Id INT AUTO_INCREMENT PRIMARY KEY,
-                                         SoldAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                         TotalAmount DECIMAL(10,2) NOT NULL,
-                                         SoldBy VARCHAR(100) NOT NULL
-                                       );";
-
-        const string saleItemsTableSql = @"CREATE TABLE IF NOT EXISTS SaleItems (
-                                             Id INT AUTO_INCREMENT PRIMARY KEY,
-                                             SaleId INT NOT NULL,
-                                             ProductId INT NOT NULL,
-                                             ProductName VARCHAR(255) NOT NULL,
-                                             SKU VARCHAR(100) NOT NULL,
-                                             UnitPrice DECIMAL(10,2) NOT NULL,
-                                             Quantity INT NOT NULL,
-                                             LineSubtotal DECIMAL(10,2) NOT NULL,
-                                             FOREIGN KEY (SaleId) REFERENCES Sales(Id) ON DELETE CASCADE,
-                                             FOREIGN KEY (ProductId) REFERENCES Products(Id)
-                                           );";
-
-        using var productsCommand = new MySqlCommand(productsTableSql, connection);
-        productsCommand.ExecuteNonQuery();
-
-        using var salesCommand = new MySqlCommand(salesTableSql, connection);
-        salesCommand.ExecuteNonQuery();
-
-        using var saleItemsCommand = new MySqlCommand(saleItemsTableSql, connection);
-        saleItemsCommand.ExecuteNonQuery();
     }
 }
