@@ -120,6 +120,11 @@ jobs:
       - name: Publish API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release -o ${{ runner.temp }}/backend_publish
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Configure Azure App Settings
         uses: azure/appservice-settings@v1
         with:
