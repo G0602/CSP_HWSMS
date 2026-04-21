@@ -18,19 +18,6 @@ public class CurrentUserRoleHandler : AuthorizationHandler<CurrentUserRoleRequir
         AuthorizationHandlerContext context,
         CurrentUserRoleRequirement requirement)
     {
-        string? roleClaim = context.User.FindFirst(ClaimTypes.Role)?.Value;
-        if (!string.IsNullOrWhiteSpace(roleClaim))
-        {
-            bool hasAllowedClaimRole = requirement.AllowedRoles.Any(allowedRole =>
-                string.Equals(roleClaim, allowedRole, StringComparison.OrdinalIgnoreCase));
-
-            if (hasAllowedClaimRole)
-            {
-                context.Succeed(requirement);
-                return;
-            }
-        }
-
         string? subject = context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
             ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 

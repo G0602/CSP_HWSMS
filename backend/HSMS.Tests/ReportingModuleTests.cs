@@ -208,7 +208,7 @@ public class ReportingModuleTests
             new() { Id = 2, Name = "Normal", Quantity = 20, Category = "T", Price = 1000, SKU = "N1" }
         };
 
-        mockProductRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockProductRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(products.Where(p => p.Quantity < 10).ToList());
 
         var controller = new ReportsController(mockSaleRepo.Object, mockProductRepo.Object, config);
 
@@ -244,7 +244,7 @@ public class ReportingModuleTests
             }
         };
 
-        mockProductRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockProductRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(products);
 
         var controller = new ReportsController(mockSaleRepo.Object, mockProductRepo.Object, config);
 
@@ -278,7 +278,7 @@ public class ReportingModuleTests
             new() { Id = 1, Name = "Normal", Quantity = 50, Category = "T", Price = 1000, SKU = "N1" }
         };
 
-        mockProductRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockProductRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(new List<Product>());
 
         var controller = new ReportsController(mockSaleRepo.Object, mockProductRepo.Object, config);
 
@@ -361,7 +361,7 @@ public class ReportingModuleTests
             new() { Id = 1, Name = "Low Item", Quantity = 5, Category = "T", Price = 1000, SKU = "L1" }
         };
 
-        mockProductRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockProductRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(products);
 
         var controller = new ReportsController(mockSaleRepo.Object, mockProductRepo.Object, config);
 
@@ -413,7 +413,7 @@ public class ReportingModuleTests
             }
         };
 
-        mockProductRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockProductRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(products);
 
         var controller = new ReportsController(mockSaleRepo.Object, mockProductRepo.Object, config);
 

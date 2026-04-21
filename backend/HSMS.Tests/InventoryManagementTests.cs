@@ -159,7 +159,8 @@ public class InventoryManagementTests
             new() { Id = 4, Name = "High", Quantity = 50, Category = "T", Price = 1000, SKU = "H1" }
         };
 
-        mockRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync(
+            products.Where(p => p.Quantity < 10).OrderBy(p => p.Quantity).ThenBy(p => p.Name).ToList());
         var controller = new ProductController(mockRepo.Object, config);
 
         // Act
@@ -188,7 +189,8 @@ public class InventoryManagementTests
             new() { Id = 1, Name = "Test", Quantity = quantity, Category = "T", Price = 1000, SKU = "T1" }
         };
 
-        mockRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockRepo.Setup(r => r.GetLowStockProducts(threshold)).ReturnsAsync(
+            products.Where(p => p.Quantity < threshold).OrderBy(p => p.Quantity).ThenBy(p => p.Name).ToList());
         var controller = new ProductController(mockRepo.Object, config);
 
         // Act
@@ -214,7 +216,8 @@ public class InventoryManagementTests
             new() { Id = 2, Name = "Low2", Quantity = 10, Category = "T", Price = 1000, SKU = "L2" }
         };
 
-        mockRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockRepo.Setup(r => r.GetLowStockProducts(15)).ReturnsAsync(
+            products.Where(p => p.Quantity < 15).OrderBy(p => p.Quantity).ThenBy(p => p.Name).ToList());
         var controller = new ProductController(mockRepo.Object, config);
 
         // Act
@@ -239,7 +242,7 @@ public class InventoryManagementTests
             new() { Id = 2, Name = "Normal2", Quantity = 30, Category = "T", Price = 1000, SKU = "N2" }
         };
 
-        mockRepo.Setup(r => r.GetAllProducts()).ReturnsAsync(products);
+        mockRepo.Setup(r => r.GetLowStockProducts(10)).ReturnsAsync([]);
         var controller = new ProductController(mockRepo.Object, config);
 
         // Act

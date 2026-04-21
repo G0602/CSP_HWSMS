@@ -25,6 +25,7 @@ public class ReportsControllerTests
         {
             productRepo = new Mock<IProductRepository>();
             productRepo.Setup(repo => repo.GetAllProducts()).ReturnsAsync([]);
+            productRepo.Setup(repo => repo.GetLowStockProducts(It.IsAny<int>())).ReturnsAsync([]);
         }
         
         var controller = new ReportsController(saleRepo.Object, productRepo.Object, config);
@@ -107,7 +108,7 @@ public class ReportsControllerTests
         var saleRepo = new Mock<ISaleRepository>();
         var productRepo = new Mock<IProductRepository>();
 
-        productRepo.Setup(repo => repo.GetAllProducts())
+        productRepo.Setup(repo => repo.GetLowStockProducts(10))
             .ReturnsAsync(
             [
                 new Product
@@ -118,15 +119,6 @@ public class ReportsControllerTests
                     Quantity = 9,
                     Category = "Tools",
                     Price = 1500m
-                },
-                new Product
-                {
-                    Id = 2,
-                    Name = "Drill",
-                    SKU = "DR-1",
-                    Quantity = 10,
-                    Category = "Power Tools",
-                    Price = 12000m
                 }
             ]);
 
@@ -207,7 +199,7 @@ public class ReportsControllerTests
     {
         var saleRepo = new Mock<ISaleRepository>();
         var productRepo = new Mock<IProductRepository>();
-        productRepo.Setup(repo => repo.GetAllProducts())
+        productRepo.Setup(repo => repo.GetLowStockProducts(10))
             .ReturnsAsync(
             [
                 new Product
@@ -249,5 +241,37 @@ public class ReportsControllerTests
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal(400, badRequest.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetReportsSummary_Should_Return_All_Report_Sections()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var productRepo = new Mock<IProductRepository>();
+
+        saleRepo.Setup(repo => repo.GetDailySalesReportAsync())
+            .ReturnsAsync([new DailySalesReportItemDTO { Date = new DateTime(2026, 4, 3), TotalAmount = 15000m }]);
+        saleRepo.Setup(repo => repo.GetMonthlySalesReportAsync())
+            .ReturnsAsync([new MonthlySalesReportItemDTO { Month = new DateTime(2026, 4, 1), TotalAmount = 320000m }]);
+        productRepo.Setup(repo => repo.GetLowStockProducts(10))
+            .ReturnsAsync([new Product { Id = 1, Name = "Hammer", SKU = "HM-1", Quantity = 3, Category = "Tools", Price = 1500m }]);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["LOW_STOCK_THRESHOLD"] = "10"
+            })
+            .Build();
+
+        var controller = CreateController(saleRepo, productRepo, config);
+        var result = await controller.GetReportsSummary();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<ReportsSummaryResponseDTO>(ok.Value);
+
+        Assert.Single(payload.Daily);
+        Assert.Single(payload.Monthly);
+        Assert.Single(payload.LowStock);
+        Assert.True(payload.LowStock[0].IsLowStock);
     }
 }

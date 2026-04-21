@@ -181,7 +181,7 @@ public class ProductControllerTests
     public async Task GetLowStockProducts_Should_Filter_By_Configured_Threshold()
     {
         var mockRepo = new Mock<IProductRepository>();
-        mockRepo.Setup(repo => repo.GetAllProducts())
+        mockRepo.Setup(repo => repo.GetLowStockProducts(10))
                 .Returns(Task.FromResult(new List<Product>
                 {
                     new Product
@@ -191,15 +191,6 @@ public class ProductControllerTests
                         SKU = "HM-100",
                         Price = 1500,
                         Quantity = 9,
-                        Category = "Hand Tools"
-                    },
-                    new Product
-                    {
-                        Id = 2,
-                        Name = "Pliers",
-                        SKU = "PL-200",
-                        Price = 1200,
-                        Quantity = 10,
                         Category = "Hand Tools"
                     }
                 }));
