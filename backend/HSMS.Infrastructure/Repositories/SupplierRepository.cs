@@ -13,7 +13,6 @@ public class SupplierRepository : ISupplierRepository
     public SupplierRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureSuppliersTableExists();
     }
 
     public async Task<List<Supplier>> GetSuppliersAsync()
@@ -71,6 +70,19 @@ public class SupplierRepository : ISupplierRepository
 
         var result = await command.ExecuteScalarAsync();
         return Convert.ToInt32(result);
+    }
+
+    public async Task<bool> SupplierExistsAsync(int id)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = "SELECT COUNT(*) FROM Suppliers WHERE Id = @Id";
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Id", id);
+
+        int count = Convert.ToInt32(await command.ExecuteScalarAsync());
+        return count > 0;
     }
 
     public async Task<bool> UpdateSupplierAsync(int id, SupplierUpdateDTO dto)
@@ -166,35 +178,5 @@ public class SupplierRepository : ISupplierRepository
         int linkedCount = Convert.ToInt32(await linkedCommand.ExecuteScalarAsync());
 
         return linkedCount > 0;
-    }
-
-    private void EnsureSuppliersTableExists()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-        const string tableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
-                                    Id INT AUTO_INCREMENT PRIMARY KEY,
-                                    Name VARCHAR(255) NOT NULL UNIQUE,
-                                    ContactInfo VARCHAR(255),
-                                    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  );";
-
-        using var command = new MySqlCommand(tableSql, connection);
-        command.ExecuteNonQuery();
-
-        // Add ContactInfo column if it doesn't exist (migration support)
-        const string alterTableSql = @"ALTER TABLE Suppliers
-                                        ADD COLUMN IF NOT EXISTS ContactInfo VARCHAR(255);";
-
-        using var alterCommand = new MySqlCommand(alterTableSql, connection);
-        try
-        {
-            alterCommand.ExecuteNonQuery();
-        }
-        catch
-        {
-            // Column might already exist, safe to ignore
-        }
     }
 }

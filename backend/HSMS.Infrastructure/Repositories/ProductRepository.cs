@@ -15,8 +15,6 @@ namespace HSMS.Infrastructure.Repositories;
 public class ProductRepository : IProductRepository
 {
     private readonly string _connectionString;
-    private static readonly object SchemaLock = new();
-    private static bool _schemaInitialized;
 
     /// <summary>
     /// Resolves the connection string from application configuration and ensures the
@@ -26,7 +24,6 @@ public class ProductRepository : IProductRepository
     public ProductRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureProductsTableExists();
     }
 
     // CREATE
@@ -64,6 +61,40 @@ public class ProductRepository : IProductRepository
         using var command = new MySqlCommand("SELECT * FROM Products", connection);
         using var reader = await command.ExecuteReaderAsync();
 
+        while (await reader.ReadAsync())
+        {
+            products.Add(new Product
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                SKU = reader["SKU"].ToString()!,
+                Price = Convert.ToDecimal(reader["Price"]),
+                Quantity = Convert.ToInt32(reader["Quantity"]),
+                Category = reader["Category"].ToString()!,
+                SupplierId = reader["SupplierId"] == DBNull.Value ? null : Convert.ToInt32(reader["SupplierId"]),
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return products;
+    }
+
+    public async Task<List<Product>> GetLowStockProducts(int threshold)
+    {
+        var products = new List<Product>();
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT Id, Name, SKU, Price, Quantity, Category, SupplierId, CreatedAt
+                               FROM Products
+                               WHERE Quantity < @Threshold
+                               ORDER BY Quantity ASC, Name ASC";
+
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Threshold", Math.Max(1, threshold));
+
+        using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             products.Add(new Product
@@ -251,142 +282,5 @@ public class ProductRepository : IProductRepository
             await transaction.RollbackAsync();
             throw;
         }
-    }
-
-    /// <summary>
-    /// Creates the <c>Products</c> table if it does not already exist.
-    /// Executed synchronously during the repository constructor to guarantee
-    /// the table is present before the first request is served.
-    /// </summary>
-    private void EnsureProductsTableExists()
-    {
-        if (_schemaInitialized)
-        {
-            return;
-        }
-
-        lock (SchemaLock)
-        {
-            if (_schemaInitialized)
-            {
-                return;
-            }
-
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-        const string tableSql = @"CREATE TABLE IF NOT EXISTS Products (
-                                    Id INT AUTO_INCREMENT PRIMARY KEY,
-                                    Name VARCHAR(255) NOT NULL,
-                                    SKU VARCHAR(100) NOT NULL,
-                                    Price DECIMAL(10,2) NOT NULL,
-                                    Quantity INT NOT NULL,
-                                    Category VARCHAR(255) NOT NULL,
-                                    SupplierId INT NULL,
-                                    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  );";
-
-        using var command = new MySqlCommand(tableSql, connection);
-        command.ExecuteNonQuery();
-
-        EnsureColumnExists(connection, "Products", "Price", "ALTER TABLE Products ADD COLUMN Price DECIMAL(10,2) NOT NULL DEFAULT 0;");
-        EnsureColumnExists(connection, "Products", "Quantity", "ALTER TABLE Products ADD COLUMN Quantity INT NOT NULL DEFAULT 0;");
-        EnsureColumnExists(connection, "Products", "Category", "ALTER TABLE Products ADD COLUMN Category VARCHAR(255) NOT NULL DEFAULT '';");
-        EnsureColumnExists(connection, "Products", "SupplierId", "ALTER TABLE Products ADD COLUMN SupplierId INT NULL;");
-
-        const string suppliersTableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
-                                            Id INT AUTO_INCREMENT PRIMARY KEY,
-                                            Name VARCHAR(255) NOT NULL,
-                                            ContactInfo VARCHAR(255) NULL,
-                                            CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                          );";
-        using var suppliersTableCommand = new MySqlCommand(suppliersTableSql, connection);
-        suppliersTableCommand.ExecuteNonQuery();
-
-        EnsureColumnExists(connection, "Suppliers", "ContactInfo", "ALTER TABLE Suppliers ADD COLUMN ContactInfo VARCHAR(255) NULL;");
-
-        // Old databases may contain supplier ids that don't exist in Suppliers yet.
-        // Null them out before enforcing the foreign key so reads don't fail on startup.
-        const string clearOrphanedSupplierIdsSql = @"UPDATE Products p
-                                                     LEFT JOIN Suppliers s ON s.Id = p.SupplierId
-                                                     SET p.SupplierId = NULL
-                                                     WHERE p.SupplierId IS NOT NULL
-                                                       AND s.Id IS NULL;";
-        using var clearOrphanedSupplierIdsCommand = new MySqlCommand(clearOrphanedSupplierIdsSql, connection);
-        clearOrphanedSupplierIdsCommand.ExecuteNonQuery();
-
-        const string indexExistsSql = @"SELECT COUNT(*)
-                                        FROM INFORMATION_SCHEMA.STATISTICS
-                                        WHERE TABLE_SCHEMA = DATABASE()
-                                          AND TABLE_NAME = 'Products'
-                                          AND INDEX_NAME = 'IX_Products_SupplierId';";
-        using var indexExistsCommand = new MySqlCommand(indexExistsSql, connection);
-        int indexExists = Convert.ToInt32(indexExistsCommand.ExecuteScalar());
-        if (indexExists == 0)
-        {
-            const string supplierIndexSql = @"CREATE INDEX IX_Products_SupplierId
-                                              ON Products (SupplierId);";
-            using var supplierIndexCommand = new MySqlCommand(supplierIndexSql, connection);
-            supplierIndexCommand.ExecuteNonQuery();
-        }
-
-        const string fkExistsSql = @"SELECT COUNT(*)
-                                     FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-                                     WHERE CONSTRAINT_SCHEMA = DATABASE()
-                                       AND TABLE_NAME = 'Products'
-                                       AND CONSTRAINT_NAME = 'FK_Products_Suppliers'
-                                       AND CONSTRAINT_TYPE = 'FOREIGN KEY';";
-        using var fkExistsCommand = new MySqlCommand(fkExistsSql, connection);
-        int fkExists = Convert.ToInt32(fkExistsCommand.ExecuteScalar());
-        if (fkExists == 0)
-        {
-            const string addFkSql = @"ALTER TABLE Products
-                                      ADD CONSTRAINT FK_Products_Suppliers
-                                      FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
-                                      ON DELETE SET NULL;";
-            using var addFkCommand = new MySqlCommand(addFkSql, connection);
-            addFkCommand.ExecuteNonQuery();
-        }
-
-        const string stockLogTableSql = @"CREATE TABLE IF NOT EXISTS StockLogs (
-                                            Id INT AUTO_INCREMENT PRIMARY KEY,
-                                            ProductId INT NOT NULL,
-                                            PreviousQuantity INT NOT NULL,
-                                            NewQuantity INT NOT NULL,
-                                            ChangeAmount INT NOT NULL,
-                                            Reason VARCHAR(255) NULL,
-                                            UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                            INDEX IX_StockLogs_ProductId (ProductId),
-                                            CONSTRAINT FK_StockLogs_Products
-                                                FOREIGN KEY (ProductId) REFERENCES Products(Id)
-                                                ON DELETE CASCADE
-                                          );";
-
-        using var stockLogCommand = new MySqlCommand(stockLogTableSql, connection);
-        stockLogCommand.ExecuteNonQuery();
-        _schemaInitialized = true;
-        }
-    }
-
-    private static void EnsureColumnExists(MySqlConnection connection, string tableName, string columnName, string alterSql)
-    {
-        const string columnExistsSql = @"SELECT COUNT(*)
-                                         FROM INFORMATION_SCHEMA.COLUMNS
-                                         WHERE TABLE_SCHEMA = DATABASE()
-                                           AND TABLE_NAME = @TableName
-                                           AND COLUMN_NAME = @ColumnName;";
-
-        using var columnExistsCommand = new MySqlCommand(columnExistsSql, connection);
-        columnExistsCommand.Parameters.AddWithValue("@TableName", tableName);
-        columnExistsCommand.Parameters.AddWithValue("@ColumnName", columnName);
-
-        int columnExists = Convert.ToInt32(columnExistsCommand.ExecuteScalar());
-        if (columnExists > 0)
-        {
-            return;
-        }
-
-        using var alterCommand = new MySqlCommand(alterSql, connection);
-        alterCommand.ExecuteNonQuery();
     }
 }

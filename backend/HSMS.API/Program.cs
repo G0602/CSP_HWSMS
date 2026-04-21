@@ -2,6 +2,7 @@ using System.Text;
 using HSMS.API.Auth;
 using HSMS.API.Services;
 using HSMS.Application.Interfaces;
+using HSMS.Infrastructure.Data;
 using HSMS.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -45,6 +46,7 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 // Environment variables automatically override all JSON configuration files
 
 ApplyRailwayDatabaseConfiguration(builder.Configuration);
+ApplyConnectionStringOptimizations(builder.Configuration);
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -242,6 +244,10 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
+await DatabaseInitializer.InitializeAsync(
+    builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing."));
+
 // Seed default users ONLY in development environment
 bool seedDefaultUsers = app.Environment.IsDevelopment();
 if (seedDefaultUsers)
@@ -402,6 +408,25 @@ static string? BuildRailwayConnectionStringFromParts(IConfiguration configuratio
 
 	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
 	return $"server={host};port={normalizedPort};database={database};user={username};password={password};SslMode=Required;";
+}
+
+static void ApplyConnectionStringOptimizations(IConfigurationManager configuration)
+{
+	string? connectionString = configuration.GetConnectionString("DefaultConnection");
+	if (string.IsNullOrWhiteSpace(connectionString))
+	{
+		return;
+	}
+
+	var builder = new MySqlConnectionStringBuilder(connectionString)
+	{
+		Pooling = true,
+		MinimumPoolSize = 0,
+		MaximumPoolSize = 20,
+		ConnectionTimeout = Math.Max(15u, new MySqlConnectionStringBuilder(connectionString).ConnectionTimeout)
+	};
+
+	configuration["ConnectionStrings:DefaultConnection"] = builder.ConnectionString;
 }
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
