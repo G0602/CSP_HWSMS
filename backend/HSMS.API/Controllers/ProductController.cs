@@ -109,9 +109,8 @@ public class ProductController : ControllerBase
     [HttpGet("low-stock")]
     public async Task<IActionResult> GetLowStockProducts()
     {
-        var products = await _repository.GetAllProducts();
+        var products = await _repository.GetLowStockProducts(_lowStockThreshold);
         var lowStockProducts = products
-            .Where(product => product.Quantity < _lowStockThreshold)
             .Select(product => new InventoryProductResponseDTO
             {
                 Id = product.Id,
@@ -233,7 +232,6 @@ public class ProductController : ControllerBase
         if (!supplierId.HasValue || _supplierRepository is null)
             return true;
 
-        var suppliers = await _supplierRepository.GetSuppliersAsync();
-        return suppliers.Any(supplier => supplier.Id == supplierId.Value);
+        return await _supplierRepository.SupplierExistsAsync(supplierId.Value);
     }
 }
