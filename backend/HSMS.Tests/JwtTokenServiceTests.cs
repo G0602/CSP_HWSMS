@@ -98,4 +98,23 @@ public class JwtTokenServiceTests
 
         Assert.InRange(result.ExpiresAtUtc, minimumExpected, maximumExpected);
     }
+
+    [Fact]
+    public void GenerateToken_Should_Throw_When_Secret_Is_Too_Short()
+    {
+        var service = CreateService(new Dictionary<string, string?>
+        {
+            ["Jwt:Secret"] = "short-secret"
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => service.GenerateToken(new User
+        {
+            Id = 1,
+            Username = "admin",
+            Role = "Admin",
+            PasswordHash = "hash"
+        }));
+
+        Assert.Contains("at least 32 bytes", ex.Message);
+    }
 }

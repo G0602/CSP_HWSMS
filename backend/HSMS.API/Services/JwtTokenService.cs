@@ -22,6 +22,11 @@ public class JwtTokenService : IJwtTokenService
         string audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience is missing");
         string secret = _configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret is missing");
 
+        if (Encoding.UTF8.GetByteCount(secret) < 32)
+        {
+            throw new InvalidOperationException("Jwt:Secret must be at least 32 bytes for secure signing.");
+        }
+
         int expiryMinutes = 60;
         _ = int.TryParse(_configuration["Jwt:AccessTokenExpiryMinutes"], out expiryMinutes);
         if (expiryMinutes <= 0)
