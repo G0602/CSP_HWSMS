@@ -106,7 +106,7 @@ function loadConfig() {
     merged.RAILWAY_DB_URL ||
     merged.MYSQL_URL ||
     merged.DATABASE_URL ||
-    "server=mysql.railway.internal;port=3306;database=railway;user=root;password=TBBbMYKLgQsXwRBstzsMnsuXblkFidih;SslMode=None;";
+    "";
   const parsedOnlineUrl = parseDatabaseUrl(onlineDatabaseUrl);
 
   const onlineConfig = {
@@ -137,7 +137,7 @@ function loadConfig() {
     merged.ConnectionStrings__DefaultConnection ||
     merged.CONNECTIONSTRINGS__DEFAULTCONNECTION ||
     merged.DEFAULT_CONNECTION_STRING ||
-    "server=localhost;database=CSP_HSMS;user=CSP;password=sql123;AllowUserVariables=True;";
+    "";
 
   const parsedConnection = connectionString ? parseConnectionString(connectionString) : null;
 
@@ -177,15 +177,16 @@ function sqlString(value) {
 function buildSeedData() {
   const now = new Date();
   const isoDate = now.toISOString().slice(0, 19).replace("T", " ");
-  const adminPassword = "Admin@123";
-  const managerPassword = "Manager@123";
-  const cashierPassword = "Cashier@123";
+  const adminPassword = process.env.ADMIN_PASSWORD || "change-admin-password";
+  const managerPassword = process.env.MANAGER_PASSWORD || "change-manager-password";
+  const cashierPassword = process.env.CASHIER_PASSWORD || "change-cashier-password";
+  const cashier2Password = process.env.CASHIER_2_PASSWORD || "change-cashier-2-password";
 
   const users = [
     { id: 1, username: "admin", password: adminPassword, role: "Admin" },
     { id: 2, username: "manager", password: managerPassword, role: "Manager" },
     { id: 3, username: "cashier_1", password: cashierPassword, role: "Cashier" },
-    { id: 4, username: "cashier_2", password: "Cashier2@123", role: "Cashier" }
+    { id: 4, username: "cashier_2", password: cashier2Password, role: "Cashier" }
   ];
 
   const suppliers = [

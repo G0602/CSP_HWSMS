@@ -1,6 +1,5 @@
 const LOCAL_API_BASE_URL = "http://localhost:5162";
-const PRODUCTION_API_BASE_URL =
-  "https://hsmsbackend-e9acfpeff8bycuax.indonesiacentral-01.azurewebsites.net";
+const PRODUCTION_API_BASE_URL = "https://hsmsbackend-e9acfpeff8bycuax.indonesiacentral-01.azurewebsites.net";
 
 const normalizeBaseUrl = (value: string) => value.replace(/\/$/, "");
 
