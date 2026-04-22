@@ -34,8 +34,8 @@ public class ProductRepository : IProductRepository
         await connection.OpenAsync();
 
         string query = @"INSERT INTO Products (Name, SKU, Price, Quantity, Category, SupplierId)
-                         VALUES (@Name, @SKU, @Price, @Quantity, @Category, @SupplierId);
-                         SELECT LAST_INSERT_ID();";
+                 VALUES (@Name, @SKU, @Price, @Quantity, @Category, @SupplierId);
+                 SELECT LAST_INSERT_ID();";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Name", product.Name);
@@ -123,10 +123,10 @@ public class ProductRepository : IProductRepository
         await connection.OpenAsync();
 
         const string sql = @"SELECT *
-                             FROM Products
-                             WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
-                             ORDER BY Name ASC
-                             LIMIT @Limit";
+                     FROM Products
+                     WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
+                     ORDER BY Name ASC
+                     LIMIT @Limit";
 
         using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@Term", $"%{query}%");
