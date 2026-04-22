@@ -115,6 +115,11 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 	throw new InvalidOperationException("Jwt:Secret is empty. Set Jwt__Secret or JWT_SECRET.");
 }
 
+if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+{
+	throw new InvalidOperationException("Jwt:Secret must be at least 32 bytes for secure signing.");
+}
+
 builder.Services
 	.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
@@ -125,9 +130,13 @@ builder.Services
 			ValidateAudience = true,
 			ValidateIssuerSigningKey = true,
 			ValidateLifetime = true,
+			RequireSignedTokens = true,
+			RequireExpirationTime = true,
 			ValidIssuer = jwtIssuer,
 			ValidAudience = jwtAudience,
 			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+			NameClaimType = System.Security.Claims.ClaimTypes.Name,
+			RoleClaimType = System.Security.Claims.ClaimTypes.Role,
 			ClockSkew = TimeSpan.Zero
 		};
 	});

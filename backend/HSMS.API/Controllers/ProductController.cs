@@ -91,7 +91,11 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> GetInventoryProducts()
     {
         var products = await _repository.GetAllProducts();
-        var supplierNameById = await GetSupplierNameLookupAsync();
+        var supplierIds = products
+            .Where(product => product.SupplierId.HasValue)
+            .Select(product => product.SupplierId!.Value)
+            .Distinct();
+        var supplierNameById = await GetSupplierNameLookupAsync(supplierIds);
         var inventory = products.Select(product => new InventoryProductResponseDTO
         {
             Id = product.Id,
@@ -119,7 +123,11 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> GetLowStockProducts()
     {
         var products = await _repository.GetLowStockProducts(_lowStockThreshold);
-        var supplierNameById = await GetSupplierNameLookupAsync();
+        var supplierIds = products
+            .Where(product => product.SupplierId.HasValue)
+            .Select(product => product.SupplierId!.Value)
+            .Distinct();
+        var supplierNameById = await GetSupplierNameLookupAsync(supplierIds);
         var lowStockProducts = products
             .Select(product => new InventoryProductResponseDTO
             {
@@ -257,12 +265,12 @@ public class ProductController : ControllerBase
         return await _supplierRepository.SupplierExistsAsync(supplierId.Value);
     }
 
-    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync()
+    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync(IEnumerable<int> supplierIds)
     {
         if (_supplierRepository is null)
             return [];
 
-        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        var suppliers = await _supplierRepository.GetSuppliersByIdsAsync(supplierIds);
         return suppliers.ToDictionary(supplier => supplier.Id, supplier => supplier.Name);
     }
 
