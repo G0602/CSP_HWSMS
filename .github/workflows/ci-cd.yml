@@ -42,8 +42,7 @@ jobs:
       HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -55,8 +54,6 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'backend/**/*.sln') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
 
       - name: Restore
         run: dotnet restore backend/HSMS.sln
@@ -74,6 +71,9 @@ jobs:
     name: Frontend CI (Build)
     runs-on: ubuntu-latest
 
+    outputs:
+      build-path: frontend/HWSMS_UI/dist
+
     steps:
       - uses: actions/checkout@v4
 
@@ -88,16 +88,18 @@ jobs:
         working-directory: frontend/HWSMS_UI
         run: npm ci
 
-      - name: Clean Cache
-        working-directory: frontend/HWSMS_UI
-        run: rm -rf node_modules/.tmp dist build
-
       - name: Build Frontend
         working-directory: frontend/HWSMS_UI
         run: npm run build
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/HWSMS_UI/dist
+
 # =========================
-# 🔵 BACKEND DEPLOY (AZURE)
+# 🔵 BACKEND DEPLOY
 # =========================
   deploy_backend:
     name: Deploy Backend (Azure App Service)
@@ -120,25 +122,6 @@ jobs:
       - name: Publish API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release -o ${{ runner.temp }}/backend_publish
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Configure Azure App Settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
-          app-settings-json: |
-            [
-              { "name": "DB_HOST", "value": "${{ secrets.DB_HOST }}" },
-              { "name": "DB_USER", "value": "${{ secrets.DB_USER }}" },
-              { "name": "DB_PASSWORD", "value": "${{ secrets.DB_PASSWORD }}" },
-              { "name": "DB_NAME", "value": "hwsms" },
-              { "name": "DB_PORT", "value": "3306" },
-              { "name": "CORS_ORIGINS", "value": "${{ vars.FRONTEND_URL }}" }
-            ]
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
@@ -147,7 +130,7 @@ jobs:
           package: ${{ runner.temp }}/backend_publish
 
 # =========================
-# 🟢 FRONTEND DEPLOY (AZURE STATIC WEB APP)
+# 🟢 FRONTEND DEPLOY
 # =========================
   deploy_frontend:
     name: Deploy Frontend (Azure Static Web Apps)
@@ -158,11 +141,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Frontend
-        working-directory: frontend/HWSMS_UI
-        run: |
-          npm ci
-          npm run build
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend_build
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
@@ -170,5 +153,5 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APP_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "frontend/HWSMS_UI"
-          output_location: "dist"
+          app_location: "frontend_build"
+          output_location: ""
