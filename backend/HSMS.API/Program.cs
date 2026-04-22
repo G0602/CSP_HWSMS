@@ -14,12 +14,12 @@ using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load environment-specific configuration
-// Priority: appsettings.json -> appsettings.{Environment}.json -> environment variables
-if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
-{
-	builder.Configuration.AddJsonFile("appsettings.Production.json", optional: true);
-}
+// WebApplication.CreateBuilder loads appsettings.json, appsettings.{Environment}.json,
+// and environment variables in the correct order, with environment variables winning.
+
+ApplyEnvironmentVariableAliases(builder.Configuration);
+ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
+ApplyConnectionStringOptimizations(builder.Configuration);
 
 // ----- CRITICAL: Validate mandatory configuration at startup -----
 string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -43,10 +43,7 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 		);
 	}
 }
-// Environment variables automatically override all JSON configuration files
-
-ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
-ApplyConnectionStringOptimizations(builder.Configuration);
+// Environment variables automatically override all JSON configuration files.
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -107,11 +104,16 @@ builder.Services.AddSwaggerGen(options =>
 
 // ----- JWT Authentication -----
 string jwtSecret = builder.Configuration["Jwt:Secret"]
-	?? throw new InvalidOperationException("Jwt:Secret is missing in appsettings.json");
+	?? throw new InvalidOperationException("Jwt:Secret is missing. Set Jwt__Secret or JWT_SECRET.");
 string jwtIssuer = builder.Configuration["Jwt:Issuer"]
-	?? throw new InvalidOperationException("Jwt:Issuer is missing in appsettings.json");
+	?? throw new InvalidOperationException("Jwt:Issuer is missing. Set Jwt__Issuer or JWT_ISSUER.");
 string jwtAudience = builder.Configuration["Jwt:Audience"]
-	?? throw new InvalidOperationException("Jwt:Audience is missing in appsettings.json");
+	?? throw new InvalidOperationException("Jwt:Audience is missing. Set Jwt__Audience or JWT_AUDIENCE.");
+
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+	throw new InvalidOperationException("Jwt:Secret is empty. Set Jwt__Secret or JWT_SECRET.");
+}
 
 builder.Services
 	.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -166,7 +168,6 @@ builder.Services.AddAuthorization(options =>
 // Database hosts are not browser origins and are not part of CORS.
 string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
 string? frontendUrl = builder.Configuration["FRONTEND_URL"];
-string? backendPublicUrl = builder.Configuration["BACKEND_PUBLIC_URL"];
 
 var originCandidates = new List<string>();
 
@@ -183,11 +184,6 @@ if (!string.IsNullOrWhiteSpace(frontendUrl))
 	originCandidates.Add(frontendUrl.Trim().TrimEnd('/'));
 }
 
-if (!string.IsNullOrWhiteSpace(backendPublicUrl))
-{
-	originCandidates.Add(backendPublicUrl.Trim().TrimEnd('/'));
-}
-
 // Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
 {
@@ -202,10 +198,11 @@ if (originCandidates.Count == 0)
 	}
 	else
 	{
-		// Production must have explicit CORS configuration
-		throw new InvalidOperationException(
-			"PRODUCTION ERROR: CORS is not configured.\n" +
-			"Set environment variables: CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL"
+		originCandidates.AddRange(
+		[
+			"https://delightful-tree-0e4ad5000.7.azurestaticapps.net",
+			"https://csp-hwsms-hnqk.vercel.app"
+		]
 		);
 	}
 }
@@ -314,8 +311,30 @@ static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
 
 	string host = uri.Host;
 	return uri.Scheme == Uri.UriSchemeHttps
-		&& host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
-		&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+		&& (
+			(host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
+				&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))
+			|| host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
+		);
+}
+
+static void ApplyEnvironmentVariableAliases(IConfigurationManager configuration)
+{
+	ApplyAlias(configuration, "JWT_SECRET", "Jwt:Secret");
+	ApplyAlias(configuration, "JWT_ISSUER", "Jwt:Issuer");
+	ApplyAlias(configuration, "JWT_AUDIENCE", "Jwt:Audience");
+	ApplyAlias(configuration, "JWT_EXPIRY_MINUTES", "Jwt:AccessTokenExpiryMinutes");
+	ApplyAlias(configuration, "AZURE_MYSQL_CONNECTIONSTRING", "ConnectionStrings:DefaultConnection");
+	ApplyAlias(configuration, "MYSQLCONNSTR_DefaultConnection", "ConnectionStrings:DefaultConnection");
+}
+
+static void ApplyAlias(IConfigurationManager configuration, string aliasKey, string targetKey)
+{
+	string? aliasValue = configuration[aliasKey];
+	if (!string.IsNullOrWhiteSpace(aliasValue))
+	{
+		configuration[targetKey] = aliasValue;
+	}
 }
 
 static void ApplyAzureMySqlDatabaseConfiguration(IConfigurationManager configuration)
@@ -392,10 +411,18 @@ static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguratio
 	var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 	var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
-	// Read default passwords from environment variables
-	string adminPassword = configuration["ADMIN_PASSWORD"] ?? "Admin@123";
-	string managerPassword = configuration["MANAGER_PASSWORD"] ?? "Manager@123";
-	string cashierPassword = configuration["CASHIER_PASSWORD"] ?? "Cashier@123";
+	// Development seed credentials must be provided via environment variables.
+	string? adminPassword = configuration["ADMIN_PASSWORD"];
+	string? managerPassword = configuration["MANAGER_PASSWORD"];
+	string? cashierPassword = configuration["CASHIER_PASSWORD"];
+
+	if (string.IsNullOrWhiteSpace(adminPassword)
+		|| string.IsNullOrWhiteSpace(managerPassword)
+		|| string.IsNullOrWhiteSpace(cashierPassword))
+	{
+		Console.WriteLine("Skipping default user seed. Set ADMIN_PASSWORD, MANAGER_PASSWORD, and CASHIER_PASSWORD to enable development seeding.");
+		return;
+	}
 
 	var usersToSeed = new[]
 	{

@@ -1,17 +1,51 @@
-version: '3.8'
 services:
   backend:
-    build: ./src/backend
+    build:
+      context: ..
+      dockerfile: hardware-store-hsms/docker/backend.Dockerfile
     ports:
-      - "5000:80"
+      - "5162:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Server=db;Port=3306;Database=${DB_NAME:-CSP_HSMS};Uid=${DB_USER:-hsms};Pwd=${DB_PASSWORD:-change_me_local};AllowUserVariables=True;
+      Jwt__Secret: ${JWT_SECRET:-development-only-docker-secret-change-me-1234567890}
+      Jwt__Issuer: ${JWT_ISSUER:-HSMS.API}
+      Jwt__Audience: ${JWT_AUDIENCE:-HSMS.Client}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      LOW_STOCK_THRESHOLD: ${LOW_STOCK_THRESHOLD:-10}
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
-    build: ./src/frontend
+    build:
+      context: ..
+      dockerfile: hardware-store-hsms/docker/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5162}
     ports:
-      - "3000:3000"
+      - "8080:80"
+    depends_on:
+      - backend
 
   db:
-    image: mysql:8
+    image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      
+      MYSQL_DATABASE: ${DB_NAME:-CSP_HSMS}
+      MYSQL_USER: ${DB_USER:-hsms}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change_me_local}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - hsms-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-change_me_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  hsms-mysql-data:
