@@ -1,5 +1,6 @@
 using System.Text;
 using HSMS.API.Auth;
+using HSMS.API.Configuration;
 using HSMS.API.Services;
 using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Data;
@@ -235,7 +236,7 @@ builder.Services.AddCors(options =>
 	options.AddPolicy("FrontendPolicy", policy =>
 	{
 		policy
-			.SetIsOriginAllowed(origin => IsAllowedFrontendOrigin(origin, allowedOrigins))
+			.SetIsOriginAllowed(origin => CorsOriginPolicy.IsAllowedFrontendOrigin(origin, allowedOrigins))
 			.AllowAnyHeader()
 			.AllowAnyMethod();
 	});
@@ -301,33 +302,6 @@ app.MapHealthChecks("/api/health", new HealthCheckOptions
 });
 
 app.Run();
-
-static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
-{
-	if (string.IsNullOrWhiteSpace(origin))
-	{
-		return false;
-	}
-
-	string normalizedOrigin = origin.Trim().TrimEnd('/');
-	if (allowedOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase))
-	{
-		return true;
-	}
-
-	if (!Uri.TryCreate(normalizedOrigin, UriKind.Absolute, out var uri))
-	{
-		return false;
-	}
-
-	string host = uri.Host;
-	return uri.Scheme == Uri.UriSchemeHttps
-		&& (
-			(host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
-				&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))
-			|| host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
-		);
-}
 
 static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
 {
