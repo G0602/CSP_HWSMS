@@ -536,7 +536,7 @@ function buildJmx(endpoints, defaults) {
           </elementProp>
           <elementProp name="password" elementType="Argument">
             <stringProp name="Argument.name">password</stringProp>
-            <stringProp name="Argument.value">\${__P(password,Admin@123)}</stringProp>
+            <stringProp name="Argument.value">\${__P(password,change_admin_password)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="productId" elementType="Argument">
@@ -651,7 +651,7 @@ host=${defaults.host}
 port=${defaults.port}
 
 username=admin_user
-password=Admin@123
+password=change_admin_password
 productId=1
 supplierId=1
 saleId=1

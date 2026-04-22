@@ -21,7 +21,7 @@ jobs:
 # 🔵 BACKEND CI
 # =========================
   backend_ci:
-    name: Backend CI (Build + Tests)
+    name: Backend CI (Build + Tests + Coverage)
     runs-on: ubuntu-latest
 
     services:
@@ -61,14 +61,24 @@ jobs:
       - name: Build
         run: dotnet build backend/HSMS.sln -c Release --no-restore
 
-      - name: Run Tests
-        run: dotnet test backend/HSMS.Tests/HSMS.Tests.csproj -c Release --no-build
+      - name: Run Tests with Coverage
+        run: dotnet test backend/HSMS.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings backend/HSMS.Tests/coverlet.runsettings
+
+      - name: Upload Backend Coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: |
+            backend/**/TestResults/**/coverage.cobertura.xml
+            backend/**/TestResults/**/*.trx
+          if-no-files-found: warn
 
 # =========================
 # 🟣 FRONTEND CI
 # =========================
   frontend_ci:
-    name: Frontend CI (Build)
+    name: Frontend CI (Build + Tests)
     runs-on: ubuntu-latest
 
     outputs:
@@ -88,9 +98,15 @@ jobs:
         working-directory: frontend/HWSMS_UI
         run: npm ci
 
+      - name: Run Frontend Tests
+        working-directory: frontend/HWSMS_UI
+        run: npm test
+
       - name: Build Frontend
         working-directory: frontend/HWSMS_UI
         run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -104,7 +120,7 @@ jobs:
   deploy_backend:
     name: Deploy Backend (Azure App Service)
     runs-on: ubuntu-latest
-    needs: backend_ci
+    needs: [backend_ci, frontend_ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
 
@@ -135,7 +151,7 @@ jobs:
   deploy_frontend:
     name: Deploy Frontend (Azure Static Web Apps)
     runs-on: ubuntu-latest
-    needs: frontend_ci
+    needs: [backend_ci, frontend_ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -155,3 +171,53 @@ jobs:
           action: "upload"
           app_location: "frontend_build"
           output_location: ""
+
+# =========================
+# 🧪 POST-DEPLOY VERIFY
+# =========================
+  smoke_test:
+    name: Verify Live Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy_backend, deploy_frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check Backend Health
+        run: |
+          test -n "${{ vars.BACKEND_PUBLIC_URL }}"
+          curl --fail --show-error --silent "${{ vars.BACKEND_PUBLIC_URL }}/api/health"
+
+      - name: Check Frontend Availability
+        run: |
+          test -n "${{ vars.FRONTEND_PUBLIC_URL }}"
+          curl --fail --show-error --silent --head "${{ vars.FRONTEND_PUBLIC_URL }}"
+
+# =========================
+# 🔔 FAILURE NOTIFICATION
+# =========================
+  notify_failure:
+    name: Notify Failure
+    runs-on: ubuntu-latest
+    needs: [backend_ci, frontend_ci, deploy_backend, deploy_frontend, smoke_test]
+    if: always() && contains(needs.*.result, 'failure')
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Write Failure Summary
+        run: |
+          echo "## HSMS CI/CD failed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow: $GITHUB_WORKFLOW" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Branch/ref: $GITHUB_REF" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send Slack Notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl --fail --show-error --silent \
+            -X POST \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\"HSMS CI/CD failed: ${RUN_URL}\"}" \
+            "$SLACK_WEBHOOK_URL"

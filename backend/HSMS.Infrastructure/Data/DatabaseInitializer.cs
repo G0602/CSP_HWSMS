@@ -104,6 +104,18 @@ public static class DatabaseInitializer
                 "IX_Products_Quantity",
                 "CREATE INDEX IX_Products_Quantity ON Products (Quantity);",
                 cancellationToken);
+            await EnsureIndexExistsAsync(
+                connection,
+                "Products",
+                "IX_Products_SKU",
+                "CREATE INDEX IX_Products_SKU ON Products (SKU);",
+                cancellationToken);
+            await EnsureIndexExistsAsync(
+                connection,
+                "Products",
+                "IX_Products_Category",
+                "CREATE INDEX IX_Products_Category ON Products (Category);",
+                cancellationToken);
 
             const string fkExistsSql = @"SELECT COUNT(*)
                                          FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
