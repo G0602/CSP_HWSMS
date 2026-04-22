@@ -1,9 +1,9 @@
-import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import SupplierFormCard from "../components/SupplierFormCard";
 import { CRITICAL_STOCK_THRESHOLD, LOW_STOCK_THRESHOLD } from "../constants/inventory";
+import { getApiErrorMessage, isForbidden, isUnauthorized } from "../services/apiError";
 import { logout } from "../services/authService";
 import { getInventoryProducts, updateProductStock, type InventoryProduct } from "../services/productService";
 import { addSupplier, getSuppliers, type Supplier, type SupplierPayload } from "../services/supplierService";
@@ -40,17 +40,17 @@ const InventoryPage = () => {
       const data = await getInventoryProducts();
       setInventory(data);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      setError("Failed to load inventory.");
+      setError(getApiErrorMessage(err, "Failed to load inventory."));
     } finally {
       setIsLoading(false);
     }
@@ -65,12 +65,12 @@ const InventoryPage = () => {
       const data = await getSuppliers();
       setSuppliers(data);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
@@ -164,21 +164,17 @@ const InventoryPage = () => {
       closeStockModal();
       await loadInventory();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setStockFormError(err.response.data);
-      } else {
-        setStockFormError("Failed to update stock.");
-      }
+      setStockFormError(getApiErrorMessage(err, "Failed to update stock."));
     } finally {
       setIsStockUpdating(false);
     }
@@ -194,21 +190,17 @@ const InventoryPage = () => {
       setSuccessMessage(`Supplier "${payload.name}" added successfully.`);
       await loadSuppliers();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setError(err.response.data);
-      } else {
-        setError("Failed to add supplier.");
-      }
+      setError(getApiErrorMessage(err, "Failed to add supplier."));
     } finally {
       setIsSupplierSubmitting(false);
     }
@@ -307,7 +299,8 @@ const InventoryPage = () => {
                     <td className="py-3">Rs. {priceFormatter.format(product.price)}</td>
                     <td className="py-3">{product.category}</td>
                     <td className="py-3 text-slate-600">
-                      {product.supplierId ? supplierNameById[product.supplierId] ?? `Supplier #${product.supplierId}` : "-"}
+                      {product.supplierName
+                        ?? (product.supplierId ? supplierNameById[product.supplierId] ?? `Supplier #${product.supplierId}` : "-")}
                     </td>
                     <td className="py-3">
                       <button
@@ -356,7 +349,9 @@ const InventoryPage = () => {
             <p className="mt-1 text-sm text-slate-500">
               Supplier:{" "}
               {stockModalProduct.supplierId
-                ? supplierNameById[stockModalProduct.supplierId] ?? `Supplier #${stockModalProduct.supplierId}`
+                ? stockModalProduct.supplierName
+                  ?? supplierNameById[stockModalProduct.supplierId]
+                  ?? `Supplier #${stockModalProduct.supplierId}`
                 : "Not assigned"}
             </p>
 

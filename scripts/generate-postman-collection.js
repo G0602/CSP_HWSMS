@@ -183,8 +183,8 @@ function guessSampleValue(type, name, dtoMap) {
   }
 
   if (normalizedType === "string" || normalizedType === "string?") {
-    if (lowerName.includes("username")) return "admin_user";
-    if (lowerName.includes("password")) return "Password@123";
+    if (lowerName.includes("username")) return "{{username}}";
+    if (lowerName.includes("password")) return "{{password}}";
     if (lowerName === "role") return "Admin";
     if (lowerName.includes("sku")) return "SKU-1001";
     if (lowerName.includes("category")) return "Tools";
@@ -431,6 +431,7 @@ function buildPrerequest(endpoint) {
 }
 
 function buildTests(endpoint) {
+  const route = endpoint.route.toLowerCase();
   const lines = [
     "pm.test('Response status is expected', function () {",
     "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
@@ -452,9 +453,14 @@ function buildTests(endpoint) {
     );
   }
 
-  if (endpoint.route === "api/Auth/login" || endpoint.route === "api/Auth/register") {
+  if (route === "api/auth/login" || route === "api/auth/register") {
     lines.push(
       "const json = pm.response.json();",
+      "pm.test('Auth response includes user and token data', function () {",
+      "  pm.expect(json).to.have.property('accessToken');",
+      "  pm.expect(json).to.have.property('username');",
+      "  pm.expect(json).to.have.property('role');",
+      "});",
       "if (json && json.accessToken) {",
       "  pm.environment.set('accessToken', json.accessToken);",
       "  pm.environment.set('currentUserId', String(json.userId || ''));",
@@ -464,28 +470,65 @@ function buildTests(endpoint) {
     );
   }
 
-  if (endpoint.route === "api/suppliers" && endpoint.method === "POST") {
+  if (route === "api/suppliers" && endpoint.method === "POST") {
     lines.push(
       "const json = pm.response.json();",
       "if (json && json.id) { pm.environment.set('supplierId', String(json.id)); }"
     );
   }
 
-  if (endpoint.route === "api/users" && endpoint.method === "POST") {
+  if (route === "api/users" && endpoint.method === "POST") {
     lines.push(
       "const json = pm.response.json();",
       "if (json && json.id) { pm.environment.set('userId', String(json.id)); }"
     );
   }
 
-  if (endpoint.route === "api/Sales" && endpoint.method === "POST") {
+  if (route === "api/sales" && endpoint.method === "POST") {
     lines.push(
       "const json = pm.response.json();",
+      "pm.test('Sale response includes transaction totals', function () {",
+      "  pm.expect(json).to.have.property('saleId');",
+      "  pm.expect(json).to.have.property('totalAmount');",
+      "  pm.expect(json.totalAmount).to.be.a('number');",
+      "});",
       "if (json && json.saleId) { pm.environment.set('saleId', String(json.saleId)); }"
     );
   }
 
-  if (endpoint.route === "api/health") {
+  if (route === "api/reports/summary") {
+    lines.push(
+      "const json = pm.response.json();",
+      "pm.test('Reports summary includes all sections', function () {",
+      "  pm.expect(json).to.have.property('daily');",
+      "  pm.expect(json).to.have.property('monthly');",
+      "  pm.expect(json).to.have.property('lowStock');",
+      "});"
+    );
+  }
+
+  if (route === "api/reports/analytics") {
+    lines.push(
+      "const json = pm.response.json();",
+      "pm.test('Analytics response includes sales and profit metrics', function () {",
+      "  pm.expect(json).to.have.property('totalSales');",
+      "  pm.expect(json).to.have.property('totalProfit');",
+      "  pm.expect(json).to.have.property('dailyTrends');",
+      "  pm.expect(json).to.have.property('monthlyTrends');",
+      "});"
+    );
+  }
+
+  if (route === "api/reports/export") {
+    lines.push(
+      "pm.test('CSV export returns downloadable content', function () {",
+      "  pm.expect(pm.response.headers.get('Content-Type') || '').to.include('text/csv');",
+      "  pm.expect(pm.response.text()).to.include(',');",
+      "});"
+    );
+  }
+
+  if (route === "api/health") {
     return [
       "pm.test('Health endpoint returns 200', function () {",
       "  pm.response.to.have.status(200);",
@@ -613,6 +656,8 @@ function buildCollection(controllers, frontendUsage) {
     variable: [
       { key: "baseUrl", value: "http://localhost:5162" },
       { key: "accessToken", value: "" },
+      { key: "username", value: "admin_user" },
+      { key: "password", value: "Admin@123" },
       { key: "productId", value: "1" },
       { key: "supplierId", value: "1" },
       { key: "saleId", value: "1" },
@@ -628,6 +673,8 @@ function buildEnvironment() {
     values: [
       { key: "baseUrl", value: "http://localhost:5162", type: "default", enabled: true },
       { key: "accessToken", value: "", type: "secret", enabled: true },
+      { key: "username", value: "admin_user", type: "default", enabled: true },
+      { key: "password", value: "Admin@123", type: "secret", enabled: true },
       { key: "productId", value: "1", type: "default", enabled: true },
       { key: "supplierId", value: "1", type: "default", enabled: true },
       { key: "saleId", value: "1", type: "default", enabled: true },
