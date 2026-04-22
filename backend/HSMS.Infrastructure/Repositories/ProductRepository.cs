@@ -24,7 +24,6 @@ public class ProductRepository : IProductRepository
     public ProductRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureProductsTableExists();
     }
 
     // CREATE
@@ -35,8 +34,8 @@ public class ProductRepository : IProductRepository
         await connection.OpenAsync();
 
         string query = @"INSERT INTO Products (Name, SKU, Price, Quantity, Category, SupplierId)
-                         VALUES (@Name, @SKU, @Price, @Quantity, @Category, @SupplierId);
-                         SELECT LAST_INSERT_ID();";
+                 VALUES (@Name, @SKU, @Price, @Quantity, @Category, @SupplierId);
+                 SELECT LAST_INSERT_ID();";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Name", product.Name);
@@ -80,6 +79,40 @@ public class ProductRepository : IProductRepository
         return products;
     }
 
+    public async Task<List<Product>> GetLowStockProducts(int threshold)
+    {
+        var products = new List<Product>();
+
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT Id, Name, SKU, Price, Quantity, Category, SupplierId, CreatedAt
+                               FROM Products
+                               WHERE Quantity < @Threshold
+                               ORDER BY Quantity ASC, Name ASC";
+
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Threshold", Math.Max(1, threshold));
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            products.Add(new Product
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                SKU = reader["SKU"].ToString()!,
+                Price = Convert.ToDecimal(reader["Price"]),
+                Quantity = Convert.ToInt32(reader["Quantity"]),
+                Category = reader["Category"].ToString()!,
+                SupplierId = reader["SupplierId"] == DBNull.Value ? null : Convert.ToInt32(reader["SupplierId"]),
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return products;
+    }
+
     // SEARCH
     /// <inheritdoc/>
     public async Task<List<Product>> SearchProducts(string query, int limit = 20)
@@ -90,10 +123,10 @@ public class ProductRepository : IProductRepository
         await connection.OpenAsync();
 
         const string sql = @"SELECT *
-                             FROM Products
-                             WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
-                             ORDER BY Name ASC
-                             LIMIT @Limit";
+                     FROM Products
+                     WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
+                     ORDER BY Name ASC
+                     LIMIT @Limit";
 
         using var command = new MySqlCommand(sql, connection);
         command.Parameters.AddWithValue("@Term", $"%{query}%");
@@ -192,6 +225,12 @@ public class ProductRepository : IProductRepository
     /// <inheritdoc/>
     public async Task<bool> UpdateProductStock(int id, ProductStockUpdateDTO stockUpdate)
     {
+        // Validate that quantity is non-negative
+        if (stockUpdate.Quantity < 0)
+        {
+            return false;
+        }
+
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
         await using var transaction = await connection.BeginTransactionAsync();
@@ -243,97 +282,5 @@ public class ProductRepository : IProductRepository
             await transaction.RollbackAsync();
             throw;
         }
-    }
-
-    /// <summary>
-    /// Creates the <c>Products</c> table if it does not already exist.
-    /// Executed synchronously during the repository constructor to guarantee
-    /// the table is present before the first request is served.
-    /// </summary>
-    private void EnsureProductsTableExists()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-        const string tableSql = @"CREATE TABLE IF NOT EXISTS Products (
-                                    Id INT AUTO_INCREMENT PRIMARY KEY,
-                                    Name VARCHAR(255) NOT NULL,
-                                    SKU VARCHAR(100) NOT NULL,
-                                    Price DECIMAL(10,2) NOT NULL,
-                                    Quantity INT NOT NULL,
-                                    Category VARCHAR(255) NOT NULL,
-                                    SupplierId INT NULL,
-                                    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  );";
-
-        using var command = new MySqlCommand(tableSql, connection);
-        command.ExecuteNonQuery();
-
-        const string ensureColumnsSql = @"ALTER TABLE Products
-                                          ADD COLUMN IF NOT EXISTS Price DECIMAL(10,2) NOT NULL DEFAULT 0,
-                                          ADD COLUMN IF NOT EXISTS Quantity INT NOT NULL DEFAULT 0,
-                                          ADD COLUMN IF NOT EXISTS Category VARCHAR(255) NOT NULL DEFAULT '',
-                                          ADD COLUMN IF NOT EXISTS SupplierId INT NULL;";
-
-        using var ensureColumnsCommand = new MySqlCommand(ensureColumnsSql, connection);
-        ensureColumnsCommand.ExecuteNonQuery();
-
-        const string suppliersTableSql = @"CREATE TABLE IF NOT EXISTS Suppliers (
-                                            Id INT AUTO_INCREMENT PRIMARY KEY,
-                                            Name VARCHAR(255) NOT NULL,
-                                            CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                          );";
-        using var suppliersTableCommand = new MySqlCommand(suppliersTableSql, connection);
-        suppliersTableCommand.ExecuteNonQuery();
-
-        const string indexExistsSql = @"SELECT COUNT(*)
-                                        FROM INFORMATION_SCHEMA.STATISTICS
-                                        WHERE TABLE_SCHEMA = DATABASE()
-                                          AND TABLE_NAME = 'Products'
-                                          AND INDEX_NAME = 'IX_Products_SupplierId';";
-        using var indexExistsCommand = new MySqlCommand(indexExistsSql, connection);
-        int indexExists = Convert.ToInt32(indexExistsCommand.ExecuteScalar());
-        if (indexExists == 0)
-        {
-            const string supplierIndexSql = @"CREATE INDEX IX_Products_SupplierId
-                                              ON Products (SupplierId);";
-            using var supplierIndexCommand = new MySqlCommand(supplierIndexSql, connection);
-            supplierIndexCommand.ExecuteNonQuery();
-        }
-
-        const string fkExistsSql = @"SELECT COUNT(*)
-                                     FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-                                     WHERE CONSTRAINT_SCHEMA = DATABASE()
-                                       AND TABLE_NAME = 'Products'
-                                       AND CONSTRAINT_NAME = 'FK_Products_Suppliers'
-                                       AND CONSTRAINT_TYPE = 'FOREIGN KEY';";
-        using var fkExistsCommand = new MySqlCommand(fkExistsSql, connection);
-        int fkExists = Convert.ToInt32(fkExistsCommand.ExecuteScalar());
-        if (fkExists == 0)
-        {
-            const string addFkSql = @"ALTER TABLE Products
-                                      ADD CONSTRAINT FK_Products_Suppliers
-                                      FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
-                                      ON DELETE SET NULL;";
-            using var addFkCommand = new MySqlCommand(addFkSql, connection);
-            addFkCommand.ExecuteNonQuery();
-        }
-
-        const string stockLogTableSql = @"CREATE TABLE IF NOT EXISTS StockLogs (
-                                            Id INT AUTO_INCREMENT PRIMARY KEY,
-                                            ProductId INT NOT NULL,
-                                            PreviousQuantity INT NOT NULL,
-                                            NewQuantity INT NOT NULL,
-                                            ChangeAmount INT NOT NULL,
-                                            Reason VARCHAR(255) NULL,
-                                            UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                            INDEX IX_StockLogs_ProductId (ProductId),
-                                            CONSTRAINT FK_StockLogs_Products
-                                                FOREIGN KEY (ProductId) REFERENCES Products(Id)
-                                                ON DELETE CASCADE
-                                          );";
-
-        using var stockLogCommand = new MySqlCommand(stockLogTableSql, connection);
-        stockLogCommand.ExecuteNonQuery();
     }
 }

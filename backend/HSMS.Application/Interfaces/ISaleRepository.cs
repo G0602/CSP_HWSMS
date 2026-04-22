@@ -10,6 +10,7 @@ public interface ISaleRepository
 
     Task<List<DailySalesReportItemDTO>> GetDailySalesReportAsync();
     Task<List<MonthlySalesReportItemDTO>> GetMonthlySalesReportAsync();
+    Task<SalesAnalyticsResponseDTO> GetSalesAnalyticsAsync(DateTime? fromDate, DateTime? toDate, int? productId, string? category, decimal costRatio);
 
     Task<SaleResponseDTO?> GetSaleDetailsAsync(int saleId);
 

@@ -2,10 +2,15 @@ using System.Text;
 using HSMS.API.Auth;
 using HSMS.API.Services;
 using HSMS.Application.Interfaces;
+using HSMS.Infrastructure.Data;
 using HSMS.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,11 +20,60 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 {
 	builder.Configuration.AddJsonFile("appsettings.Production.json", optional: true);
 }
+
+// ----- CRITICAL: Validate mandatory configuration at startup -----
+string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+	throw new InvalidOperationException(
+		"CRITICAL: ConnectionStrings:DefaultConnection is empty or not set.\n" +
+		"Set the environment variable: ConnectionStrings__DefaultConnection=\"Server=...;Database=CSP_HSMS;...\""
+	);
+}
+
+// Validate JWT secret in production
+if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
+{
+	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
+	if (string.IsNullOrWhiteSpace(jwtSecretValue))
+	{
+		throw new InvalidOperationException(
+			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
+			"Set the environment variable: Jwt__Secret=\"your-secure-secret-key\""
+		);
+	}
+}
 // Environment variables automatically override all JSON configuration files
+
+ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
+ApplyConnectionStringOptimizations(builder.Configuration);
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services
+	.AddHealthChecks()
+	.AddCheck("mysql", () =>
+	{
+		try
+		{
+			string? configuredConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+			if (string.IsNullOrWhiteSpace(configuredConnectionString))
+			{
+				return HealthCheckResult.Unhealthy("ConnectionStrings:DefaultConnection is not configured.");
+			}
+
+			using var connection = new MySqlConnection(configuredConnectionString);
+			connection.Open();
+			return connection.State == System.Data.ConnectionState.Open
+				? HealthCheckResult.Healthy("Database connection is available.")
+				: HealthCheckResult.Unhealthy("Database connection could not be opened.");
+		}
+		catch (Exception ex)
+		{
+			return HealthCheckResult.Unhealthy("Database connectivity check failed.", ex);
+		}
+	});
 
 // ----- Swagger / OpenAPI -----
 // Accessible at /swagger in Development (and any environment in this build).
@@ -79,25 +133,32 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
 	options.AddPolicy(AuthPolicies.InventoryRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier)));
 
 	options.AddPolicy(AuthPolicies.InventoryManagerRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.InventoryWrite, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.InventoryDelete, policy =>
-		policy.RequireRole(AppRoles.Admin));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin)));
 
 	options.AddPolicy(AuthPolicies.SalesCreate, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager, AppRoles.Cashier)));
 
 	options.AddPolicy(AuthPolicies.SalesRead, policy =>
-		policy.RequireRole(AppRoles.Admin, AppRoles.Manager));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin, AppRoles.Manager)));
 
 	options.AddPolicy(AuthPolicies.UsersManage, policy =>
-		policy.RequireRole(AppRoles.Admin));
+		policy.RequireAuthenticatedUser()
+			  .AddRequirements(new CurrentUserRoleRequirement(AppRoles.Admin)));
 });
 
 // ----- CORS -----
@@ -127,16 +188,26 @@ if (!string.IsNullOrWhiteSpace(backendPublicUrl))
 	originCandidates.Add(backendPublicUrl.Trim().TrimEnd('/'));
 }
 
-// Development-safe defaults so local startup works even without env values.
+// Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
 {
-	originCandidates.AddRange(
-	[
-		"http://localhost:5173",
-		"http://localhost:3000",
-		"https://csp-hwsms.vercel.app"
-	]
-	);
+	if (builder.Environment.IsDevelopment())
+	{
+		originCandidates.AddRange(
+		[
+			"http://localhost:5173",
+			"http://localhost:3000"
+		]
+		);
+	}
+	else
+	{
+		// Production must have explicit CORS configuration
+		throw new InvalidOperationException(
+			"PRODUCTION ERROR: CORS is not configured.\n" +
+			"Set environment variables: CORS_ORIGINS, FRONTEND_URL, or BACKEND_PUBLIC_URL"
+		);
+	}
 }
 
 var allowedOrigins = originCandidates
@@ -155,9 +226,10 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy("FrontendPolicy", policy =>
 	{
-		policy.WithOrigins(allowedOrigins)
-			  .AllowAnyHeader()
-			  .AllowAnyMethod();
+		policy
+			.SetIsOriginAllowed(origin => IsAllowedFrontendOrigin(origin, allowedOrigins))
+			.AllowAnyHeader()
+			.AllowAnyMethod();
 	});
 });
 
@@ -165,30 +237,154 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthorizationHandler, CurrentUserRoleHandler>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-// Seed default users only if enabled via environment variable
-bool seedDefaultUsers = builder.Configuration.GetValue<bool>("SEED_DEFAULT_USERS", true);
+await DatabaseInitializer.InitializeAsync(
+    builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing."));
+
+// Seed default users ONLY in development environment
+bool seedDefaultUsers = app.Environment.IsDevelopment();
 if (seedDefaultUsers)
 {
 	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
 }
 
 // ----- Middleware Pipeline -----
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger only exposed in development for security
+if (app.Environment.IsDevelopment())
+{
+	app.UseSwagger();
+	app.UseSwaggerUI();
+}
 
 app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+
 app.MapControllers();
+app.MapHealthChecks("/api/health", new HealthCheckOptions
+{
+	ResponseWriter = async (context, report) =>
+	{
+		context.Response.ContentType = "application/json";
+
+		var response = new
+		{
+			status = report.Status == HealthStatus.Healthy ? "healthy" : "unhealthy",
+			timestamp = DateTime.UtcNow,
+			checks = report.Entries.ToDictionary(
+				entry => entry.Key,
+				entry => new
+				{
+					status = entry.Value.Status.ToString().ToLowerInvariant(),
+					description = entry.Value.Description
+				})
+		};
+
+		await context.Response.WriteAsJsonAsync(response);
+	}
+});
 
 app.Run();
+
+static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
+{
+	if (string.IsNullOrWhiteSpace(origin))
+	{
+		return false;
+	}
+
+	string normalizedOrigin = origin.Trim().TrimEnd('/');
+	if (allowedOrigins.Contains(normalizedOrigin, StringComparer.OrdinalIgnoreCase))
+	{
+		return true;
+	}
+
+	if (!Uri.TryCreate(normalizedOrigin, UriKind.Absolute, out var uri))
+	{
+		return false;
+	}
+
+	string host = uri.Host;
+	return uri.Scheme == Uri.UriSchemeHttps
+		&& host.StartsWith("csp-hwsms", StringComparison.OrdinalIgnoreCase)
+		&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
+
+static void ApplyAzureMySqlDatabaseConfiguration(IConfigurationManager configuration)
+{
+	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
+	string normalizedCurrentConnection = currentConnection ?? string.Empty;
+	bool isMissingConnection = string.IsNullOrWhiteSpace(currentConnection);
+	bool isLocalConnection = !isMissingConnection &&
+		(normalizedCurrentConnection.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+		|| normalizedCurrentConnection.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase));
+
+	if (!isMissingConnection && !isLocalConnection)
+	{
+		return;
+	}
+
+	string? azureConnection = configuration["AZURE_MYSQL_CONNECTIONSTRING"]
+		?? BuildAzureMySqlConnectionStringFromParts(configuration);
+
+	if (!string.IsNullOrWhiteSpace(azureConnection))
+	{
+		configuration["ConnectionStrings:DefaultConnection"] = azureConnection;
+	}
+}
+
+static string? BuildAzureMySqlConnectionStringFromParts(IConfiguration configuration)
+{
+	string? host = configuration["AZURE_MYSQL_HOST"] ?? configuration["HOST"] ?? configuration["DB_HOST"];
+	string? port = configuration["AZURE_MYSQL_PORT"] ?? configuration["PORT"] ?? configuration["DB_PORT"];
+	string? database = configuration["AZURE_MYSQL_DATABASE"] ?? configuration["DB"] ?? configuration["DB_NAME"];
+	string? username = configuration["AZURE_MYSQL_USER"] ?? configuration["USER"] ?? configuration["DB_USER"];
+	string? password = configuration["AZURE_MYSQL_PASSWORD"] ?? configuration["PASSWORD"] ?? configuration["DB_PASSWORD"];
+
+	if (string.IsNullOrWhiteSpace(host)
+		|| string.IsNullOrWhiteSpace(database)
+		|| string.IsNullOrWhiteSpace(username)
+		|| string.IsNullOrWhiteSpace(password))
+	{
+		return null;
+	}
+
+	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
+	return $"Server={host};Port={normalizedPort};Database={database};Uid={username};Pwd={password};SslMode=Required;";
+}
+
+static void ApplyConnectionStringOptimizations(IConfigurationManager configuration)
+{
+	string? connectionString = configuration.GetConnectionString("DefaultConnection");
+	if (string.IsNullOrWhiteSpace(connectionString))
+	{
+		return;
+	}
+
+	var builder = new MySqlConnectionStringBuilder(connectionString)
+	{
+		Pooling = true,
+		MinimumPoolSize = 0,
+		MaximumPoolSize = 20,
+		ConnectionTimeout = Math.Max(15u, new MySqlConnectionStringBuilder(connectionString).ConnectionTimeout)
+	};
+
+	if (!builder.Server.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+		&& !builder.Server.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+	{
+		builder.SslMode = MySqlSslMode.Required;
+	}
+
+	configuration["ConnectionStrings:DefaultConnection"] = builder.ConnectionString;
+}
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
 {

@@ -22,9 +22,28 @@ public class SalesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateSale(SaleCreateDTO dto)
     {
-        if (dto.Items.Count == 0)
+        if (dto.Items is null || dto.Items.Count == 0)
         {
             return BadRequest("Please add at least one item to the sale.");
+        }
+
+        if (dto.Items.Any(item => item.ProductId <= 0))
+        {
+            return BadRequest("Each sale item must reference a valid product.");
+        }
+
+        if (dto.Items.Any(item => item.Quantity <= 0))
+        {
+            return BadRequest("Each sale item quantity must be greater than zero.");
+        }
+
+        var duplicateProductId = dto.Items
+            .GroupBy(item => item.ProductId)
+            .FirstOrDefault(group => group.Count() > 1)
+            ?.Key;
+        if (duplicateProductId.HasValue)
+        {
+            return BadRequest($"Product {duplicateProductId.Value} is already in the sale. Update its quantity instead of adding it twice.");
         }
 
         string soldBy = User.FindFirstValue(ClaimTypes.Name) ?? "unknown-user";

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAuthHeader } from "./authService";
+import { API_BASE_URL } from "../config/api";
 
 export type DailySalesReportItem = {
   date: string;
@@ -19,24 +20,47 @@ export type LowStockReportItem = {
   category: string;
   price: number;
   supplierId?: number | null;
+  supplierName?: string | null;
   isLowStock: boolean;
 };
 
-const resolveApiBaseUrl = () => {
-  const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (explicitBaseUrl) {
-    return explicitBaseUrl.replace(/\/$/, "");
-  }
+export type ReportExportType = "daily" | "monthly" | "low-stock";
 
-  const legacyProductUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (legacyProductUrl) {
-    return legacyProductUrl.replace(/\/api\/Product\/?$/i, "").replace(/\/$/, "");
-  }
-
-  return "http://localhost:5162";
+export type ReportsSummary = {
+  daily: DailySalesReportItem[];
+  monthly: MonthlySalesReportItem[];
+  lowStock: LowStockReportItem[];
 };
 
-const API_BASE_URL = resolveApiBaseUrl();
+export type DailySalesAnalyticsItem = {
+  date: string;
+  sales: number;
+  cost: number;
+  profit: number;
+};
+
+export type MonthlySalesAnalyticsItem = {
+  month: string;
+  sales: number;
+  cost: number;
+  profit: number;
+};
+
+export type SalesAnalytics = {
+  totalSales: number;
+  totalCost: number;
+  totalProfit: number;
+  dailyTrends: DailySalesAnalyticsItem[];
+  monthlyTrends: MonthlySalesAnalyticsItem[];
+};
+
+export type SalesAnalyticsFilters = {
+  fromDate?: string;
+  toDate?: string;
+  productId?: number;
+  category?: string;
+};
+
 const REPORTS_API_URL = `${API_BASE_URL}/api/reports`;
 
 export const getDailySalesReport = async () => {
@@ -60,19 +84,35 @@ export const getLowStockReport = async () => {
   return data;
 };
 
-export const exportDailySalesCsv = async () => {
+export const getReportsSummary = async () => {
+  const { data } = await axios.get<ReportsSummary>(`${REPORTS_API_URL}/summary`, {
+    headers: getAuthHeader(),
+  });
+  return data;
+};
+
+export const exportReportCsv = async (type: ReportExportType) => {
   const response = await axios.get(`${REPORTS_API_URL}/export`, {
     headers: getAuthHeader(),
-    params: { type: "daily" },
+    params: { type },
     responseType: "blob",
   });
 
   const disposition = response.headers["content-disposition"] as string | undefined;
   const fileNameMatch = disposition?.match(/filename="?([^"]+)"?/i);
-  const fileName = fileNameMatch?.[1] ?? `daily-sales-report-${new Date().toISOString().slice(0, 10)}.csv`;
+  const fileName = fileNameMatch?.[1] ?? `${type}-report-${new Date().toISOString().slice(0, 10)}.csv`;
 
   return {
     blob: response.data as Blob,
     fileName,
   };
+};
+
+export const getSalesAnalytics = async (filters: SalesAnalyticsFilters) => {
+  const { data } = await axios.get<SalesAnalytics>(`${REPORTS_API_URL}/analytics`, {
+    headers: getAuthHeader(),
+    params: filters,
+  });
+
+  return data;
 };

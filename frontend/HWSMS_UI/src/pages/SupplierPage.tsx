@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { getApiErrorMessage, isForbidden, isUnauthorized } from "../services/apiError";
 import { logout } from "../services/authService";
 import { deleteSupplier, getSuppliers, updateSupplier, type Supplier } from "../services/supplierService";
 
@@ -15,6 +15,7 @@ const SupplierPage = () => {
 
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editName, setEditName] = useState("");
+  const [editContactInfo, setEditContactInfo] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [editError, setEditError] = useState("");
 
@@ -34,17 +35,17 @@ const SupplierPage = () => {
       const data = await getSuppliers();
       setSuppliers(data);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      setError("Failed to load suppliers.");
+      setError(getApiErrorMessage(err, "Failed to load suppliers."));
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +63,7 @@ const SupplierPage = () => {
   const openEditModal = (supplier: Supplier) => {
     setEditingSupplier(supplier);
     setEditName(supplier.name);
+    setEditContactInfo(supplier.contactInfo || "");
     setEditError("");
   };
 
@@ -82,26 +84,25 @@ const SupplierPage = () => {
     setSuccessMessage("");
 
     try {
-      await updateSupplier(editingSupplier.id, { name });
+      await updateSupplier(editingSupplier.id, { 
+        name,
+        contactInfo: editContactInfo.trim() || undefined
+      });
       setSuccessMessage("Supplier updated successfully.");
       setEditingSupplier(null);
       await loadSuppliers();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setEditError(err.response.data);
-      } else {
-        setEditError("Failed to update supplier.");
-      }
+      setEditError(getApiErrorMessage(err, "Failed to update supplier."));
     } finally {
       setIsUpdating(false);
     }
@@ -122,21 +123,17 @@ const SupplierPage = () => {
       setDeletingSupplier(null);
       await loadSuppliers();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setError(err.response.data);
-      } else {
-        setError("Failed to delete supplier.");
-      }
+      setError(getApiErrorMessage(err, "Failed to delete supplier."));
     } finally {
       setIsDeleting(false);
     }
@@ -160,6 +157,7 @@ const SupplierPage = () => {
             <thead>
               <tr className="border-b border-slate-200 text-left text-slate-500">
                 <th className="py-2">Name</th>
+                <th className="py-2">Contact Info</th>
                 <th className="py-2">Created</th>
                 <th className="py-2">Actions</th>
               </tr>
@@ -167,7 +165,7 @@ const SupplierPage = () => {
             <tbody>
               {!isLoading && filteredSuppliers.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-5 text-slate-500">
+                  <td colSpan={4} className="py-5 text-slate-500">
                     No suppliers found.
                   </td>
                 </tr>
@@ -176,6 +174,7 @@ const SupplierPage = () => {
               {filteredSuppliers.map((supplier) => (
                 <tr key={supplier.id} className="border-b border-slate-100">
                   <td className="py-3 font-medium text-slate-900">{supplier.name}</td>
+                  <td className="py-3 text-slate-600">{supplier.contactInfo || "-"}</td>
                   <td className="py-3 text-slate-600">
                     {supplier.createdAt ? new Date(supplier.createdAt).toLocaleString() : "-"}
                   </td>
@@ -208,14 +207,26 @@ const SupplierPage = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-slate-900">Edit Supplier</h3>
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Contact Info</label>
+                <input
+                  type="text"
+                  value={editContactInfo}
+                  onChange={(e) => setEditContactInfo(e.target.value)}
+                  placeholder="Phone or email"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
             </div>
             {editError && <div className="mt-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">{editError}</div>}
             <div className="mt-5 flex justify-end gap-3">

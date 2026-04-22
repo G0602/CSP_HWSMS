@@ -13,7 +13,6 @@ public class SaleRepository : ISaleRepository
     public SaleRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureSalesTablesExist();
     }
 
     public async Task<SaleResponseDTO> CreateSaleAsync(SaleCreateDTO sale, string soldBy)
@@ -216,7 +215,7 @@ public class SaleRepository : ISaleRepository
         const string query = @"SELECT DATE(SoldAt) AS ReportDate,
                                       SUM(TotalAmount) AS TotalAmount
                                FROM Sales
-                               GROUP BY DATE(SoldAt)
+                       GROUP BY DATE(SoldAt)
                                ORDER BY ReportDate DESC";
 
         await using var command = new MySqlCommand(query, connection);
@@ -241,10 +240,10 @@ public class SaleRepository : ISaleRepository
         await using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string query = @"SELECT DATE_FORMAT(SoldAt, '%Y-%m-01') AS ReportMonth,
+        const string query = @"SELECT DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY) AS ReportMonth,
                                       SUM(TotalAmount) AS TotalAmount
                                FROM Sales
-                               GROUP BY YEAR(SoldAt), MONTH(SoldAt)
+                       GROUP BY DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY)
                                ORDER BY ReportMonth DESC";
 
         await using var command = new MySqlCommand(query, connection);
@@ -260,6 +259,152 @@ public class SaleRepository : ISaleRepository
         }
 
         return report;
+    }
+
+    public async Task<SalesAnalyticsResponseDTO> GetSalesAnalyticsAsync(
+        DateTime? fromDate,
+        DateTime? toDate,
+        int? productId,
+        string? category,
+        decimal costRatio)
+    {
+        decimal normalizedCostRatio = decimal.Clamp(costRatio, 0m, 1m);
+        string normalizedCategory = category?.Trim() ?? string.Empty;
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var filterClauses = new List<string>();
+        if (fromDate.HasValue)
+        {
+            filterClauses.Add("s.SoldAt >= @FromDate");
+        }
+
+        if (toDate.HasValue)
+        {
+            filterClauses.Add("s.SoldAt < @ToDateExclusive");
+        }
+
+        if (productId.HasValue)
+        {
+            filterClauses.Add("si.ProductId = @ProductId");
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedCategory))
+        {
+            filterClauses.Add("p.Category = @Category");
+        }
+
+        string whereClause = filterClauses.Count > 0
+            ? $"WHERE {string.Join(" AND ", filterClauses)}"
+            : string.Empty;
+
+        string fromAndJoins = $@"FROM SaleItems si
+                                 INNER JOIN Sales s ON s.Id = si.SaleId
+                                 LEFT JOIN Products p ON p.Id = si.ProductId
+                                 {whereClause}";
+
+        async Task AddCommonParametersAsync(MySqlCommand command)
+        {
+            command.Parameters.AddWithValue("@CostRatio", normalizedCostRatio);
+
+            if (fromDate.HasValue)
+            {
+                command.Parameters.AddWithValue("@FromDate", fromDate.Value.Date);
+            }
+
+            if (toDate.HasValue)
+            {
+                command.Parameters.AddWithValue("@ToDateExclusive", toDate.Value.Date.AddDays(1));
+            }
+
+            if (productId.HasValue)
+            {
+                command.Parameters.AddWithValue("@ProductId", productId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedCategory))
+            {
+                command.Parameters.AddWithValue("@Category", normalizedCategory);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        var response = new SalesAnalyticsResponseDTO();
+
+        string totalsQuery = $@"SELECT
+                                    COALESCE(SUM(si.LineSubtotal), 0) AS TotalSales,
+                                    ROUND(COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio, 2) AS TotalCost,
+                                    ROUND(COALESCE(SUM(si.LineSubtotal), 0) - (COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio), 2) AS TotalProfit
+                                {fromAndJoins};";
+
+        await using (var totalsCommand = new MySqlCommand(totalsQuery, connection))
+        {
+            await AddCommonParametersAsync(totalsCommand);
+            await using var reader = await totalsCommand.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                response.TotalSales = Convert.ToDecimal(reader["TotalSales"]);
+                response.TotalCost = Convert.ToDecimal(reader["TotalCost"]);
+                response.TotalProfit = Convert.ToDecimal(reader["TotalProfit"]);
+            }
+        }
+
+        string dailyQuery = $@"SELECT
+                                   DATE(s.SoldAt) AS ReportDate,
+                                   COALESCE(SUM(si.LineSubtotal), 0) AS Sales,
+                                   ROUND(COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio, 2) AS Cost,
+                                   ROUND(COALESCE(SUM(si.LineSubtotal), 0) - (COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio), 2) AS Profit
+                               {fromAndJoins}
+                               GROUP BY DATE(s.SoldAt)
+                               ORDER BY ReportDate ASC;";
+
+        await using (var dailyCommand = new MySqlCommand(dailyQuery, connection))
+        {
+            await AddCommonParametersAsync(dailyCommand);
+            await using var reader = await dailyCommand.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                response.DailyTrends.Add(new DailySalesAnalyticsItemDTO
+                {
+                    Date = Convert.ToDateTime(reader["ReportDate"]),
+                    Sales = Convert.ToDecimal(reader["Sales"]),
+                    Cost = Convert.ToDecimal(reader["Cost"]),
+                    Profit = Convert.ToDecimal(reader["Profit"])
+                });
+            }
+        }
+
+        string monthlyQuery = $@"SELECT
+                                     DATE_SUB(DATE(s.SoldAt), INTERVAL DAY(s.SoldAt) - 1 DAY) AS ReportMonth,
+                                     COALESCE(SUM(si.LineSubtotal), 0) AS Sales,
+                                     ROUND(COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio, 2) AS Cost,
+                                     ROUND(COALESCE(SUM(si.LineSubtotal), 0) - (COALESCE(SUM(si.LineSubtotal), 0) * @CostRatio), 2) AS Profit
+                                 {fromAndJoins}
+                                 GROUP BY DATE_SUB(DATE(s.SoldAt), INTERVAL DAY(s.SoldAt) - 1 DAY)
+                                 ORDER BY ReportMonth ASC;";
+
+        await using (var monthlyCommand = new MySqlCommand(monthlyQuery, connection))
+        {
+            await AddCommonParametersAsync(monthlyCommand);
+            await using var reader = await monthlyCommand.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                response.MonthlyTrends.Add(new MonthlySalesAnalyticsItemDTO
+                {
+                    Month = Convert.ToDateTime(reader["ReportMonth"]),
+                    Sales = Convert.ToDecimal(reader["Sales"]),
+                    Cost = Convert.ToDecimal(reader["Cost"]),
+                    Profit = Convert.ToDecimal(reader["Profit"])
+                });
+            }
+        }
+
+        return response;
     }
 
     public async Task<SaleResponseDTO?> GetSaleDetailsAsync(int saleId)
@@ -380,51 +525,5 @@ public class SaleRepository : ISaleRepository
         }
 
         return invoice;
-    }
-
-    private void EnsureSalesTablesExist()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-                const string productsTableSql = @"CREATE TABLE IF NOT EXISTS Products (
-                                                                                        Id INT AUTO_INCREMENT PRIMARY KEY,
-                                                                                        Name VARCHAR(255) NOT NULL,
-                                                                                        SKU VARCHAR(100) NOT NULL,
-                                                                                        Price DECIMAL(10,2) NOT NULL,
-                                                                                        Quantity INT NOT NULL,
-                                                                                        Category VARCHAR(255) NOT NULL,
-                                                                                        SupplierId INT NULL,
-                                                                                        CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                                                                    );";
-
-        const string salesTableSql = @"CREATE TABLE IF NOT EXISTS Sales (
-                                         Id INT AUTO_INCREMENT PRIMARY KEY,
-                                         SoldAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                         TotalAmount DECIMAL(10,2) NOT NULL,
-                                         SoldBy VARCHAR(100) NOT NULL
-                                       );";
-
-        const string saleItemsTableSql = @"CREATE TABLE IF NOT EXISTS SaleItems (
-                                             Id INT AUTO_INCREMENT PRIMARY KEY,
-                                             SaleId INT NOT NULL,
-                                             ProductId INT NOT NULL,
-                                             ProductName VARCHAR(255) NOT NULL,
-                                             SKU VARCHAR(100) NOT NULL,
-                                             UnitPrice DECIMAL(10,2) NOT NULL,
-                                             Quantity INT NOT NULL,
-                                             LineSubtotal DECIMAL(10,2) NOT NULL,
-                                             FOREIGN KEY (SaleId) REFERENCES Sales(Id) ON DELETE CASCADE,
-                                             FOREIGN KEY (ProductId) REFERENCES Products(Id)
-                                           );";
-
-        using var productsCommand = new MySqlCommand(productsTableSql, connection);
-        productsCommand.ExecuteNonQuery();
-
-        using var salesCommand = new MySqlCommand(salesTableSql, connection);
-        salesCommand.ExecuteNonQuery();
-
-        using var saleItemsCommand = new MySqlCommand(saleItemsTableSql, connection);
-        saleItemsCommand.ExecuteNonQuery();
     }
 }

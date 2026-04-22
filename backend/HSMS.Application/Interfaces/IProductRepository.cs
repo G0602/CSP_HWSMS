@@ -24,6 +24,13 @@ public interface IProductRepository
     Task<List<Product>> GetAllProducts();
 
     /// <summary>
+    /// Retrieves products with quantity below the provided threshold.
+    /// </summary>
+    /// <param name="threshold">Exclusive upper bound for stock quantity.</param>
+    /// <returns>A list of low-stock <see cref="Product"/> entities.</returns>
+    Task<List<Product>> GetLowStockProducts(int threshold);
+
+    /// <summary>
     /// Retrieves products using keyword search against Name, SKU and Category.
     /// </summary>
     /// <param name="query">Search keyword.</param>

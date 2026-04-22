@@ -12,7 +12,6 @@ public class UserRepository : IUserRepository
     public UserRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")!;
-        EnsureUsersTableExists();
     }
 
     public async Task<User?> GetByUsernameAsync(string username)
@@ -22,8 +21,8 @@ public class UserRepository : IUserRepository
 
         const string query = @"SELECT Id, Username, PasswordHash, Role, CreatedAt
                                FROM Users
-                               WHERE Username = @Username
-                               LIMIT 1";
+                       WHERE Username = @Username
+                       LIMIT 1";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Username", username);
@@ -51,8 +50,8 @@ public class UserRepository : IUserRepository
 
         const string query = @"SELECT Id, Username, PasswordHash, Role, CreatedAt
                                FROM Users
-                               WHERE Id = @Id
-                               LIMIT 1";
+                       WHERE Id = @Id
+                       LIMIT 1";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Id", id);
@@ -150,22 +149,5 @@ public class UserRepository : IUserRepository
 
         int rows = await command.ExecuteNonQueryAsync();
         return rows > 0;
-    }
-
-    private void EnsureUsersTableExists()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-        connection.Open();
-
-        const string tableSql = @"CREATE TABLE IF NOT EXISTS Users (
-                                    Id INT AUTO_INCREMENT PRIMARY KEY,
-                                    Username VARCHAR(100) NOT NULL UNIQUE,
-                                    PasswordHash VARCHAR(512) NOT NULL,
-                                                                        Role VARCHAR(30) NOT NULL DEFAULT 'Cashier',
-                                    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  );";
-
-        using var command = new MySqlCommand(tableSql, connection);
-        command.ExecuteNonQuery();
     }
 }

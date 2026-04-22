@@ -26,50 +26,69 @@ const ProductTable = ({ products, supplierNameById = {}, loading, onEdit, onDele
     setSelectedId(null);
   };
 
-  if (loading) return <p className="text-center text-lg mt-4">Loading products...</p>;
+  if (loading) return <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-600 shadow-sm">Loading products...</div>;
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md">
-      <h2 className="text-xl font-bold mb-4">Product List</h2>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-5 py-4">
+        <h2 className="text-xl font-semibold text-slate-900">Product List</h2>
+      </div>
 
-      <table className="w-full border-collapse">
+      <div className="overflow-x-auto p-4">
+      <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-200">
-            <th className="p-2">Name</th>
-            <th className="p-2">SKU</th>
-            <th className="p-2">Price</th>
-            <th className="p-2">Quantity</th>
-            <th className="p-2">Supplier</th>
-            <th className="p-2">Status</th>
-            <th className="p-2">Actions</th>
+          <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-4">Name</th>
+            <th className="py-2 pr-4">SKU</th>
+            <th className="py-2 pr-4">Price</th>
+            <th className="py-2 pr-4">Quantity</th>
+            <th className="py-2 pr-4">Supplier</th>
+            <th className="py-2 pr-4">Status</th>
+            <th className="py-2 pr-4">Actions</th>
           </tr>
         </thead>
 
         <tbody>
+          {products.length === 0 && (
+            <tr>
+              <td colSpan={7} className="py-6 text-slate-500">
+                No products found.
+              </td>
+            </tr>
+          )}
           {products.map((product) => (
-            <tr key={product.id} className="text-center border-t">
-              <td className="p-2">{product.name}</td>
-              <td className="p-2">{product.sku}</td>
-              <td className="p-2">Rs. {Number(product.price).toFixed(2)}</td>
-              <td className="p-2">{product.quantity}</td>
-              <td className="p-2">
+            <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50">
+              <td className="py-3 pr-4 font-medium text-slate-900">{product.name}</td>
+              <td className="py-3 pr-4 text-slate-600">{product.sku}</td>
+              <td className="py-3 pr-4">Rs. {Number(product.price).toFixed(2)}</td>
+              <td className="py-3 pr-4 font-semibold">{product.quantity}</td>
+              <td className="py-3 pr-4 text-slate-600">
                 {product.supplierId ? supplierNameById[product.supplierId] ?? `#${product.supplierId}` : "-"}
               </td>
-              <td className={`p-2 font-semibold ${product.quantity < 10 ? "text-red-600" : "text-green-600"}`}>
-                {product.quantity < 10 ? "Low Stock" : "In Stock"}
+              <td className="py-3 pr-4">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    product.quantity < 10 ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {product.quantity < 10 ? "Low Stock" : "In Stock"}
+                </span>
               </td>
-              <td className="p-2 flex justify-center gap-2">
-                <button onClick={() => onEdit(product)} className="bg-yellow-500 text-white px-3 py-1 rounded">
+              <td className="py-3 pr-4">
+                <div className="flex gap-2">
+                <button onClick={() => onEdit(product)} className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600">
                   Edit
                 </button>
-                <button onClick={() => openModal(product.id)} className="bg-red-600 text-white px-3 py-1 rounded">
+                <button onClick={() => openModal(product.id)} className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">
                   Delete
                 </button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       <ConfirmModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onConfirm={confirmDelete} />
     </div>

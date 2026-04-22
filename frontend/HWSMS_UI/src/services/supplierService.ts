@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAuthHeader } from "./authService";
+import { API_BASE_URL } from "../config/api";
 
 export type SupplierPayload = {
   name: string;
@@ -9,24 +10,10 @@ export type SupplierPayload = {
 export type Supplier = {
   id: number;
   name: string;
+  contactInfo?: string;
   createdAt?: string;
 };
 
-const resolveApiBaseUrl = () => {
-  const explicitBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (explicitBaseUrl) {
-    return explicitBaseUrl.replace(/\/$/, "");
-  }
-
-  const legacyProductUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (legacyProductUrl) {
-    return legacyProductUrl.replace(/\/api\/Product\/?$/i, "").replace(/\/$/, "");
-  }
-
-  return "http://localhost:5162";
-};
-
-const API_BASE_URL = resolveApiBaseUrl();
 const SUPPLIERS_API_URL = `${API_BASE_URL}/api/suppliers`;
 
 export const addSupplier = async (payload: SupplierPayload) => {

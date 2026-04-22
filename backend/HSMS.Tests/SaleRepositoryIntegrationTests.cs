@@ -5,6 +5,7 @@ using MySql.Data.MySqlClient;
 
 namespace HSMS.Tests;
 
+[Collection("DatabaseIntegration")]
 public class SaleRepositoryIntegrationTests
 {
     private static string? GetConnectionString()

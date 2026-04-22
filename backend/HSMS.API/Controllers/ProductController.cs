@@ -17,6 +17,7 @@ namespace HSMS.API.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductRepository _repository;
+    private readonly ISupplierRepository? _supplierRepository;
     private readonly int _lowStockThreshold;
 
     /// <summary>
@@ -24,9 +25,13 @@ public class ProductController : ControllerBase
     /// </summary>
     /// <param name="repository">The data-access abstraction for products.</param>
     /// <param name="configuration">Application configuration for runtime thresholds.</param>
-    public ProductController(IProductRepository repository, IConfiguration? configuration = null)
+    public ProductController(
+        IProductRepository repository,
+        IConfiguration? configuration = null,
+        ISupplierRepository? supplierRepository = null)
     {
         _repository = repository;
+        _supplierRepository = supplierRepository;
         _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
     }
 
@@ -43,17 +48,25 @@ public class ProductController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> AddProduct(ProductCreateDTO dto)
     {
-        if (dto.Price <= 0)
-            return BadRequest("Price must be greater than zero.");
+        string? validationError = ValidateProduct(dto.Name, dto.SKU, dto.Category, dto.Price, dto.Quantity, dto.SupplierId);
+        if (validationError is not null)
+            return BadRequest(validationError);
 
-        if (dto.Quantity < 0)
-            return BadRequest("Quantity cannot be negative.");
+        var product = new ProductCreateDTO
+        {
+            Name = dto.Name.Trim(),
+            SKU = dto.SKU.Trim(),
+            Price = dto.Price,
+            Quantity = dto.Quantity,
+            Category = dto.Category.Trim(),
+            SupplierId = dto.SupplierId
+        };
 
-        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
-            return BadRequest("SupplierId must be greater than zero.");
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
 
-        int id = await _repository.AddProduct(dto);
-        return CreatedAtAction(nameof(GetProductById), new { id }, dto);
+        int id = await _repository.AddProduct(product);
+        return CreatedAtAction(nameof(GetProductById), new { id }, product);
     }
 
     /// <summary>
@@ -78,6 +91,7 @@ public class ProductController : ControllerBase
     public async Task<IActionResult> GetInventoryProducts()
     {
         var products = await _repository.GetAllProducts();
+        var supplierNameById = await GetSupplierNameLookupAsync();
         var inventory = products.Select(product => new InventoryProductResponseDTO
         {
             Id = product.Id,
@@ -87,6 +101,9 @@ public class ProductController : ControllerBase
             Category = product.Category,
             Price = product.Price,
             SupplierId = product.SupplierId,
+            SupplierName = product.SupplierId.HasValue && supplierNameById.TryGetValue(product.SupplierId.Value, out string? supplierName)
+                ? supplierName
+                : null,
             IsLowStock = product.Quantity < _lowStockThreshold
         });
 
@@ -101,9 +118,9 @@ public class ProductController : ControllerBase
     [HttpGet("low-stock")]
     public async Task<IActionResult> GetLowStockProducts()
     {
-        var products = await _repository.GetAllProducts();
+        var products = await _repository.GetLowStockProducts(_lowStockThreshold);
+        var supplierNameById = await GetSupplierNameLookupAsync();
         var lowStockProducts = products
-            .Where(product => product.Quantity < _lowStockThreshold)
             .Select(product => new InventoryProductResponseDTO
             {
                 Id = product.Id,
@@ -113,6 +130,9 @@ public class ProductController : ControllerBase
                 Category = product.Category,
                 Price = product.Price,
                 SupplierId = product.SupplierId,
+                SupplierName = product.SupplierId.HasValue && supplierNameById.TryGetValue(product.SupplierId.Value, out string? supplierName)
+                    ? supplierName
+                    : null,
                 IsLowStock = true
             });
 
@@ -124,7 +144,7 @@ public class ProductController : ControllerBase
     [HttpGet("search")]
     public async Task<IActionResult> SearchProducts([FromQuery] string query, [FromQuery] int limit = 20)
     {
-        string term = query.Trim();
+        string term = query?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(term))
             return BadRequest("Search query is required.");
 
@@ -164,10 +184,22 @@ public class ProductController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateProduct(int id, ProductUpdateDTO dto)
     {
-        if (dto.SupplierId.HasValue && dto.SupplierId.Value <= 0)
-            return BadRequest("SupplierId must be greater than zero.");
+        string? validationError = ValidateProduct(dto.Name, dto.SKU, dto.Category, dto.Price, dto.Quantity, dto.SupplierId);
+        if (validationError is not null)
+            return BadRequest(validationError);
 
-        bool updated = await _repository.UpdateProduct(id, dto);
+        if (!await SupplierExistsAsync(dto.SupplierId))
+            return BadRequest("Selected supplier was not found.");
+
+        bool updated = await _repository.UpdateProduct(id, new ProductUpdateDTO
+        {
+            Name = dto.Name.Trim(),
+            SKU = dto.SKU.Trim(),
+            Price = dto.Price,
+            Quantity = dto.Quantity,
+            Category = dto.Category.Trim(),
+            SupplierId = dto.SupplierId
+        });
         if (!updated)
             return NotFound("Product not found.");
 
@@ -215,5 +247,51 @@ public class ProductController : ControllerBase
             return NotFound("Product not found.");
 
         return Ok("Product deleted successfully.");
+    }
+
+    private async Task<bool> SupplierExistsAsync(int? supplierId)
+    {
+        if (!supplierId.HasValue || _supplierRepository is null)
+            return true;
+
+        return await _supplierRepository.SupplierExistsAsync(supplierId.Value);
+    }
+
+    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync()
+    {
+        if (_supplierRepository is null)
+            return [];
+
+        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        return suppliers.ToDictionary(supplier => supplier.Id, supplier => supplier.Name);
+    }
+
+    private static string? ValidateProduct(
+        string? name,
+        string? sku,
+        string? category,
+        decimal price,
+        int quantity,
+        int? supplierId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Product name is required.";
+
+        if (string.IsNullOrWhiteSpace(sku))
+            return "SKU is required.";
+
+        if (price <= 0)
+            return "Price must be greater than zero.";
+
+        if (quantity < 0)
+            return "Quantity cannot be negative.";
+
+        if (string.IsNullOrWhiteSpace(category))
+            return "Category is required.";
+
+        if (supplierId.HasValue && supplierId.Value <= 0)
+            return "SupplierId must be greater than zero.";
+
+        return null;
     }
 }

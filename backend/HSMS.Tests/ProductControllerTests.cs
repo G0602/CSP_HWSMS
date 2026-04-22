@@ -107,9 +107,16 @@ public class ProductControllerTests
     {
         var mockRepo = new Mock<IProductRepository>();
 
-        var dto = new ProductUpdateDTO();
+        var dto = new ProductUpdateDTO
+        {
+            Name = "Hammer",
+            SKU = "HAM-001",
+            Price = 1500m,
+            Quantity = 12,
+            Category = "Tools"
+        };
 
-        mockRepo.Setup(repo => repo.UpdateProduct(1, dto))
+        mockRepo.Setup(repo => repo.UpdateProduct(1, It.IsAny<ProductUpdateDTO>()))
                 .Returns(Task.FromResult(false));
 
         var controller = new ProductController(mockRepo.Object);
@@ -181,7 +188,7 @@ public class ProductControllerTests
     public async Task GetLowStockProducts_Should_Filter_By_Configured_Threshold()
     {
         var mockRepo = new Mock<IProductRepository>();
-        mockRepo.Setup(repo => repo.GetAllProducts())
+        mockRepo.Setup(repo => repo.GetLowStockProducts(10))
                 .Returns(Task.FromResult(new List<Product>
                 {
                     new Product
@@ -191,15 +198,6 @@ public class ProductControllerTests
                         SKU = "HM-100",
                         Price = 1500,
                         Quantity = 9,
-                        Category = "Hand Tools"
-                    },
-                    new Product
-                    {
-                        Id = 2,
-                        Name = "Pliers",
-                        SKU = "PL-200",
-                        Price = 1200,
-                        Quantity = 10,
                         Category = "Hand Tools"
                     }
                 }));
