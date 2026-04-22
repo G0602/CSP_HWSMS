@@ -13,16 +13,19 @@ public class ReportsController : ControllerBase
 {
     private readonly ISaleRepository _saleRepository;
     private readonly IProductRepository _productRepository;
+    private readonly ISupplierRepository? _supplierRepository;
     private readonly int _lowStockThreshold;
     private readonly decimal _reportCostRatio;
 
     public ReportsController(
         ISaleRepository saleRepository,
         IProductRepository productRepository,
-        IConfiguration? configuration = null)
+        IConfiguration? configuration = null,
+        ISupplierRepository? supplierRepository = null)
     {
         _saleRepository = saleRepository;
         _productRepository = productRepository;
+        _supplierRepository = supplierRepository;
         _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
         _reportCostRatio = decimal.Clamp(configuration?.GetValue<decimal?>("REPORT_COST_RATIO") ?? 0.70m, 0m, 1m);
     }
@@ -71,6 +74,7 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetLowStockReport()
     {
         var products = await _productRepository.GetLowStockProducts(_lowStockThreshold);
+        var supplierNameById = await GetSupplierNameLookupAsync();
         var lowStockProducts = products
             .Select(product => new InventoryProductResponseDTO
             {
@@ -81,6 +85,9 @@ public class ReportsController : ControllerBase
                 Category = product.Category,
                 Price = product.Price,
                 SupplierId = product.SupplierId,
+                SupplierName = product.SupplierId.HasValue && supplierNameById.TryGetValue(product.SupplierId.Value, out string? supplierName)
+                    ? supplierName
+                    : null,
                 IsLowStock = true
             });
 
@@ -94,8 +101,10 @@ public class ReportsController : ControllerBase
         var dailyTask = _saleRepository.GetDailySalesReportAsync();
         var monthlyTask = _saleRepository.GetMonthlySalesReportAsync();
         var lowStockTask = _productRepository.GetLowStockProducts(_lowStockThreshold);
+        var supplierLookupTask = GetSupplierNameLookupAsync();
 
-        await Task.WhenAll(dailyTask, monthlyTask, lowStockTask);
+        await Task.WhenAll(dailyTask, monthlyTask, lowStockTask, supplierLookupTask);
+        var supplierNameById = supplierLookupTask.Result;
 
         var response = new ReportsSummaryResponseDTO
         {
@@ -111,6 +120,9 @@ public class ReportsController : ControllerBase
                     Category = product.Category,
                     Price = product.Price,
                     SupplierId = product.SupplierId,
+                    SupplierName = product.SupplierId.HasValue && supplierNameById.TryGetValue(product.SupplierId.Value, out string? supplierName)
+                        ? supplierName
+                        : null,
                     IsLowStock = true
                 })
                 .ToList()
@@ -201,5 +213,16 @@ public class ReportsController : ControllerBase
         }
 
         return $"\"{value.Replace("\"", "\"\"")}\"";
+    }
+
+    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync()
+    {
+        if (_supplierRepository is null)
+        {
+            return [];
+        }
+
+        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        return suppliers.ToDictionary(supplier => supplier.Id, supplier => supplier.Name);
     }
 }

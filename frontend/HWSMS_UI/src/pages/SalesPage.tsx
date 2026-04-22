@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { getApiErrorMessage, isForbidden, isUnauthorized } from "../services/apiError";
 import ProductSearchSelect from "../components/ProductSearchSelect";
 import { logout } from "../services/authService";
 import { createSale } from "../services/saleService";
@@ -107,20 +107,17 @@ const SalesPage = () => {
       setStockRefreshSignal((prev) => prev + 1);
       setSuccessMessage(`Sale #${result.saleId} completed successfully. Total: Rs. ${result.totalAmount.toFixed(2)}`);
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        if (err.response?.status === 401) {
-          handleLogout();
-          return;
-        }
-
-        if (typeof err.response?.data === "string") {
-          setErrorMessage(err.response.data);
-        } else {
-          setErrorMessage("Failed to complete sale transaction.");
-        }
-      } else {
-        setErrorMessage("Failed to complete sale transaction.");
+      if (isUnauthorized(err)) {
+        handleLogout();
+        return;
       }
+
+      if (isForbidden(err)) {
+        navigate("/access-denied", { replace: true });
+        return;
+      }
+
+      setErrorMessage(getApiErrorMessage(err, "Failed to complete sale transaction."));
     } finally {
       setIsSubmitting(false);
     }
@@ -131,9 +128,21 @@ const SalesPage = () => {
       <Navbar onLogout={handleLogout} />
 
       <div className="mx-auto max-w-7xl p-6 lg:p-10">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-900">Sales Transaction</h2>
-          <p className="text-slate-600 mt-1">Search products, add quantities, and confirm checkout.</p>
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-900">Sales Transaction</h2>
+            <p className="text-slate-600 mt-1">Search products, add quantities, and confirm checkout.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[360px]">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Cart items</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{lineTotals.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sale total</p>
+              <p className="mt-1 text-2xl font-bold text-blue-700">Rs. {saleTotal.toFixed(2)}</p>
+            </div>
+          </div>
         </div>
 
         {successMessage && <div className="mb-4 rounded-lg bg-green-100 px-4 py-3 text-green-800">{successMessage}</div>}

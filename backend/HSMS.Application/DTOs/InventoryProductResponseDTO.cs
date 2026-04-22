@@ -12,5 +12,6 @@ public class InventoryProductResponseDTO
     public string Category { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public bool IsLowStock { get; set; }
 }

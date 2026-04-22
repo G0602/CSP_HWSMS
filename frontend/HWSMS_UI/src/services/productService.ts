@@ -24,6 +24,7 @@ export type InventoryProduct = {
   category: string;
   price: number;
   supplierId?: number | null;
+  supplierName?: string | null;
   isLowStock: boolean;
 };
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Product } from "../services/productService";
 import { searchProducts } from "../services/productService";
+import { getApiErrorMessage } from "../services/apiError";
 
 type ProductSearchSelectProps = {
   selectedProductIds: number[];
@@ -29,8 +30,8 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
       try {
         const data = await searchProducts(term);
         setResults(data.filter((item) => item.quantity > 0));
-      } catch {
-        setError("Failed to search products.");
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Failed to search products."));
       } finally {
         setIsLoading(false);
       }
@@ -58,8 +59,8 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
       try {
         const data = await searchProducts(term);
         setResults(data.filter((item) => item.quantity > 0));
-      } catch {
-        setError("Failed to refresh product stock.");
+      } catch (err) {
+        setError(getApiErrorMessage(err, "Failed to refresh product stock."));
       } finally {
         setIsLoading(false);
       }
@@ -85,6 +86,9 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
 
       {isLoading && <p className="mt-3 text-sm text-slate-500">Searching...</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {!isLoading && !error && query.trim().length >= 2 && results.length === 0 && (
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">No in-stock products match this search.</p>
+      )}
 
       <div className="mt-4 space-y-3 max-h-80 overflow-auto">
         {results.map((product) => {

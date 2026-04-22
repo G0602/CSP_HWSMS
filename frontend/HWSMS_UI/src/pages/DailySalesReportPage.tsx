@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { getApiErrorMessage, isForbidden, isUnauthorized } from "../services/apiError";
 import { getCurrentUser, logout } from "../services/authService";
 import { getProducts, type Product } from "../services/productService";
 import {
@@ -52,17 +52,17 @@ const DailySalesReportPage = () => {
   };
 
   const handleRequestError = (err: unknown, fallbackMessage: string) => {
-    if (axios.isAxiosError(err) && err.response?.status === 401) {
+    if (isUnauthorized(err)) {
       handleLogout();
       return true;
     }
 
-    if (axios.isAxiosError(err) && err.response?.status === 403) {
+    if (isForbidden(err)) {
       navigate("/access-denied", { replace: true });
       return true;
     }
 
-    setError(fallbackMessage);
+    setError(getApiErrorMessage(err, fallbackMessage));
     return false;
   };
 
@@ -455,13 +455,14 @@ const DailySalesReportPage = () => {
                 <th className="py-2">Product</th>
                 <th className="py-2">SKU</th>
                 <th className="py-2">Category</th>
+                <th className="py-2">Supplier</th>
                 <th className="py-2">Quantity</th>
               </tr>
             </thead>
             <tbody>
               {!isLoading && lowStockReport.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-5 text-slate-500">
+                  <td colSpan={5} className="py-5 text-slate-500">
                     No low-stock products found.
                   </td>
                 </tr>
@@ -471,6 +472,7 @@ const DailySalesReportPage = () => {
                   <td className="py-2">{item.name}</td>
                   <td className="py-2">{item.sku}</td>
                   <td className="py-2">{item.category}</td>
+                  <td className="py-2 text-slate-600">{item.supplierName ?? "-"}</td>
                   <td className="py-2 font-medium text-red-600">{item.quantity}</td>
                 </tr>
               ))}
