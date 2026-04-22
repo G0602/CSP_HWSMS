@@ -14,6 +14,7 @@ public class ReportsController : ControllerBase
     private readonly ISaleRepository _saleRepository;
     private readonly IProductRepository _productRepository;
     private readonly int _lowStockThreshold;
+    private readonly decimal _reportCostRatio;
 
     public ReportsController(
         ISaleRepository saleRepository,
@@ -23,6 +24,7 @@ public class ReportsController : ControllerBase
         _saleRepository = saleRepository;
         _productRepository = productRepository;
         _lowStockThreshold = Math.Max(1, configuration?.GetValue<int?>("LOW_STOCK_THRESHOLD") ?? 10);
+        _reportCostRatio = decimal.Clamp(configuration?.GetValue<decimal?>("REPORT_COST_RATIO") ?? 0.70m, 0m, 1m);
     }
 
     [Authorize(Policy = AuthPolicies.SalesRead)]
@@ -39,6 +41,29 @@ public class ReportsController : ControllerBase
     {
         var report = await _saleRepository.GetMonthlySalesReportAsync();
         return Ok(report);
+    }
+
+    [Authorize(Policy = AuthPolicies.SalesRead)]
+    [HttpGet("analytics")]
+    public async Task<IActionResult> GetSalesAnalytics(
+        [FromQuery] DateTime? fromDate,
+        [FromQuery] DateTime? toDate,
+        [FromQuery] int? productId,
+        [FromQuery] string? category)
+    {
+        if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+        {
+            return BadRequest("From date cannot be after to date.");
+        }
+
+        var analytics = await _saleRepository.GetSalesAnalyticsAsync(
+            fromDate,
+            toDate,
+            productId,
+            category,
+            _reportCostRatio);
+
+        return Ok(analytics);
     }
 
     [Authorize(Policy = AuthPolicies.InventoryManagerRead)]

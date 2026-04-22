@@ -31,6 +31,35 @@ export type ReportsSummary = {
   lowStock: LowStockReportItem[];
 };
 
+export type DailySalesAnalyticsItem = {
+  date: string;
+  sales: number;
+  cost: number;
+  profit: number;
+};
+
+export type MonthlySalesAnalyticsItem = {
+  month: string;
+  sales: number;
+  cost: number;
+  profit: number;
+};
+
+export type SalesAnalytics = {
+  totalSales: number;
+  totalCost: number;
+  totalProfit: number;
+  dailyTrends: DailySalesAnalyticsItem[];
+  monthlyTrends: MonthlySalesAnalyticsItem[];
+};
+
+export type SalesAnalyticsFilters = {
+  fromDate?: string;
+  toDate?: string;
+  productId?: number;
+  category?: string;
+};
+
 const REPORTS_API_URL = `${API_BASE_URL}/api/reports`;
 
 export const getDailySalesReport = async () => {
@@ -76,4 +105,13 @@ export const exportReportCsv = async (type: ReportExportType) => {
     blob: response.data as Blob,
     fileName,
   };
+};
+
+export const getSalesAnalytics = async (filters: SalesAnalyticsFilters) => {
+  const { data } = await axios.get<SalesAnalytics>(`${REPORTS_API_URL}/analytics`, {
+    headers: getAuthHeader(),
+    params: filters,
+  });
+
+  return data;
 };

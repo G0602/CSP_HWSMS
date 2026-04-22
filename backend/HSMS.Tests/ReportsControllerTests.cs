@@ -103,6 +103,91 @@ public class ReportsControllerTests
     }
 
     [Fact]
+    public async Task GetSalesAnalytics_Should_Return_Filtered_Profit_Dashboard_Data()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var expected = new SalesAnalyticsResponseDTO
+        {
+            TotalSales = 10000m,
+            TotalCost = 6500m,
+            TotalProfit = 3500m,
+            DailyTrends =
+            [
+                new DailySalesAnalyticsItemDTO
+                {
+                    Date = new DateTime(2026, 4, 1),
+                    Sales = 10000m,
+                    Cost = 6500m,
+                    Profit = 3500m
+                }
+            ],
+            MonthlyTrends =
+            [
+                new MonthlySalesAnalyticsItemDTO
+                {
+                    Month = new DateTime(2026, 4, 1),
+                    Sales = 10000m,
+                    Cost = 6500m,
+                    Profit = 3500m
+                }
+            ]
+        };
+
+        saleRepo.Setup(repo => repo.GetSalesAnalyticsAsync(
+                new DateTime(2026, 4, 1),
+                new DateTime(2026, 4, 30),
+                3,
+                "Tools",
+                0.65m))
+            .ReturnsAsync(expected);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["REPORT_COST_RATIO"] = "0.65"
+            })
+            .Build();
+
+        var controller = CreateController(saleRepo, config: config);
+        var result = await controller.GetSalesAnalytics(
+            new DateTime(2026, 4, 1),
+            new DateTime(2026, 4, 30),
+            3,
+            "Tools");
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var payload = Assert.IsType<SalesAnalyticsResponseDTO>(ok.Value);
+
+        Assert.Equal(10000m, payload.TotalSales);
+        Assert.Equal(6500m, payload.TotalCost);
+        Assert.Equal(3500m, payload.TotalProfit);
+        Assert.Single(payload.DailyTrends);
+        Assert.Single(payload.MonthlyTrends);
+    }
+
+    [Fact]
+    public async Task GetSalesAnalytics_Should_Return_BadRequest_When_FromDate_Is_After_ToDate()
+    {
+        var saleRepo = new Mock<ISaleRepository>();
+        var controller = CreateController(saleRepo);
+
+        var result = await controller.GetSalesAnalytics(
+            new DateTime(2026, 5, 1),
+            new DateTime(2026, 4, 1),
+            null,
+            null);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("From date cannot be after to date.", badRequest.Value);
+        saleRepo.Verify(repo => repo.GetSalesAnalyticsAsync(
+            It.IsAny<DateTime?>(),
+            It.IsAny<DateTime?>(),
+            It.IsAny<int?>(),
+            It.IsAny<string?>(),
+            It.IsAny<decimal>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetLowStockReport_Should_Filter_By_Configured_Threshold()
     {
         var saleRepo = new Mock<ISaleRepository>();
