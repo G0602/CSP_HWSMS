@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { getApiErrorMessage, isForbidden, isUnauthorized } from "../services/apiError";
 import { logout } from "../services/authService";
 import { deleteSupplier, getSuppliers, updateSupplier, type Supplier } from "../services/supplierService";
 
@@ -35,17 +35,17 @@ const SupplierPage = () => {
       const data = await getSuppliers();
       setSuppliers(data);
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      setError("Failed to load suppliers.");
+      setError(getApiErrorMessage(err, "Failed to load suppliers."));
     } finally {
       setIsLoading(false);
     }
@@ -92,21 +92,17 @@ const SupplierPage = () => {
       setEditingSupplier(null);
       await loadSuppliers();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setEditError(err.response.data);
-      } else {
-        setEditError("Failed to update supplier.");
-      }
+      setEditError(getApiErrorMessage(err, "Failed to update supplier."));
     } finally {
       setIsUpdating(false);
     }
@@ -127,21 +123,17 @@ const SupplierPage = () => {
       setDeletingSupplier(null);
       await loadSuppliers();
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
+      if (isUnauthorized(err)) {
         handleLogout();
         return;
       }
 
-      if (axios.isAxiosError(err) && err.response?.status === 403) {
+      if (isForbidden(err)) {
         navigate("/access-denied", { replace: true });
         return;
       }
 
-      if (axios.isAxiosError(err) && typeof err.response?.data === "string") {
-        setError(err.response.data);
-      } else {
-        setError("Failed to delete supplier.");
-      }
+      setError(getApiErrorMessage(err, "Failed to delete supplier."));
     } finally {
       setIsDeleting(false);
     }

@@ -107,9 +107,16 @@ public class ProductControllerTests
     {
         var mockRepo = new Mock<IProductRepository>();
 
-        var dto = new ProductUpdateDTO();
+        var dto = new ProductUpdateDTO
+        {
+            Name = "Hammer",
+            SKU = "HAM-001",
+            Price = 1500m,
+            Quantity = 12,
+            Category = "Tools"
+        };
 
-        mockRepo.Setup(repo => repo.UpdateProduct(1, dto))
+        mockRepo.Setup(repo => repo.UpdateProduct(1, It.IsAny<ProductUpdateDTO>()))
                 .Returns(Task.FromResult(false));
 
         var controller = new ProductController(mockRepo.Object);
