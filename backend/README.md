@@ -50,12 +50,15 @@ backend/
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "server=localhost;database=CSP_HSMS;user=CSP;password=sql123;"
+    "DefaultConnection": ""
+  },
+  "Jwt": {
+    "Secret": ""
   }
 }
 ```
 
-Override with `appsettings.Development.json` or environment variables for other environments.
+Set local and production values with environment variables, for example `ConnectionStrings__DefaultConnection` and `Jwt__Secret`.
 
 > **Auto-migration:** `ProductRepository` calls `EnsureProductsTableExists()` in its constructor, so the `Products` table is created automatically if it does not exist. No migration tooling needed.
 
