@@ -61,8 +61,8 @@ public class SupplierRepository : ISupplierRepository
         }
 
         const string query = @"INSERT INTO Suppliers (Name, ContactInfo)
-                               VALUES (@Name, @ContactInfo);
-                               SELECT LAST_INSERT_ID();";
+                       VALUES (@Name, @ContactInfo);
+                       SELECT LAST_INSERT_ID();";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Name", dto.Name);
@@ -159,11 +159,11 @@ public class SupplierRepository : ISupplierRepository
 
     private static async Task<bool> HasLinkedRecordsAsync(MySqlConnection connection, int supplierId)
     {
-        const string hasSupplierColumnSql = @"SELECT COUNT(*)
-                                              FROM INFORMATION_SCHEMA.COLUMNS
-                                              WHERE TABLE_SCHEMA = DATABASE()
-                                                AND TABLE_NAME = 'Products'
-                                                AND COLUMN_NAME = 'SupplierId'";
+                const string hasSupplierColumnSql = @"SELECT COUNT(*)
+                                                                                            FROM INFORMATION_SCHEMA.COLUMNS
+                                                                                            WHERE TABLE_SCHEMA = DATABASE()
+                                                                                                AND TABLE_NAME = 'Products'
+                                                                                                AND COLUMN_NAME = 'SupplierId'";
 
         using var hasColumnCommand = new MySqlCommand(hasSupplierColumnSql, connection);
         int hasColumn = Convert.ToInt32(await hasColumnCommand.ExecuteScalarAsync());

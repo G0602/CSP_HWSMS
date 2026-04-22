@@ -45,7 +45,7 @@ if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production"
 }
 // Environment variables automatically override all JSON configuration files
 
-ApplyRailwayDatabaseConfiguration(builder.Configuration);
+ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
 ApplyConnectionStringOptimizations(builder.Configuration);
 
 // ----- MVC & API Explorer -----
@@ -318,7 +318,7 @@ static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
 		&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
 }
 
-static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuration)
+static void ApplyAzureMySqlDatabaseConfiguration(IConfigurationManager configuration)
 {
 	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
 	string normalizedCurrentConnection = currentConnection ?? string.Empty;
@@ -332,71 +332,22 @@ static void ApplyRailwayDatabaseConfiguration(IConfigurationManager configuratio
 		return;
 	}
 
-	string? railwayConnection = BuildRailwayConnectionStringFromUrl(configuration["MYSQL_URL"])
-		?? BuildRailwayConnectionStringFromUrl(configuration["DATABASE_URL"])
-		?? BuildRailwayConnectionStringFromParts(configuration);
+	string? azureConnection = configuration["AZURE_MYSQL_CONNECTIONSTRING"]
+		?? BuildAzureMySqlConnectionStringFromParts(configuration);
 
-	if (!string.IsNullOrWhiteSpace(railwayConnection))
+	if (!string.IsNullOrWhiteSpace(azureConnection))
 	{
-		configuration["ConnectionStrings:DefaultConnection"] = railwayConnection;
+		configuration["ConnectionStrings:DefaultConnection"] = azureConnection;
 	}
 }
 
-static string? BuildRailwayConnectionStringFromUrl(string? databaseUrl)
+static string? BuildAzureMySqlConnectionStringFromParts(IConfiguration configuration)
 {
-	if (string.IsNullOrWhiteSpace(databaseUrl))
-	{
-		return null;
-	}
-
-	if (!Uri.TryCreate(databaseUrl, UriKind.Absolute, out Uri? uri))
-	{
-		return null;
-	}
-
-	if (!"mysql".Equals(uri.Scheme, StringComparison.OrdinalIgnoreCase))
-	{
-		return null;
-	}
-
-	string userInfo = uri.UserInfo;
-	if (string.IsNullOrWhiteSpace(userInfo))
-	{
-		return null;
-	}
-
-	string username;
-	string password;
-	int separatorIndex = userInfo.IndexOf(':');
-	if (separatorIndex < 0)
-	{
-		username = Uri.UnescapeDataString(userInfo);
-		password = string.Empty;
-	}
-	else
-	{
-		username = Uri.UnescapeDataString(userInfo[..separatorIndex]);
-		password = Uri.UnescapeDataString(userInfo[(separatorIndex + 1)..]);
-	}
-
-	string database = uri.AbsolutePath.Trim('/');
-	if (string.IsNullOrWhiteSpace(database))
-	{
-		return null;
-	}
-
-	int port = uri.IsDefaultPort ? 3306 : uri.Port;
-
-	return $"server={uri.Host};port={port};database={database};user={username};password={password};SslMode=Required;";
-}
-
-static string? BuildRailwayConnectionStringFromParts(IConfiguration configuration)
-{
-	string? host = configuration["MYSQLHOST"] ?? configuration["DB_HOST"];
-	string? port = configuration["MYSQLPORT"] ?? configuration["DB_PORT"];
-	string? database = configuration["MYSQLDATABASE"] ?? configuration["DB_NAME"];
-	string? username = configuration["MYSQLUSER"] ?? configuration["DB_USER"];
-	string? password = configuration["MYSQLPASSWORD"] ?? configuration["DB_PASSWORD"];
+	string? host = configuration["AZURE_MYSQL_HOST"] ?? configuration["HOST"] ?? configuration["DB_HOST"];
+	string? port = configuration["AZURE_MYSQL_PORT"] ?? configuration["PORT"] ?? configuration["DB_PORT"];
+	string? database = configuration["AZURE_MYSQL_DATABASE"] ?? configuration["DB"] ?? configuration["DB_NAME"];
+	string? username = configuration["AZURE_MYSQL_USER"] ?? configuration["USER"] ?? configuration["DB_USER"];
+	string? password = configuration["AZURE_MYSQL_PASSWORD"] ?? configuration["PASSWORD"] ?? configuration["DB_PASSWORD"];
 
 	if (string.IsNullOrWhiteSpace(host)
 		|| string.IsNullOrWhiteSpace(database)
@@ -407,7 +358,7 @@ static string? BuildRailwayConnectionStringFromParts(IConfiguration configuratio
 	}
 
 	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
-	return $"server={host};port={normalizedPort};database={database};user={username};password={password};SslMode=Required;";
+	return $"Server={host};Port={normalizedPort};Database={database};Uid={username};Pwd={password};SslMode=Required;";
 }
 
 static void ApplyConnectionStringOptimizations(IConfigurationManager configuration)
@@ -425,6 +376,12 @@ static void ApplyConnectionStringOptimizations(IConfigurationManager configurati
 		MaximumPoolSize = 20,
 		ConnectionTimeout = Math.Max(15u, new MySqlConnectionStringBuilder(connectionString).ConnectionTimeout)
 	};
+
+	if (!builder.Server.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+		&& !builder.Server.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+	{
+		builder.SslMode = MySqlSslMode.Required;
+	}
 
 	configuration["ConnectionStrings:DefaultConnection"] = builder.ConnectionString;
 }

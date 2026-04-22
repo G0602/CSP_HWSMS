@@ -21,8 +21,8 @@ public class UserRepository : IUserRepository
 
         const string query = @"SELECT Id, Username, PasswordHash, Role, CreatedAt
                                FROM Users
-                               WHERE Username = @Username
-                               LIMIT 1";
+                       WHERE Username = @Username
+                       LIMIT 1";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Username", username);
@@ -50,8 +50,8 @@ public class UserRepository : IUserRepository
 
         const string query = @"SELECT Id, Username, PasswordHash, Role, CreatedAt
                                FROM Users
-                               WHERE Id = @Id
-                               LIMIT 1";
+                       WHERE Id = @Id
+                       LIMIT 1";
 
         using var command = new MySqlCommand(query, connection);
         command.Parameters.AddWithValue("@Id", id);

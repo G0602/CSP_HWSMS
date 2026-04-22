@@ -16,7 +16,7 @@ public class DbConnectionFactory
     /// </summary>
     /// <param name="connectionString">
     /// A valid MySQL connection string
-    /// (e.g. <c>server=localhost;database=CSP_HSMS;user=CSP;password=***;</c>).
+    /// (e.g. <c>Server=localhost;Port=3306;Database=CSP_HSMS;Uid=root;Pwd=***;</c>).
     /// </param>
     public DbConnectionFactory(string connectionString)
     {

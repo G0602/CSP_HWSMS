@@ -215,7 +215,7 @@ public class SaleRepository : ISaleRepository
         const string query = @"SELECT DATE(SoldAt) AS ReportDate,
                                       SUM(TotalAmount) AS TotalAmount
                                FROM Sales
-                               GROUP BY DATE(SoldAt)
+                       GROUP BY DATE(SoldAt)
                                ORDER BY ReportDate DESC";
 
         await using var command = new MySqlCommand(query, connection);
@@ -243,7 +243,7 @@ public class SaleRepository : ISaleRepository
         const string query = @"SELECT DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY) AS ReportMonth,
                                       SUM(TotalAmount) AS TotalAmount
                                FROM Sales
-                               GROUP BY DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY)
+                       GROUP BY DATE_SUB(DATE(SoldAt), INTERVAL DAY(SoldAt) - 1 DAY)
                                ORDER BY ReportMonth DESC";
 
         await using var command = new MySqlCommand(query, connection);
