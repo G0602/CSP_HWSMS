@@ -115,6 +115,11 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 	throw new InvalidOperationException("Jwt:Secret is empty. Set Jwt__Secret or JWT_SECRET.");
 }
 
+if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+{
+	throw new InvalidOperationException("Jwt:Secret must be at least 32 bytes for secure signing.");
+}
+
 builder.Services
 	.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
@@ -125,9 +130,13 @@ builder.Services
 			ValidateAudience = true,
 			ValidateIssuerSigningKey = true,
 			ValidateLifetime = true,
+			RequireSignedTokens = true,
+			RequireExpirationTime = true,
 			ValidIssuer = jwtIssuer,
 			ValidAudience = jwtAudience,
 			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+			NameClaimType = System.Security.Claims.ClaimTypes.Name,
+			RoleClaimType = System.Security.Claims.ClaimTypes.Role,
 			ClockSkew = TimeSpan.Zero
 		};
 	});
@@ -166,6 +175,8 @@ builder.Services.AddAuthorization(options =>
 // ----- CORS -----
 // Allowed browser origins for API calls.
 // Database hosts are not browser origins and are not part of CORS.
+const string AzureStaticWebAppOrigin = "https://delightful-tree-0e4ad5000.7.azurestaticapps.net";
+
 string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
 string? frontendUrl = builder.Configuration["FRONTEND_URL"];
 
@@ -173,16 +184,16 @@ var originCandidates = new List<string>();
 
 if (!string.IsNullOrWhiteSpace(corsOrigins))
 {
-	originCandidates.AddRange(
-		corsOrigins.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
-			.Select(o => o.Trim())
-	);
+	originCandidates.AddRange(ParseOriginCandidates(corsOrigins));
 }
 
 if (!string.IsNullOrWhiteSpace(frontendUrl))
 {
-	originCandidates.Add(frontendUrl.Trim().TrimEnd('/'));
+	originCandidates.AddRange(ParseOriginCandidates(frontendUrl));
 }
+
+// Always allow the primary Azure Static Web App frontend origin.
+originCandidates.Add(AzureStaticWebAppOrigin);
 
 // Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
@@ -316,6 +327,15 @@ static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
 				&& host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))
 			|| host.EndsWith(".azurestaticapps.net", StringComparison.OrdinalIgnoreCase)
 		);
+}
+
+static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
+{
+	return rawOrigins
+		.Split([',', ';', '\n', '\r', '\t', ' '], StringSplitOptions.RemoveEmptyEntries)
+		.Select(origin => origin.Trim().Trim('"', '\''))
+		.Where(origin => !string.IsNullOrWhiteSpace(origin))
+		.Select(origin => origin.TrimEnd('/'));
 }
 
 static void ApplyEnvironmentVariableAliases(IConfigurationManager configuration)

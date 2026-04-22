@@ -43,6 +43,53 @@ public class SupplierRepository : ISupplierRepository
         return suppliers;
     }
 
+    public async Task<List<Supplier>> GetSuppliersByIdsAsync(IEnumerable<int> supplierIds)
+    {
+        var ids = supplierIds
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        if (ids.Length == 0)
+        {
+            return [];
+        }
+
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        var parameterNames = ids
+            .Select((_, index) => $"@Id{index}")
+            .ToArray();
+
+        string query = $@"SELECT Id, Name, ContactInfo, CreatedAt
+                          FROM Suppliers
+                          WHERE Id IN ({string.Join(",", parameterNames)})
+                          ORDER BY Name ASC";
+
+        await using var command = new MySqlCommand(query, connection);
+        for (int i = 0; i < ids.Length; i++)
+        {
+            command.Parameters.AddWithValue(parameterNames[i], ids[i]);
+        }
+
+        var suppliers = new List<Supplier>(ids.Length);
+        await using var reader = await command.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            suppliers.Add(new Supplier
+            {
+                Id = Convert.ToInt32(reader["Id"]),
+                Name = reader["Name"].ToString()!,
+                ContactInfo = reader["ContactInfo"] == DBNull.Value ? null : reader["ContactInfo"].ToString(),
+                CreatedAt = Convert.ToDateTime(reader["CreatedAt"])
+            });
+        }
+
+        return suppliers;
+    }
+
     public async Task<int> AddSupplierAsync(SupplierCreateDTO dto)
     {
         using var connection = new MySqlConnection(_connectionString);

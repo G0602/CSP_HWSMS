@@ -118,18 +118,27 @@ public class ProductRepository : IProductRepository
     public async Task<List<Product>> SearchProducts(string query, int limit = 20)
     {
         var products = new List<Product>();
+        string trimmedQuery = query?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(trimmedQuery))
+        {
+            return products;
+        }
 
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string sql = @"SELECT *
+        const string sql = @"SELECT Id, Name, SKU, Price, Quantity, Category, SupplierId, CreatedAt
                      FROM Products
-                     WHERE Name LIKE @Term OR SKU LIKE @Term OR Category LIKE @Term
+                     WHERE Name LIKE @Term ESCAPE '\\'
+                        OR SKU LIKE @Term ESCAPE '\\'
+                        OR Category LIKE @Term ESCAPE '\\'
                      ORDER BY Name ASC
                      LIMIT @Limit";
 
         using var command = new MySqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@Term", $"%{query}%");
+        string escapedTerm = EscapeLikePattern(trimmedQuery);
+        command.Parameters.AddWithValue("@Term", $"%{escapedTerm}%");
         command.Parameters.AddWithValue("@Limit", Math.Clamp(limit, 1, 100));
 
         using var reader = await command.ExecuteReaderAsync();
@@ -150,6 +159,14 @@ public class ProductRepository : IProductRepository
         }
 
         return products;
+    }
+
+    private static string EscapeLikePattern(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_");
     }
 
     // READ BY ID

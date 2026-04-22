@@ -74,7 +74,11 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetLowStockReport()
     {
         var products = await _productRepository.GetLowStockProducts(_lowStockThreshold);
-        var supplierNameById = await GetSupplierNameLookupAsync();
+        var supplierIds = products
+            .Where(product => product.SupplierId.HasValue)
+            .Select(product => product.SupplierId!.Value)
+            .Distinct();
+        var supplierNameById = await GetSupplierNameLookupAsync(supplierIds);
         var lowStockProducts = products
             .Select(product => new InventoryProductResponseDTO
             {
@@ -101,7 +105,7 @@ public class ReportsController : ControllerBase
         var dailyTask = _saleRepository.GetDailySalesReportAsync();
         var monthlyTask = _saleRepository.GetMonthlySalesReportAsync();
         var lowStockTask = _productRepository.GetLowStockProducts(_lowStockThreshold);
-        var supplierLookupTask = GetSupplierNameLookupAsync();
+        var supplierLookupTask = LoadSupplierLookupForLowStockAsync(lowStockTask);
 
         await Task.WhenAll(dailyTask, monthlyTask, lowStockTask, supplierLookupTask);
         var supplierNameById = supplierLookupTask.Result;
@@ -129,6 +133,17 @@ public class ReportsController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    private async Task<Dictionary<int, string>> LoadSupplierLookupForLowStockAsync(Task<List<Domain.Entities.Product>> lowStockTask)
+    {
+        var products = await lowStockTask;
+        var supplierIds = products
+            .Where(product => product.SupplierId.HasValue)
+            .Select(product => product.SupplierId!.Value)
+            .Distinct();
+
+        return await GetSupplierNameLookupAsync(supplierIds);
     }
 
     [Authorize(Policy = AuthPolicies.SalesRead)]
@@ -215,14 +230,14 @@ public class ReportsController : ControllerBase
         return $"\"{value.Replace("\"", "\"\"")}\"";
     }
 
-    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync()
+    private async Task<Dictionary<int, string>> GetSupplierNameLookupAsync(IEnumerable<int> supplierIds)
     {
         if (_supplierRepository is null)
         {
             return [];
         }
 
-        var suppliers = await _supplierRepository.GetSuppliersAsync();
+        var suppliers = await _supplierRepository.GetSuppliersByIdsAsync(supplierIds);
         return suppliers.ToDictionary(supplier => supplier.Id, supplier => supplier.Name);
     }
 }
