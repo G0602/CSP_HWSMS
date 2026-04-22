@@ -363,8 +363,74 @@ function buildFullPath(endpoint) {
   return `${basePath}?${query}`;
 }
 
+function isEnabledLoadEndpoint(endpoint) {
+  const route = endpoint.route.toLowerCase();
+
+  if (route === "api/auth/login") return true;
+  if (route === "api/sales" && endpoint.method === "POST") return true;
+  if (route === "api/reports/summary") return true;
+  if (route === "api/reports/analytics") return true;
+  if (route === "api/reports/export") return true;
+  if (route === "api/health") return true;
+
+  return false;
+}
+
+function buildAssertions(endpoint) {
+  const successCodes = endpoint.route.toLowerCase() === "api/reports/export" ? "200" : "200|201";
+  const bodyChecks = [];
+
+  if (endpoint.route.toLowerCase() === "api/auth/login") {
+    bodyChecks.push("accessToken");
+  }
+
+  if (endpoint.route.toLowerCase() === "api/sales" && endpoint.method === "POST") {
+    bodyChecks.push("saleId", "totalAmount");
+  }
+
+  if (endpoint.route.toLowerCase() === "api/reports/summary") {
+    bodyChecks.push("daily", "monthly", "lowStock");
+  }
+
+  if (endpoint.route.toLowerCase() === "api/reports/analytics") {
+    bodyChecks.push("totalSales", "totalProfit");
+  }
+
+  const responseCodeAssertion = `
+        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert ${xmlEscape(endpoint.methodName)} response code" enabled="true">
+          <collectionProp name="Asserion.test_strings">
+            <stringProp name="expectedCode">${successCodes}</stringProp>
+          </collectionProp>
+          <stringProp name="Assertion.custom_message"></stringProp>
+          <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+          <boolProp name="Assertion.assume_success">false</boolProp>
+          <intProp name="Assertion.test_type">1</intProp>
+        </ResponseAssertion>
+        <hashTree/>`;
+
+  const bodyAssertions = bodyChecks.map((check) => `
+        <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert ${xmlEscape(endpoint.methodName)} contains ${xmlEscape(check)}" enabled="true">
+          <collectionProp name="Asserion.test_strings">
+            <stringProp name="${xmlEscape(check)}">${xmlEscape(check)}</stringProp>
+          </collectionProp>
+          <stringProp name="Assertion.custom_message"></stringProp>
+          <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
+          <boolProp name="Assertion.assume_success">false</boolProp>
+          <intProp name="Assertion.test_type">2</intProp>
+        </ResponseAssertion>
+        <hashTree/>`).join("");
+
+  const durationAssertion = `
+        <DurationAssertion guiclass="DurationAssertionGui" testclass="DurationAssertion" testname="Assert ${xmlEscape(endpoint.methodName)} under SLA" enabled="true">
+          <stringProp name="DurationAssertion.duration">\${__P(maxResponseMs,2000)}</stringProp>
+        </DurationAssertion>
+        <hashTree/>`;
+
+  return `${responseCodeAssertion}${bodyAssertions}${durationAssertion}`;
+}
+
 function buildHttpSampler(endpoint, index) {
-  const enabled = endpoint.route === "api/Auth/login" || endpoint.method === "GET";
+  const enabled = isEnabledLoadEndpoint(endpoint);
   const body = endpoint.body ? JSON.stringify(endpoint.body, null, 2) : "";
   const bodyXml = endpoint.body
     ? `
@@ -432,7 +498,7 @@ function buildHttpSampler(endpoint, index) {
         <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
       </HTTPSamplerProxy>
-      <hashTree>${authHeader}${contentTypeHeader}${tokenExtractor}</hashTree>`;
+      <hashTree>${authHeader}${contentTypeHeader}${tokenExtractor}${buildAssertions(endpoint)}</hashTree>`;
 }
 
 function buildJmx(endpoints, defaults) {
@@ -578,6 +644,7 @@ users=100
 rampUp=20
 loops=1
 thinkTimeMs=250
+maxResponseMs=2000
 
 protocol=${defaults.protocol}
 host=${defaults.host}
@@ -607,7 +674,7 @@ function main() {
 
   console.log(`Generated ${jmxFile}`);
   console.log(`Generated ${propertiesFile}`);
-  console.log(`Included ${endpoints.length} endpoints. GET and login samplers are enabled by default.`);
+  console.log(`Included ${endpoints.length} endpoints. Login, sales, reports, and health samplers are enabled by default.`);
 }
 
 main();
