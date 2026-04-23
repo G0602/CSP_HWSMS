@@ -332,7 +332,7 @@ static bool IsAllowedFrontendOrigin(string? origin, string[] allowedOrigins)
 static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
 {
 	return rawOrigins
-		.Split([',', ';', '\n', '\r', '\t', ' '], StringSplitOptions.RemoveEmptyEntries)
+		.Split(new char[] {',', ';', '\n', '\r', '\t', ' '}, StringSplitOptions.RemoveEmptyEntries)
 		.Select(origin => origin.Trim().Trim('"', '\''))
 		.Where(origin => !string.IsNullOrWhiteSpace(origin))
 		.Select(origin => origin.TrimEnd('/'));
