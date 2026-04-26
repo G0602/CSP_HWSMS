@@ -13,12 +13,25 @@ HSMS.ApiTests/
 ├── Helpers/
 │   ├── ApiClient.cs              # Reusable REST client wrapper
 │   └── ApiTestConstants.cs        # Test constants and endpoints
-├── AuthApiTests.cs               # Member 1: Authentication positive tests
-├── AuthApiNegativeTests.cs       # Member 2: Authentication error handling
-├── ProductApiTests.cs            # Member 3: Product CRUD operations
-├── ProductApiNegativeTests.cs    # Member 4: Product edge cases
+├── Auth/
+├── Products/
+├── Sales/
+├── Reports/
+├── Users/
+└── Suppliers/
 └── HSMS.ApiTests.csproj         # Project configuration
 ```
+
+## API Test Folder Order
+
+The API suite is now grouped by feature area:
+
+1. `Auth/` - login, register, and auth-negative scenarios
+2. `Products/` - CRUD, advanced, validation, and update/delete scenarios
+3. `Sales/` - sales flow and negative API cases
+4. `Reports/` - reporting endpoints and negative date/input coverage
+5. `Users/` - user-management endpoint coverage
+6. `Suppliers/` - supplier endpoint coverage
 
 ---
 
@@ -289,5 +302,4 @@ If tests fail:
 - **Group Size:** 4 members (roles distributed as per test files)
 
 ---
-
 

@@ -291,7 +291,7 @@ public class SaleTransactionRollbackTests
 
         // Verify: Sale created successfully
         Assert.NotNull(saleResult);
-        Assert.True(saleResult.Id > 0);
+        Assert.True(saleResult.SaleId > 0);
 
         // Verify: Stock is now zero
         var product = await productRepository.GetProductById(productId);

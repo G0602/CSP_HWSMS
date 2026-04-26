@@ -84,6 +84,34 @@ cd backend
 dotnet test
 ```
 
+## Test Order
+
+Use this order when reading or running backend tests:
+
+1. `HSMS.Tests/Unit` - fast unit tests for controllers, services, configuration, and validation rules
+2. `HSMS.Tests/Integration` - database and repository integration tests
+3. `HSMS.Tests/Security` - authorization, token, and security-focused tests
+4. `HSMS.ApiTests` - REST API endpoint tests grouped by feature area
+5. `HSMS.E2E` - browser-level end-to-end tests
+
+Current backend test layout:
+
+```text
+backend/
+├── HSMS.Tests/
+│   ├── Unit/
+│   ├── Integration/
+│   └── Security/
+├── HSMS.ApiTests/
+│   ├── Auth/
+│   ├── Products/
+│   ├── Sales/
+│   ├── Reports/
+│   ├── Users/
+│   └── Suppliers/
+└── HSMS.E2E/
+```
+
 Or run specific projects:
 
 ```bash

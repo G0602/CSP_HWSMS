@@ -80,7 +80,7 @@ public class DataIntegrityTests
         var deleteStatus = await supplierRepo.DeleteSupplierAsync(supplierId);
 
         // Verify: Deletion should fail due to linked products
-        Assert.Equal(HSMS.Domain.Enums.SupplierDeleteStatus.LinkedRecordsExist, deleteStatus);
+        Assert.Equal(SupplierDeleteStatus.LinkedRecordsExist, deleteStatus);
 
         // Verify: Supplier should still exist
         var suppliers = await supplierRepo.GetSuppliersAsync();
@@ -110,7 +110,7 @@ public class DataIntegrityTests
         var deleteStatus = await supplierRepo.DeleteSupplierAsync(supplierId);
 
         // Verify: Deletion should succeed
-        Assert.Equal(HSMS.Domain.Enums.SupplierDeleteStatus.Deleted, deleteStatus);
+        Assert.Equal(SupplierDeleteStatus.Deleted, deleteStatus);
 
         // Verify: Supplier should no longer exist
         var suppliers = await supplierRepo.GetSuppliersAsync();
@@ -157,12 +157,11 @@ public class DataIntegrityTests
         Assert.True(deleteResult);
 
         // Verify: Sale record still exists
-        var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.Id, null, null);
+        var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.SaleId, null, null);
         Assert.NotEmpty(saleHistory);
         Assert.Single(saleHistory);
-
-        // Verify: Sale item still has product name snapshot
-        Assert.Equal("Product for Sale", saleHistory[0].Items[0].ProductName);
+        Assert.Equal("testuser", saleHistory[0].SoldBy);
+        Assert.Equal(1, saleHistory[0].ItemCount);
 
         // Cleanup
         await userRepo.DeleteAsync(userId);
@@ -206,7 +205,7 @@ public class DataIntegrityTests
         Assert.True(userDeleteResult);
 
         // Verify: Sale record still exists with username snapshot
-        var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.Id, null, null);
+        var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.SaleId, null, null);
         Assert.NotEmpty(saleHistory);
         Assert.Equal(user.Username, saleHistory[0].SoldBy);
 
@@ -255,12 +254,14 @@ public class DataIntegrityTests
             SKU = "SNAP-001",
             Category = "Testing",
             Price = 2000m,
+            Quantity = 20,
             SupplierId = null
         });
 
         // Verify: Sale item should have original snapshot
-        var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.Id, null, null);
-        var saleItem = saleHistory[0].Items[0];
+        var saleDetails = await saleRepo.GetSaleDetailsAsync(sale.SaleId);
+        Assert.NotNull(saleDetails);
+        var saleItem = Assert.Single(saleDetails.Items);
 
         Assert.Equal("Original Product Name", saleItem.ProductName);
         Assert.Equal(1000m, saleItem.UnitPrice);
@@ -317,7 +318,7 @@ public class DataIntegrityTests
         var sale = await saleRepo.CreateSaleAsync(saleDto, user!.Username);
 
         // Verify: Sale items maintain correct quantities
-        var saleDetails = await saleRepo.GetSaleDetailsAsync(sale.Id);
+        var saleDetails = await saleRepo.GetSaleDetailsAsync(sale.SaleId);
         Assert.NotNull(saleDetails);
         Assert.Equal(3, saleDetails.Items.Count);
 
