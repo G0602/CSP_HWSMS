@@ -21,7 +21,7 @@ jobs:
 # 🔵 BACKEND CI
 # =========================
   backend_ci:
-    name: Backend CI (Build + Tests + Coverage)
+    name: Backend CI (Build + Unit/Integration/API Tests + Coverage)
     runs-on: ubuntu-latest
 
     services:
@@ -40,6 +40,12 @@ jobs:
 
     env:
       HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
+      ConnectionStrings__DefaultConnection: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://127.0.0.1:5162
+      ADMIN_PASSWORD: Admin@123
+      MANAGER_PASSWORD: Manager@123
+      CASHIER_PASSWORD: Cashier@123
 
     steps:
       - uses: actions/checkout@v4
@@ -61,8 +67,35 @@ jobs:
       - name: Build
         run: dotnet build backend/HSMS.sln -c Release --no-restore
 
-      - name: Run Tests with Coverage
-        run: dotnet test backend/HSMS.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings backend/HSMS.Tests/coverlet.runsettings
+      - name: Run Backend Unit/Integration Tests with Coverage
+        run: dotnet test backend/HSMS.Tests/HSMS.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings backend/HSMS.Tests/coverlet.runsettings
+
+      - name: Start API for API Tests
+        working-directory: backend
+        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
+
+      - name: Wait for API Health Check
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5162/api/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "API failed to become ready"
+          cat "$RUNNER_TEMP/hsms-api.log"
+          exit 1
+
+      - name: Run API Tests
+        run: dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj -c Release --no-build --logger "trx;LogFileName=api-tests.trx"
+
+      - name: Run Selenium E2E Tests
+        env:
+          HSMS_E2E_BASE_URL: ${{ vars.HSMS_E2E_BASE_URL }}
+          HSMS_E2E_USERNAME: ${{ secrets.HSMS_E2E_USERNAME }}
+          HSMS_E2E_PASSWORD: ${{ secrets.HSMS_E2E_PASSWORD }}
+        run: dotnet test backend/HSMS.E2E/HSMS.E2E.csproj -c Release --no-build --logger "trx;LogFileName=e2e-tests.trx"
 
       - name: Upload Backend Coverage
         uses: actions/upload-artifact@v4
@@ -72,6 +105,7 @@ jobs:
           path: |
             backend/**/TestResults/**/coverage.cobertura.xml
             backend/**/TestResults/**/*.trx
+            ${{ runner.temp }}/hsms-api.log
           if-no-files-found: warn
 
 # =========================
