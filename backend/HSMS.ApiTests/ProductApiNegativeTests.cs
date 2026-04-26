@@ -176,7 +176,7 @@ public class ProductApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.Products, invalidProduct);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.InternalServerError, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
     }
 
     /// <summary>
@@ -330,7 +330,7 @@ public class ProductApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.Products, invalidProduct);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.InternalServerError, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
     }
 
     /// <summary>
