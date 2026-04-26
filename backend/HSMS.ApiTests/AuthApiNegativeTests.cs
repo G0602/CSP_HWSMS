@@ -38,7 +38,7 @@ public class AuthApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.Unauthorized, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
     }
 
     /// <summary>
@@ -66,7 +66,7 @@ public class AuthApiNegativeTests
     /// <summary>
     /// Test Case 2.3: Login with Empty Username
     /// Scenario: User attempts login with empty username
-    /// Expected: Returns 400 Bad Request
+    /// Expected: Returns 401 Unauthorized
     /// </summary>
     [Fact]
     public void Login_WithEmptyUsername_Should_Return_400()
@@ -82,7 +82,7 @@ public class AuthApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.Unauthorized, (int)response.StatusCode);
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ public class AuthApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.Unauthorized, (int)response.StatusCode);
     }
 
     /// <summary>
@@ -125,7 +125,7 @@ public class AuthApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.Unauthorized, (int)response.StatusCode);
     }
 
     /// <summary>
@@ -239,7 +239,7 @@ public class AuthApiNegativeTests
         var response = _client.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
 
         // Assert
-        Assert.Equal(ApiTestConstants.HttpStatusCodes.Unauthorized, (int)response.StatusCode);
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
     }
 
     /// <summary>

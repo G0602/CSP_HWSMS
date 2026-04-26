@@ -14,13 +14,13 @@ public static class ApiTestConstants
     /// Test admin credentials for authentication
     /// </summary>
     public const string TestAdminUsername = "admin";
-    public const string TestAdminPassword = "change-admin-password";
+    public const string TestAdminPassword = "Admin@123";
 
     /// <summary>
     /// Test user credentials (non-admin)
     /// </summary>
     public const string TestManagerUsername = "manager";
-    public const string TestManagerPassword = "change-manager-password";
+    public const string TestManagerPassword = "Manager@123";
 
     /// <summary>
     /// API endpoint paths

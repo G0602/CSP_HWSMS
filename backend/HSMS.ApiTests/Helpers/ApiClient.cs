@@ -11,6 +11,7 @@ public class ApiClient
 {
     private readonly RestClient _client;
     private string? _authToken;
+    private const int TimeoutMilliseconds = 10000; // 10 seconds
 
     public ApiClient(string? baseUrl = null)
     {
@@ -49,6 +50,7 @@ public class ApiClient
     {
         var request = new RestRequest(endpoint, Method.Post);
         request.AddJsonBody(body);
+        request.Timeout = TimeoutMilliseconds;
         
         if (!string.IsNullOrEmpty(_authToken))
         {
@@ -56,7 +58,7 @@ public class ApiClient
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await _client.ExecuteAsync(request);
+        var response = await _client.ExecuteAsync(request).ConfigureAwait(false);
         stopwatch.Stop();
         
         // Add response time to response object
@@ -79,6 +81,7 @@ public class ApiClient
     public async Task<RestResponse> GetAsync(string endpoint)
     {
         var request = new RestRequest(endpoint, Method.Get);
+        request.Timeout = TimeoutMilliseconds;
         
         if (!string.IsNullOrEmpty(_authToken))
         {
@@ -86,7 +89,7 @@ public class ApiClient
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await _client.ExecuteAsync(request);
+        var response = await _client.ExecuteAsync(request).ConfigureAwait(false);
         stopwatch.Stop();
         
         response.ErrorException = new ApiResponseTimeException(stopwatch.Elapsed, response.ErrorException);
@@ -109,6 +112,7 @@ public class ApiClient
     {
         var request = new RestRequest(endpoint, Method.Put);
         request.AddJsonBody(body);
+        request.Timeout = TimeoutMilliseconds;
         
         if (!string.IsNullOrEmpty(_authToken))
         {
@@ -116,7 +120,7 @@ public class ApiClient
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await _client.ExecuteAsync(request);
+        var response = await _client.ExecuteAsync(request).ConfigureAwait(false);
         stopwatch.Stop();
         
         response.ErrorException = new ApiResponseTimeException(stopwatch.Elapsed, response.ErrorException);
@@ -138,6 +142,7 @@ public class ApiClient
     public async Task<RestResponse> DeleteAsync(string endpoint)
     {
         var request = new RestRequest(endpoint, Method.Delete);
+        request.Timeout = TimeoutMilliseconds;
         
         if (!string.IsNullOrEmpty(_authToken))
         {
@@ -145,7 +150,7 @@ public class ApiClient
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var response = await _client.ExecuteAsync(request);
+        var response = await _client.ExecuteAsync(request).ConfigureAwait(false);
         stopwatch.Stop();
         
         response.ErrorException = new ApiResponseTimeException(stopwatch.Elapsed, response.ErrorException);

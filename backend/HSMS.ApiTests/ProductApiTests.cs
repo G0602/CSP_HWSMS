@@ -1,4 +1,5 @@
 using Xunit;
+using System.Text.Json;
 using HSMS.ApiTests.Helpers;
 
 namespace HSMS.ApiTests;
@@ -18,6 +19,95 @@ namespace HSMS.ApiTests;
 public class ProductApiTests
 {
     private readonly ApiClient _client = new ApiClient();
+    private readonly int _baselineProductId;
+
+    public ProductApiTests()
+    {
+        var authClient = new ApiClient();
+        var loginRequest = new
+        {
+            username = ApiTestConstants.TestAdminUsername,
+            password = ApiTestConstants.TestAdminPassword
+        };
+
+        var loginResponse = authClient.Post(ApiTestConstants.Endpoints.AuthLogin, loginRequest);
+        if (!loginResponse.IsSuccessful || string.IsNullOrWhiteSpace(loginResponse.Content))
+        {
+            throw new InvalidOperationException("Unable to authenticate product tests.");
+        }
+
+        using var document = JsonDocument.Parse(loginResponse.Content);
+        var token = document.RootElement.GetProperty("accessToken").GetString();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new InvalidOperationException("Authentication response did not contain an access token.");
+        }
+
+        _client.SetAuthToken(token);
+        _baselineProductId = CreateBaselineProductAndGetId();
+    }
+
+    private int CreateBaselineProductAndGetId()
+    {
+        var uniqueSku = $"BASE-{Guid.NewGuid():N}";
+        var baselineProduct = new
+        {
+            name = $"Baseline Product {uniqueSku}",
+            sku = uniqueSku,
+            price = 29.99m,
+            quantity = 50,
+            category = "Hand Tools",
+            supplierId = (int?)null
+        };
+
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Products, baselineProduct);
+        if ((int)createResponse.StatusCode != ApiTestConstants.HttpStatusCodes.Created)
+        {
+            throw new InvalidOperationException($"Unable to seed product tests. Status code: {(int)createResponse.StatusCode}");
+        }
+
+        var listResponse = _client.Get(ApiTestConstants.Endpoints.Products);
+        if (string.IsNullOrWhiteSpace(listResponse.Content))
+        {
+            throw new InvalidOperationException("Product list was empty after seeding.");
+        }
+
+        using var document = JsonDocument.Parse(listResponse.Content);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("Product list response was not a JSON array.");
+        }
+
+        foreach (var product in document.RootElement.EnumerateArray())
+        {
+            string? sku = null;
+            if (product.TryGetProperty("sku", out var skuElement))
+            {
+                sku = skuElement.GetString();
+            }
+            else if (product.TryGetProperty("SKU", out var skuElementUpper))
+            {
+                sku = skuElementUpper.GetString();
+            }
+
+            if (!string.Equals(sku, uniqueSku, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (product.TryGetProperty("id", out var idElement) && idElement.TryGetInt32(out var id))
+            {
+                return id;
+            }
+
+            if (product.TryGetProperty("Id", out var idElementUpper) && idElementUpper.TryGetInt32(out var idUpper))
+            {
+                return idUpper;
+            }
+        }
+
+        throw new InvalidOperationException("Seeded baseline product could not be found in the product list.");
+    }
 
     /// <summary>
     /// Test Case 3.1: Get All Products - Basic Retrieval
@@ -72,8 +162,7 @@ public class ProductApiTests
     public void GetProductById_WithValidId_Should_Return_200()
     {
         // Arrange
-        var productId = 1; // Assuming default seeded product
-        var endpoint = ApiTestConstants.Endpoints.ProductById.Replace("{id}", productId.ToString());
+        var endpoint = ApiTestConstants.Endpoints.ProductById.Replace("{id}", _baselineProductId.ToString());
 
         // Act
         var response = _client.Get(endpoint);
@@ -93,8 +182,7 @@ public class ProductApiTests
     public void GetProductById_Response_Should_ContainRequiredFields()
     {
         // Arrange
-        var productId = 1;
-        var endpoint = ApiTestConstants.Endpoints.ProductById.Replace("{id}", productId.ToString());
+        var endpoint = ApiTestConstants.Endpoints.ProductById.Replace("{id}", _baselineProductId.ToString());
 
         // Act
         var response = _client.Get(endpoint);
@@ -117,9 +205,11 @@ public class ProductApiTests
         var newProduct = new
         {
             name = "Test Hammer - " + Guid.NewGuid().ToString().Substring(0, 8),
+            sku = "HAM-" + Guid.NewGuid().ToString("N")[..8],
             price = 29.99m,
-            stock = 50,
-            supplierId = 1
+            quantity = 50,
+            category = "Hand Tools",
+            supplierId = (int?)null
         };
 
         // Act
@@ -142,9 +232,11 @@ public class ProductApiTests
         var newProduct = new
         {
             name = "Test Screwdriver - " + Guid.NewGuid().ToString().Substring(0, 8),
+            sku = "SCR-" + Guid.NewGuid().ToString("N")[..8],
             price = 15.99m,
-            stock = 100,
-            supplierId = 1
+            quantity = 100,
+            category = "Hand Tools",
+            supplierId = (int?)null
         };
 
         // Act
@@ -152,7 +244,10 @@ public class ProductApiTests
 
         // Assert
         Assert.Equal(ApiTestConstants.HttpStatusCodes.Created, (int)response.StatusCode);
-        Assert.Contains("\"id\"", response.Content ?? "");
+        Assert.True(
+            response.Headers?.Any(header => string.Equals(header.Name, "Location", StringComparison.OrdinalIgnoreCase)) == true,
+            "Created response should include a Location header"
+        );
     }
 
     /// <summary>
@@ -166,8 +261,8 @@ public class ProductApiTests
         // Arrange
         var products = new[]
         {
-            new { name = "Product A - " + Guid.NewGuid(), price = 10.00m, stock = 50, supplierId = 1 },
-            new { name = "Product B - " + Guid.NewGuid(), price = 20.00m, stock = 30, supplierId = 1 }
+            new { name = "Product A - " + Guid.NewGuid(), sku = "PROD-A-" + Guid.NewGuid().ToString("N")[..8], price = 10.00m, quantity = 50, category = "Hand Tools", supplierId = (int?)null },
+            new { name = "Product B - " + Guid.NewGuid(), sku = "PROD-B-" + Guid.NewGuid().ToString("N")[..8], price = 20.00m, quantity = 30, category = "Hand Tools", supplierId = (int?)null }
         };
 
         // Act & Assert
@@ -190,9 +285,11 @@ public class ProductApiTests
         var newProduct = new
         {
             name = "Priced Product - " + Guid.NewGuid().ToString().Substring(0, 8),
+            sku = "PRC-" + Guid.NewGuid().ToString("N")[..8],
             price = 99.99m,
-            stock = 25,
-            supplierId = 1
+            quantity = 25,
+            category = "Hand Tools",
+            supplierId = (int?)null
         };
 
         // Act
@@ -214,9 +311,11 @@ public class ProductApiTests
         var newProduct = new
         {
             name = "Stocked Product - " + Guid.NewGuid().ToString().Substring(0, 8),
+            sku = "STK-" + Guid.NewGuid().ToString("N")[..8],
             price = 45.50m,
-            stock = 100,
-            supplierId = 1
+            quantity = 100,
+            category = "Hand Tools",
+            supplierId = (int?)null
         };
 
         // Act
@@ -278,9 +377,11 @@ public class ProductApiTests
         var newProduct = new
         {
             name = "Supplier Referenced Product - " + Guid.NewGuid().ToString().Substring(0, 8),
+            sku = "SUP-" + Guid.NewGuid().ToString("N")[..8],
             price = 34.99m,
-            stock = 75,
-            supplierId = 1
+            quantity = 75,
+            category = "Hand Tools",
+            supplierId = (int?)null
         };
 
         // Act
