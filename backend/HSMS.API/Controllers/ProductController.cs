@@ -285,8 +285,14 @@ public class ProductController : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return "Product name is required.";
 
+        if (name.Trim().Length > 255)
+            return "Product name must be 255 characters or less.";
+
         if (string.IsNullOrWhiteSpace(sku))
             return "SKU is required.";
+
+        if (sku.Trim().Length > 100)
+            return "SKU must be 100 characters or less.";
 
         if (price <= 0)
             return "Price must be greater than zero.";
@@ -296,6 +302,9 @@ public class ProductController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(category))
             return "Category is required.";
+
+        if (category.Trim().Length > 255)
+            return "Category must be 255 characters or less.";
 
         if (supplierId.HasValue && supplierId.Value <= 0)
             return "SupplierId must be greater than zero.";

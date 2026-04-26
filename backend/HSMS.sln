@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.Tests", "HSMS.Tests\HS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.E2E", "HSMS.E2E\HSMS.E2E.csproj", "{D7C42243-C829-4847-95B9-4415527434AE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HSMS.ApiTests", "HSMS.ApiTests\HSMS.ApiTests.csproj", "{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{D7C42243-C829-4847-95B9-4415527434AE}.Release|x64.Build.0 = Release|Any CPU
 		{D7C42243-C829-4847-95B9-4415527434AE}.Release|x86.ActiveCfg = Release|Any CPU
 		{D7C42243-C829-4847-95B9-4415527434AE}.Release|x86.Build.0 = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|x64.Build.0 = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Debug|x86.Build.0 = Debug|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|x64.ActiveCfg = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|x64.Build.0 = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|x86.ActiveCfg = Release|Any CPU
+		{F8E4C9A5-2B1D-4E7F-9D6B-8A3C5F2E1B9A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
