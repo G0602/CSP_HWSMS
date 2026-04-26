@@ -47,7 +47,7 @@ jmeter -n \
   -Jhost=localhost \
   -Jport=5162 \
   -Jusername=admin_user \
-  -Jpassword=Admin@123
+  -Jpassword=<seeded-admin-password>
 ```
 
 ## Notes

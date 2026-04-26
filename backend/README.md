@@ -1,134 +1,107 @@
-# HSMS Backend
+# HWSMS Backend
 
-ASP.NET Core 8 REST API for the Hardware Store Management System.
+ASP.NET Core 8 backend for the Hardware Store Management System.
 
----
+## Projects
 
-## Solution Structure
-
-```
+```text
 backend/
 ├── HSMS.sln
-├── HSMS.API/            # Web host — controllers, middleware, Program.cs
-├── HSMS.Application/    # Interfaces (contracts) & DTOs
-├── HSMS.Domain/         # Entity classes (pure C#, no framework deps)
-├── HSMS.Infrastructure/ # MySQL data-access (ADO.NET)
-└── HSMS.Tests/          # Unit tests (xUnit + Moq)
+├── HSMS.API/
+├── HSMS.Application/
+├── HSMS.Domain/
+├── HSMS.Infrastructure/
+├── HSMS.Tests/
+├── HSMS.ApiTests/
+└── HSMS.E2E/
 ```
 
-### Layer responsibilities
+## Main Responsibilities
 
-| Project                | Role                                                                           |
-|------------------------|--------------------------------------------------------------------------------|
-| `HSMS.Domain`          | Core business objects (`Product`). No external dependencies.                  |
-| `HSMS.Application`     | Defines **what** the system can do: `IProductRepository`, `IProductService`, DTOs. |
-| `HSMS.Infrastructure`  | Implements `IProductRepository` using raw ADO.NET against MySQL.               |
-| `HSMS.API`             | Hosts the ASP.NET Core pipeline; wires DI; exposes REST endpoints via controllers. |
-| `HSMS.Tests`           | Unit-tests controller logic with an in-memory mock repository (no DB needed). |
-
----
-
-## Key Files
-
-| File | Description |
-|------|-------------|
-| [HSMS.API/Program.cs](HSMS.API/Program.cs) | DI registration, middleware pipeline, CORS config |
-| [HSMS.API/Controllers/ProductController.cs](HSMS.API/Controllers/ProductController.cs) | All product CRUD endpoints |
-| [HSMS.Application/Interfaces/IProductRepository.cs](HSMS.Application/Interfaces/IProductRepository.cs) | Repository contract |
-| [HSMS.Application/DTOs/ProductCreateDTO.cs](HSMS.Application/DTOs/ProductCreateDTO.cs) | Create payload shape |
-| [HSMS.Application/DTOs/ProductUpdateDTO.cs](HSMS.Application/DTOs/ProductUpdateDTO.cs) | Update payload shape |
-| [HSMS.Domain/Entities/Product.cs](HSMS.Domain/Entities/Product.cs) | Product domain entity |
-| [HSMS.Infrastructure/Repositories/ProductRepository.cs](HSMS.Infrastructure/Repositories/ProductRepository.cs) | MySQL ADO.NET implementation |
-| [HSMS.Infrastructure/Data/DbConnectionFactory.cs](HSMS.Infrastructure/Data/DbConnectionFactory.cs) | MySQL connection factory |
-
----
+| Project | Responsibility |
+|---|---|
+| `HSMS.API` | Controllers, auth, startup, DI, HTTP pipeline |
+| `HSMS.Application` | DTOs and interfaces |
+| `HSMS.Domain` | Entities |
+| `HSMS.Infrastructure` | Data access and database initialization |
+| `HSMS.Tests` | Unit and integration-style tests |
+| `HSMS.ApiTests` | API test suite |
+| `HSMS.E2E` | Browser/E2E test project |
 
 ## Configuration
 
-### `appsettings.json`
+The backend configuration comes from:
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": ""
-  },
-  "Jwt": {
-    "Secret": ""
-  }
-}
-```
+1. `HSMS.API/appsettings.json`
+2. `HSMS.API/appsettings.{Environment}.json`
+3. environment variables
 
-Set local and production values with environment variables, for example `ConnectionStrings__DefaultConnection` and `Jwt__Secret`.
+Important runtime variables:
 
-> **Auto-migration:** `ProductRepository` calls `EnsureProductsTableExists()` in its constructor, so the `Products` table is created automatically if it does not exist. No migration tooling needed.
+- `ConnectionStrings__DefaultConnection`
+- `JWT_SECRET` or `Jwt__Secret`
+- `JWT_ISSUER` or `Jwt__Issuer`
+- `JWT_AUDIENCE` or `Jwt__Audience`
+- `CORS_ORIGINS`
+- `FRONTEND_URL`
+- `LOW_STOCK_THRESHOLD`
 
----
+The file `backend/.env.example` is a template/reference. The API does not automatically load it by itself.
 
-## Running Locally
+## Run Locally
 
 ```bash
-# from the backend/ directory
+cd backend
 dotnet restore
 dotnet run --project HSMS.API
 ```
 
-Swagger UI: [http://localhost:5162/swagger](http://localhost:5162/swagger)
+Local development URLs:
 
----
+- `http://localhost:5162`
+- `https://localhost:7111`
 
-## Running Tests
+Useful endpoints:
+
+- Swagger: `http://localhost:5162/swagger`
+- Health: `http://localhost:5162/api/health`
+
+Swagger is only available in `Development`.
+
+## API Areas
+
+- authentication
+- products and inventory
+- suppliers
+- sales
+- reports
+- users and roles
+
+## Run Tests
 
 ```bash
+cd backend
 dotnet test
 ```
 
-Tests mock `IProductRepository` with Moq — no database connection required.
+Or run specific projects:
 
----
-
-## API Endpoints
-
-| Method   | URL                    | Description             | Success |
-|----------|------------------------|-------------------------|---------|
-| `GET`    | `/api/product`         | List all products       | 200     |
-| `GET`    | `/api/product/{id}`    | Get product by Id       | 200 / 404 |
-| `POST`   | `/api/product`         | Create new product      | 201 / 400 |
-| `PUT`    | `/api/product/{id}`    | Update existing product | 200 / 404 |
-| `DELETE` | `/api/product/{id}`    | Delete product          | 200 / 404 |
-
-### Request body (`POST` / `PUT`)
-
-```json
-{
-  "name":     "Claw Hammer",
-  "sku":      "HMR-001",
-  "price":    1500.00,
-  "quantity": 25,
-  "category": "Hand Tools"
-}
+```bash
+dotnet test HSMS.Tests/HSMS.Tests.csproj
+dotnet test HSMS.ApiTests/HSMS.ApiTests.csproj
+dotnet test HSMS.E2E/HSMS.E2E.csproj
 ```
 
-### Validation rules (enforced in the controller)
+## Notes
 
-- `price` must be **> 0**
-- `quantity` must be **>= 0**
+- The database initializer runs at application startup.
+- Development seed users are created only when the environment is `Development` and all three seed password variables are provided.
+- Backend authorization is policy-based and remains the source of truth even if the frontend hides routes.
 
----
+## Related Docs
 
-## NuGet Packages
-
-| Package | Version | Used In |
-|---------|---------|---------|
-| `Swashbuckle.AspNetCore` | 6.6.2 | HSMS.API — Swagger UI |
-| `Microsoft.AspNetCore.OpenApi` | 8.0.24 | HSMS.API — OpenAPI metadata |
-| `MySql.Data` | latest | HSMS.Infrastructure — MySQL driver |
-| `xunit` | 2.5.3 | HSMS.Tests |
-| `Moq` | 4.20.72 | HSMS.Tests — repository mocking |
-| `coverlet.collector` | 8.0.0 | HSMS.Tests — code coverage |
-
----
-
-## CORS
-
-The API allows requests from `http://localhost:5173` (Vite dev server) via the `FrontendPolicy`.  
-Update `Program.cs` with the production frontend URL before deploying.
+- [../README.md](../README.md)
+- [../QUICK_START.md](../QUICK_START.md)
+- [../DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md)
+- [HSMS.Tests/README.md](./HSMS.Tests/README.md)
+- [HSMS.ApiTests/README.md](./HSMS.ApiTests/README.md)
