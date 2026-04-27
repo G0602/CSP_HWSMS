@@ -2,10 +2,11 @@ name: HSMS CI/CD
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-    branches: ["develop", "main"]
+    branches:
+      - main
   push:
-    branches: ["develop", "main"]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -16,13 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
-# =========================
-# 🔵 BACKEND CI
-# =========================
   backend_ci:
-    name: Backend CI (Build + Tests + Coverage)
+    name: Backend CI
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       mysql:
@@ -40,9 +38,19 @@ jobs:
 
     env:
       HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
+      ConnectionStrings__DefaultConnection: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://127.0.0.1:5162
+      ADMIN_PASSWORD: Admin@123
+      MANAGER_PASSWORD: Manager@123
+      CASHIER_PASSWORD: Cashier@123
+      Jwt__Secret: ThisIsADevelopmentOnlySecretKey123!
+      Jwt__Issuer: hsms-ci
+      Jwt__Audience: hsms-ci-clients
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -54,139 +62,158 @@ jobs:
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'backend/**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
-      - name: Restore
+      - name: Restore backend
         run: dotnet restore backend/HSMS.sln
 
-      - name: Build
+      - name: Build backend
         run: dotnet build backend/HSMS.sln -c Release --no-restore
 
-      - name: Run Tests with Coverage
-        run: dotnet test backend/HSMS.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings backend/HSMS.Tests/coverlet.runsettings
+      - name: Run backend test suite
+        run: dotnet test backend/HSMS.Tests/HSMS.Tests.csproj -c Release --no-build --collect:"XPlat Code Coverage" --settings backend/HSMS.Tests/coverlet.runsettings --logger "trx;LogFileName=backend-tests.trx"
 
-      - name: Upload Backend Coverage
-        uses: actions/upload-artifact@v4
+      - name: Start backend API for API tests
+        working-directory: backend
+        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
+
+      - name: Wait for backend health endpoint
+        run: |
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:5162/api/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Backend API failed to become ready."
+          cat "$RUNNER_TEMP/hsms-api.log"
+          exit 1
+
+      - name: Run backend API tests
+        run: dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj -c Release --no-build --logger "trx;LogFileName=api-tests.trx"
+
+      - name: Upload backend test artifacts
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage
+          name: backend-test-results
           path: |
             backend/**/TestResults/**/coverage.cobertura.xml
             backend/**/TestResults/**/*.trx
+            ${{ runner.temp }}/hsms-api.log
           if-no-files-found: warn
 
-# =========================
-# 🟣 FRONTEND CI
-# =========================
   frontend_ci:
-    name: Frontend CI (Build + Tests)
+    name: Frontend CI
     runs-on: ubuntu-latest
-
-    outputs:
-      build-path: frontend/HWSMS_UI/dist
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/HWSMS_UI/package-lock.json
 
-      - name: Install Dependencies
+      - name: Install frontend dependencies
         working-directory: frontend/HWSMS_UI
         run: npm ci
 
-      - name: Run Frontend Tests
+      - name: Run frontend tests
         working-directory: frontend/HWSMS_UI
         run: npm test
 
-      - name: Build Frontend
+      - name: Build frontend
         working-directory: frontend/HWSMS_UI
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
-      - name: Upload build artifact
+      - name: Upload frontend artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/HWSMS_UI/dist
+          if-no-files-found: error
 
-# =========================
-# 🔵 BACKEND DEPLOY
-# =========================
   deploy_backend:
-    name: Deploy Backend (Azure App Service)
+    name: Deploy Backend
     runs-on: ubuntu-latest
-    needs: [backend_ci, frontend_ci]
+    needs:
+      - backend_ci
+      - frontend_ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: production
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
+      - name: Restore backend
         run: dotnet restore backend/HSMS.sln
 
-      - name: Publish API
+      - name: Publish backend API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release -o ${{ runner.temp }}/backend_publish
 
-      - name: Deploy to Azure Web App
+      - name: Deploy backend to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ runner.temp }}/backend_publish
 
-# =========================
-# 🟢 FRONTEND DEPLOY
-# =========================
   deploy_frontend:
-    name: Deploy Frontend (Azure Static Web Apps)
+    name: Deploy Frontend
     runs-on: ubuntu-latest
-    needs: [backend_ci, frontend_ci]
+    needs:
+      - backend_ci
+      - frontend_ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download build artifact
+      - name: Download frontend artifact
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
           path: frontend_build
 
-      - name: Deploy to Azure Static Web Apps
+      - name: Deploy frontend to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APP_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          app_location: "frontend_build"
+          action: upload
+          app_location: frontend_build
           output_location: ""
 
-# =========================
-# 🧪 POST-DEPLOY VERIFY
-# =========================
   smoke_test:
-    name: Verify Live Deployment
+    name: Smoke Test
     runs-on: ubuntu-latest
-    needs: [deploy_backend, deploy_frontend]
+    needs:
+      - deploy_backend
+      - deploy_frontend
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 10
     env:
       BACKEND_PUBLIC_URL: ${{ vars.BACKEND_PUBLIC_URL }}
       AZURE_BACKEND_APP_NAME: ${{ vars.AZURE_BACKEND_APP_NAME }}
       FRONTEND_PUBLIC_URL: ${{ vars.FRONTEND_PUBLIC_URL }}
 
     steps:
-      - name: Check Backend Health
+      - name: Check backend and database health
         run: |
           BACKEND_URL="${BACKEND_PUBLIC_URL}"
           if [ -z "$BACKEND_URL" ] && [ -n "$AZURE_BACKEND_APP_NAME" ]; then
@@ -199,37 +226,65 @@ jobs:
           fi
 
           BACKEND_URL="${BACKEND_URL%/}"
-          echo "Checking backend health at ${BACKEND_URL}/api/health"
-          curl --fail --show-error --silent "${BACKEND_URL}/api/health"
 
-      - name: Check Frontend Availability
+          for i in {1..20}; do
+            RESPONSE="$(curl --silent --show-error --fail "${BACKEND_URL}/api/health")" && break
+            sleep 10
+          done
+
+          if [ -z "$RESPONSE" ]; then
+            echo "Backend health endpoint did not return a healthy response."
+            exit 1
+          fi
+
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"healthy"'
+          echo "$RESPONSE" | grep -q '"mysql"'
+          echo "$RESPONSE" | grep -q '"status":"healthy","description":"Database connection is available."'
+
+      - name: Check frontend availability
         run: |
           if [ -z "${FRONTEND_PUBLIC_URL}" ]; then
             echo "Missing frontend URL. Set FRONTEND_PUBLIC_URL in repository variables."
             exit 1
           fi
-          curl --fail --show-error --silent --head "${FRONTEND_PUBLIC_URL}"
 
-# =========================
-# 🔔 FAILURE NOTIFICATION
-# =========================
+          FRONTEND_URL="${FRONTEND_PUBLIC_URL%/}"
+
+          for i in {1..20}; do
+            HTML="$(curl --silent --show-error --fail "${FRONTEND_URL}/")" && break
+            sleep 10
+          done
+
+          if [ -z "$HTML" ]; then
+            echo "Frontend did not respond successfully."
+            exit 1
+          fi
+
+          echo "$HTML" | grep -q '<div id="root"></div>'
+
   notify_failure:
     name: Notify Failure
     runs-on: ubuntu-latest
-    needs: [backend_ci, frontend_ci, deploy_backend, deploy_frontend, smoke_test]
+    needs:
+      - backend_ci
+      - frontend_ci
+      - deploy_backend
+      - deploy_frontend
+      - smoke_test
     if: always() && contains(needs.*.result, 'failure')
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
-      - name: Write Failure Summary
+      - name: Write failure summary
         run: |
           echo "## HSMS CI/CD failed" >> "$GITHUB_STEP_SUMMARY"
           echo "- Workflow: $GITHUB_WORKFLOW" >> "$GITHUB_STEP_SUMMARY"
           echo "- Branch/ref: $GITHUB_REF" >> "$GITHUB_STEP_SUMMARY"
           echo "- Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Send Slack Notification
+      - name: Send Slack notification
         if: env.SLACK_WEBHOOK_URL != ''
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

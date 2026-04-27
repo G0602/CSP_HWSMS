@@ -2,6 +2,7 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
+using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,6 +36,16 @@ public class SaleTransactionRollbackTests
         return new ProductRepository(config);
     }
 
+    private static async Task DeleteSaleAsync(string connectionString, int saleId)
+    {
+        await using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new MySqlCommand("DELETE FROM Sales WHERE Id = @Id", connection);
+        command.Parameters.AddWithValue("@Id", saleId);
+        await command.ExecuteNonQueryAsync();
+    }
+
     [Fact]
     public async Task CreateSale_Should_Fail_When_Items_Collection_Is_Empty()
     {
@@ -48,11 +59,11 @@ public class SaleTransactionRollbackTests
             Items = new List<SaleItemCreateDTO>() // Empty items
         };
 
-        // Execute & Verify: Should throw ArgumentException
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
+        // Execute & Verify: Should throw InvalidOperationException
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             saleRepository.CreateSaleAsync(saleDto, "cashier1"));
         
-        Assert.Contains("items", exception.Message.ToLower());
+        Assert.Contains("at least one sale item is required.", exception.Message.ToLower());
     }
 
     [Fact]
@@ -86,8 +97,8 @@ public class SaleTransactionRollbackTests
             }
         };
 
-        // Execute & Verify: Should throw ArgumentException
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
+        // Execute & Verify: Should throw InvalidOperationException
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             saleRepository.CreateSaleAsync(saleDto, "cashier1"));
 
         Assert.Contains("quantity", exception.Message.ToLower());
@@ -127,8 +138,8 @@ public class SaleTransactionRollbackTests
             }
         };
 
-        // Execute & Verify: Should throw ArgumentException
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
+        // Execute & Verify: Should throw InvalidOperationException
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             saleRepository.CreateSaleAsync(saleDto, "cashier1"));
 
         // Cleanup
@@ -299,6 +310,7 @@ public class SaleTransactionRollbackTests
         Assert.Equal(0, product.Quantity);
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, saleResult.SaleId);
         await productRepository.DeleteProduct(productId);
     }
 
@@ -367,6 +379,7 @@ public class SaleTransactionRollbackTests
         Assert.Equal(8, p3!.Quantity);  // 10 - 2
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, saleResult.SaleId);
         await productRepository.DeleteProduct(product1Id);
         await productRepository.DeleteProduct(product2Id);
         await productRepository.DeleteProduct(product3Id);
