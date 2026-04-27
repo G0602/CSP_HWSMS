@@ -63,7 +63,7 @@ public class SaleTransactionRollbackTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
             saleRepository.CreateSaleAsync(saleDto, "cashier1"));
         
-        Assert.Contains("items", exception.Message.ToLower());
+        Assert.Contains("at least one sale item is required.", exception.Message.ToLower());
     }
 
     [Fact]
