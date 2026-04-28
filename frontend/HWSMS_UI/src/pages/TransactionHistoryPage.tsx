@@ -88,54 +88,54 @@ const TransactionHistoryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl p-6 lg:p-10">
+      <div className="hw-shell">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-900">Transaction History</h2>
-          <p className="text-slate-600 mt-1">Review completed sales and inspect detailed line items.</p>
+          <h2 className="hw-title">Transaction History</h2>
+          <p className="hw-subtitle">Review completed sales and inspect detailed line items.</p>
         </div>
 
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
 
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="hw-card mb-4 p-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <input
               type="number"
               placeholder="Transaction ID"
               value={transactionIdFilter}
               onChange={(e) => setTransactionIdFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="hw-input"
             />
             <input
               type="date"
               value={fromDateFilter}
               onChange={(e) => setFromDateFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="hw-input"
             />
             <input
               type="date"
               value={toDateFilter}
               onChange={(e) => setToDateFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="hw-input"
             />
             <button
               type="button"
               onClick={() => {
                 void loadHistory();
               }}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700"
+              className="hw-btn-primary"
             >
               Apply Filters
             </button>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="hw-card overflow-x-auto p-4">
+          <table className="hw-table">
             <thead>
-              <tr className="text-left border-b border-slate-200 text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">ID</th>
                 <th className="py-2">Date/Time</th>
                 <th className="py-2">Sold By</th>
@@ -154,7 +154,7 @@ const TransactionHistoryPage = () => {
               )}
 
               {history.map((transaction) => (
-                <tr key={transaction.saleId} className="border-b border-slate-100">
+                <tr key={transaction.saleId}>
                   <td className="py-2 font-medium">#{transaction.saleId}</td>
                   <td className="py-2">{new Date(transaction.soldAt).toLocaleString()}</td>
                   <td className="py-2">{transaction.soldBy}</td>
@@ -167,14 +167,14 @@ const TransactionHistoryPage = () => {
                         onClick={() => {
                           void openDetails(transaction.saleId);
                         }}
-                        className="rounded-lg bg-slate-100 px-3 py-1.5 hover:bg-slate-200"
+                        className="hw-btn-ghost px-3 py-1.5"
                       >
                         View
                       </button>
                       <button
                         type="button"
                         onClick={() => navigate(`/transactions/${transaction.saleId}/invoice`)}
-                        className="rounded-lg bg-blue-600 text-white px-3 py-1.5 hover:bg-blue-700"
+                        className="hw-btn-primary px-3 py-1.5"
                       >
                         Invoice
                       </button>
