@@ -9,7 +9,6 @@ import InventoryPage from "./pages/InventoryPage";
 import InvoicePreviewPage from "./pages/InvoicePreviewPage";
 import LoginPage from "./pages/LoginPage";
 import ProductDashboard from "./pages/ProductDashboard";
-import RegisterPage from "./pages/RegisterPage";
 import SalesPage from "./pages/SalesPage";
 import SupplierPage from "./pages/SupplierPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
@@ -25,14 +24,6 @@ function App() {
           element={
             <PublicOnlyRoute>
               <LoginPage />
-            </PublicOnlyRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicOnlyRoute>
-              <RegisterPage />
             </PublicOnlyRoute>
           }
         />
@@ -115,5 +106,4 @@ function App() {
 }
 
 export default App;
-
 
