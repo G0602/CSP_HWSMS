@@ -6,30 +6,18 @@ export const AppRoles = {
 
 export type AppRole = (typeof AppRoles)[keyof typeof AppRoles];
 
-const normalizeRole = (role?: string): string => {
-  return role?.trim().toLowerCase() ?? "";
-};
-
-const isRoleEqual = (role?: string, expectedRole?: string): boolean => {
-  return normalizeRole(role) === normalizeRole(expectedRole);
-};
-
 export const canAccessInventory = (role?: string) => {
-  return isRoleEqual(role, AppRoles.Admin) || isRoleEqual(role, AppRoles.Manager);
+  return role === AppRoles.Admin || role === AppRoles.Manager;
 };
 
 export const canAccessSales = (role?: string) => {
-  return isRoleEqual(role, AppRoles.Admin) || isRoleEqual(role, AppRoles.Manager) || isRoleEqual(role, AppRoles.Cashier);
+  return role === AppRoles.Admin || role === AppRoles.Manager || role === AppRoles.Cashier;
 };
 
 export const canAccessTransactions = (role?: string) => {
-  return isRoleEqual(role, AppRoles.Admin) || isRoleEqual(role, AppRoles.Manager);
+  return role === AppRoles.Admin || role === AppRoles.Manager;
 };
 
 export const canManageUsers = (role?: string) => {
-  return isRoleEqual(role, AppRoles.Admin);
-};
-
-export const isAdmin = (role?: string) => {
-  return isRoleEqual(role, AppRoles.Admin);
+  return role === AppRoles.Admin;
 };
