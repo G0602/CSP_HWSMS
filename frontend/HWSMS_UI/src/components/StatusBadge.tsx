@@ -6,7 +6,9 @@ const StatusBadge = ({ quantity }: StatusBadgeProps) => {
   const isLow = quantity < 10;
 
   return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${isLow ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+    <span
+      className={`rounded-full px-3 py-1 text-sm font-semibold ${isLow ? "bg-[#fce4e5] text-[#a8272d]" : "bg-[#dff5eb] text-[#0f7a5a]"}`}
+    >
       {isLow ? "Low Stock" : "In Stock"}
     </span>
   );
