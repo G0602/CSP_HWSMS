@@ -140,22 +140,22 @@ const SupplierPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar search={search} onSearchChange={setSearch} onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl p-6 lg:p-10">
+      <div className="hw-shell">
         <div className="mb-6">
-          <h2 className="text-3xl font-bold text-slate-900">Suppliers</h2>
-          <p className="mt-1 text-slate-600">Manage supplier records for procurement operations.</p>
+          <h2 className="hw-title">Suppliers</h2>
+          <p className="hw-subtitle">Manage supplier records for procurement operations.</p>
         </div>
 
         {successMessage && <div className="mb-4 rounded-lg bg-green-100 px-4 py-3 text-green-800">{successMessage}</div>}
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <table className="w-full text-sm">
+        <div className="hw-card overflow-x-auto p-4">
+          <table className="hw-table">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Name</th>
                 <th className="py-2">Contact Info</th>
                 <th className="py-2">Created</th>
@@ -172,7 +172,7 @@ const SupplierPage = () => {
               )}
 
               {filteredSuppliers.map((supplier) => (
-                <tr key={supplier.id} className="border-b border-slate-100">
+                <tr key={supplier.id}>
                   <td className="py-3 font-medium text-slate-900">{supplier.name}</td>
                   <td className="py-3 text-slate-600">{supplier.contactInfo || "-"}</td>
                   <td className="py-3 text-slate-600">
@@ -183,14 +183,14 @@ const SupplierPage = () => {
                       <button
                         type="button"
                         onClick={() => openEditModal(supplier)}
-                        className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+                        className="hw-btn-secondary px-3 py-1.5 text-xs"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => setDeletingSupplier(supplier)}
-                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                        className="hw-btn-danger px-3 py-1.5 text-xs"
                       >
                         Delete
                       </button>
@@ -204,8 +204,8 @@ const SupplierPage = () => {
       </div>
 
       {editingSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="hw-modal-overlay">
+          <div className="hw-modal">
             <h3 className="text-lg font-semibold text-slate-900">Edit Supplier</h3>
             <div className="mt-4 space-y-3">
               <div>
@@ -214,7 +214,7 @@ const SupplierPage = () => {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="hw-input"
                 />
               </div>
               <div>
@@ -224,7 +224,7 @@ const SupplierPage = () => {
                   value={editContactInfo}
                   onChange={(e) => setEditContactInfo(e.target.value)}
                   placeholder="Phone or email"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="hw-input"
                 />
               </div>
             </div>
@@ -233,7 +233,7 @@ const SupplierPage = () => {
               <button
                 type="button"
                 onClick={() => setEditingSupplier(null)}
-                className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-300"
+                className="hw-btn-ghost"
               >
                 Cancel
               </button>
@@ -243,7 +243,7 @@ const SupplierPage = () => {
                   void submitEdit();
                 }}
                 disabled={isUpdating}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
+                className="hw-btn-primary disabled:bg-slate-400"
               >
                 {isUpdating ? "Saving..." : "Save"}
               </button>
@@ -253,8 +253,8 @@ const SupplierPage = () => {
       )}
 
       {deletingSupplier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="hw-modal-overlay">
+          <div className="hw-modal">
             <h3 className="text-lg font-semibold text-slate-900">Confirm Deletion</h3>
             <p className="mt-2 text-sm text-slate-600">
               Delete supplier "{deletingSupplier.name}"? This action cannot be undone.
@@ -263,7 +263,7 @@ const SupplierPage = () => {
               <button
                 type="button"
                 onClick={() => setDeletingSupplier(null)}
-                className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-300"
+                className="hw-btn-ghost"
               >
                 Cancel
               </button>
@@ -273,7 +273,7 @@ const SupplierPage = () => {
                   void confirmDelete();
                 }}
                 disabled={isDeleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:bg-slate-400"
+                className="hw-btn-danger disabled:bg-slate-400"
               >
                 {isDeleting ? "Deleting..." : "Delete"}
               </button>
