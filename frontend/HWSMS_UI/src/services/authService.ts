@@ -6,12 +6,6 @@ export type LoginPayload = {
   password: string;
 };
 
-export type RegisterPayload = {
-  username: string;
-  password: string;
-  role?: "Admin" | "Manager" | "Cashier";
-};
-
 export type CreateUserPayload = {
   username: string;
   password: string;
@@ -59,12 +53,6 @@ const persistSession = (response: AuthResponse) => {
       expiresAtUtc: response.expiresAtUtc,
     }),
   );
-};
-
-export const register = async (payload: RegisterPayload) => {
-  const { data } = await axios.post<AuthResponse>(`${AUTH_API_URL}/register`, payload);
-  persistSession(data);
-  return data;
 };
 
 export const login = async (payload: LoginPayload) => {
