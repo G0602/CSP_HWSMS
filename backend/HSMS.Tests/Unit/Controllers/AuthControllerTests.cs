@@ -2,7 +2,6 @@ using HSMS.API.Controllers;
 using HSMS.API.Services;
 using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
-using HSMS.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -17,21 +16,8 @@ public class AuthControllerTests
         Mock<IAuthenticationService>? authenticationService = null)
     {
         passwordHasher ??= new Mock<IPasswordHasher>();
-        jwtTokenService ??= new Mock<IJwtTokenService>();
         authenticationService ??= new Mock<IAuthenticationService>();
-
-        jwtTokenService.Setup(service => service.GenerateToken(It.IsAny<User>()))
-            .Returns((User user) => new AuthResponseDTO
-            {
-                UserId = user.Id,
-                Username = user.Username,
-                Role = user.Role,
-                AccessToken = "generated-token",
-                ExpiresAtUtc = DateTime.UtcNow.AddHours(1)
-            });
-
-        passwordHasher.Setup(service => service.HashPassword(It.IsAny<string>()))
-            .Returns((string password) => $"hashed::{password}");
+        jwtTokenService ??= new Mock<IJwtTokenService>();
 
         return new AuthController(
             userRepository.Object,
@@ -41,60 +27,20 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task Register_Should_Return_BadRequest_When_Username_Is_Blank()
+    public void Register_Should_Return_Forbidden_When_SelfRegistration_Is_Used()
     {
         var controller = CreateController(new Mock<IUserRepository>());
 
-        var result = await controller.Register(new AuthRegisterDTO
-        {
-            Username = "   ",
-            Password = "Password@123",
-            Role = "Admin"
-        });
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.Equal(400, badRequest.StatusCode);
-    }
-
-    [Fact]
-    public async Task Register_Should_Default_Empty_Role_To_Cashier()
-    {
-        var userRepository = new Mock<IUserRepository>();
-        userRepository.Setup(repo => repo.GetByUsernameAsync("new-user")).ReturnsAsync((User?)null);
-        userRepository.Setup(repo => repo.CreateUserAsync("new-user", It.IsAny<string>(), "Cashier")).ReturnsAsync(10);
-
-        var controller = CreateController(userRepository);
-
-        var result = await controller.Register(new AuthRegisterDTO
+        var result = controller.Register(new AuthRegisterDTO
         {
             Username = "new-user",
             Password = "Password@123",
-            Role = ""
+            Role = "Cashier"
         });
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(200, ok.StatusCode);
-        userRepository.Verify(repo => repo.CreateUserAsync("new-user", It.IsAny<string>(), "Cashier"), Times.Once);
-    }
-
-    [Fact]
-    public async Task Register_Should_Return_Conflict_When_Username_Exists()
-    {
-        var userRepository = new Mock<IUserRepository>();
-        userRepository.Setup(repo => repo.GetByUsernameAsync("existing"))
-            .ReturnsAsync(new User { Id = 1, Username = "existing", Role = "Cashier", PasswordHash = "hash" });
-
-        var controller = CreateController(userRepository);
-
-        var result = await controller.Register(new AuthRegisterDTO
-        {
-            Username = "existing",
-            Password = "Password@123",
-            Role = "Manager"
-        });
-
-        var conflict = Assert.IsType<ConflictObjectResult>(result);
-        Assert.Equal(409, conflict.StatusCode);
+        var forbidden = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbidden.StatusCode);
+        Assert.Equal("Self-registration is disabled. Contact an administrator to create a new user.", forbidden.Value);
     }
 
     [Fact]

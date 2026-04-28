@@ -1,39 +1,50 @@
-# Sprint 3 Test Suite - Complete Documentation
+# HSMS Backend Test Suite
 
 **Project:** Hardware Store Management System (HWSMS)  
-**Sprint:** Sprint 3 (EPIC 3.1 - 3.4)  
-**Status:** ✅ Complete - All 47 Tests Created & Documented  
-**Last Updated:** 2024
+**Scope:** Backend unit, integration, and security tests  
+**Status:** Passing  
+**Last Updated:** 2026-04-26
 
 ---
 
 ## 🎯 Overview
 
-This directory contains a comprehensive test suite for **Sprint 3 deliverables** covering:
+This directory contains the main automated backend test suite for:
 
-- **EPIC 3.1:** Inventory Management (5 stories)
-- **EPIC 3.2:** Supplier Management (3 stories)  
-- **EPIC 3.3:** User & Role Administration (3 stories)
-- **EPIC 3.4:** Reporting Module (4 stories)
+- controllers
+- services
+- configuration and validation rules
+- repository and database integration
+- authentication, authorization, and security behavior
+
+## Test Folder Order
+
+The `HSMS.Tests` project is now organized by test type:
+
+1. `Unit/Controllers` - controller behavior with mocks
+2. `Unit/Services` - service and calculation logic
+3. `Unit/Configuration` - config and policy tests
+4. `Unit/Validation` - validation, boundary, and module-level unit tests
+5. `Integration/Repositories` - repository integration tests
+6. `Integration/Database` - transaction, concurrency, and shared DB fixture tests
+7. `Security` - authorization and security-focused coverage
 
 ### Test Statistics
 
 ```
-Total Tests: 47
-├── Unit Tests: 32 (68%)
-│   ├── Inventory: 5
-│   ├── Suppliers: 8
-│   ├── Users: 7
-│   ├── Reporting: 6
-│   └── Authorization: 6
-│
-└── Integration Tests: 15 (32%)
-    ├── Inventory: 4
-    ├── Suppliers: 4
-    ├── Users: 3
-    └── Reporting: 4
+Passing checks: 295
+Test source files: 32
+├── Unit
+│   ├── Controllers: 7 files
+│   ├── Services: 4 files
+│   ├── Configuration: 1 file
+│   └── Validation: 6 files
+├── Integration
+│   ├── Repositories: 5 files
+│   └── Database: 4 files
+└── Security: 5 files
 
-Test Framework: xUnit 2.5.3
+Test Framework: xUnit
 Mocking Library: Moq 4.20.72
 Target Framework: .NET 8.0
 Database: MySQL 8.0+
@@ -51,112 +62,27 @@ Database: MySQL 8.0+
 | [TEST_EXECUTION_GUIDE.md](./TEST_EXECUTION_GUIDE.md) | How to run tests, troubleshooting, CI/CD setup | 15KB |
 | [README.md](./README.md) | This file - Quick navigation | - |
 
-### 🧪 Unit Test Files (32 Tests)
+### 🧪 Suite Layout
 
-#### EPIC 3.1 - Inventory Management
-**File:** [InventoryManagementTests.cs](./InventoryManagementTests.cs)
-```csharp
-[Fact] GetInventoryProducts_Should_Return_AllProducts
-[Fact] GetInventoryProducts_Should_Include_LowStockFlag
-[Fact] GetInventoryProducts_Should_Filter_ByMinimumQuantity
-[Fact] UpdateProductStock_Should_Prevent_NegativeQuantity
-[Fact] UpdateProductStock_Should_Execute_AtomicTransaction
-```
-**Coverage:** All US-01, US-02, US-03 requirements
+#### Unit
+- `Unit/Controllers`
+  Covers `AuthController`, `ProductController`, `SalesController`, `SuppliersController`, `UsersController`, and `ReportsController`
+- `Unit/Services`
+  Covers authentication, JWT generation, decimal precision, and sales calculation logic
+- `Unit/Configuration`
+  Covers CORS origin policy behavior
+- `Unit/Validation`
+  Covers request validation, pagination boundaries, and module-level business rules
 
-#### EPIC 3.2 - Supplier Management
-**File:** [SupplierManagementTests.cs](./SupplierManagementTests.cs)
-```csharp
-[Fact] AddSupplier_Should_CreateSupplierRecord
-[Fact] AddSupplier_Should_ValidateContactInfo
-[Fact] UpdateSupplier_Should_ModifySupplierDetails
-[Fact] DeleteSupplier_Should_NotAllowIfProductsLinked
-[Fact] DeleteSupplier_Should_AllowIfNoProductsLinked
-[Fact] LinkSupplierToProduct_Should_UpdateSupplierReference
-[Fact] GetSuppliers_Should_ReturnAllSuppliers
-[Fact] SearchSuppliers_Should_FilterByName
-```
-**Coverage:** All US-04, US-05, US-06 requirements
+#### Integration
+- `Integration/Repositories`
+  Covers repository behavior for inventory, suppliers, users, reporting, and sales
+- `Integration/Database`
+  Covers transactions, rollback behavior, concurrency, shared fixtures, and data integrity
 
-#### EPIC 3.3 - User Administration
-**File:** [UserAdministrationTests.cs](./UserAdministrationTests.cs)
-```csharp
-[Fact] CreateUser_Should_HashPassword
-[Fact] CreateUser_Should_AssignDefaultRole
-[Fact] UpdateUserRole_Should_ModifyUserRole
-[Fact] DeleteUser_Should_RemoveAllUserData
-[Fact] GetUsers_Should_ReturnAllUsers
-[Fact] GenerateJwtToken_Should_IncludeUserClaims
-[Fact] RefreshJwtToken_Should_IssueNewValidToken
-```
-**Coverage:** All US-07, US-08, US-09 requirements
-
-#### EPIC 3.4 - Reporting Module
-**File:** [ReportingModuleTests.cs](./ReportingModuleTests.cs)
-```csharp
-[Fact] GetDailySalesReport_Should_AggregateByDate
-[Fact] GetDailySalesReport_Should_CalculateTotalAmount
-[Fact] GetMonthlySalesReport_Should_GroupByMonth
-[Fact] GetMonthlySalesReport_Should_CalculateMonthlyTotals
-[Fact] GetLowStockReport_Should_FilterByThreshold
-[Fact] ExportReportToCSV_Should_FormatDataCorrectly
-```
-**Coverage:** All US-10, US-11, US-12, US-13 requirements
-
-#### Cross-cutting Concerns
-**File:** [AuthorizationTests.cs](./AuthorizationTests.cs)
-```csharp
-[Fact] InventoryRead_Should_AllowAuthorizedUsers
-[Fact] InventoryWrite_Should_DenyUnauthorized
-[Fact] InventoryManagerRead_Should_RequireManagerRole
-[Fact] SalesCreate_Should_RequireSpecificRole
-[Fact] UsersManage_Should_RequireAdminRole
-[Fact] AuthorizationPolicy_Should_EvaluateCorrectly
-```
-**Coverage:** All policy-based authorization scenarios
-
----
-
-### 🔗 Integration Test Files (15 Tests)
-
-#### EPIC 3.1 - Inventory Management
-**File:** [InventoryIntegrationTests.cs](./InventoryIntegrationTests.cs)
-```
-✅ UpdateProductStock_Should_Persist_ToDatabase
-✅ UpdateProductStock_Should_Maintain_Consistency
-✅ LowStockQuery_Should_Use_Configured_Threshold
-✅ ConcurrentStockUpdates_Should_Maintain_Atomicity
-```
-**Purpose:** Validates database persistence, transactions, and concurrent access
-
-#### EPIC 3.2 - Supplier Management
-**File:** [SupplierIntegrationTests.cs](./SupplierIntegrationTests.cs)
-```
-✅ AddSupplier_Should_Persist_ToDatabase
-✅ DeleteSupplier_Should_Protect_LinkedRecords
-✅ LinkSupplierToProduct_Should_MaintainForeignKeyIntegrity
-✅ SupplierProductRelationship_Should_Enforce_Constraints
-```
-**Purpose:** Validates foreign key constraints, referential integrity, and cascading
-
-#### EPIC 3.3 - User Management
-**File:** [UserManagementIntegrationTests.cs](./UserManagementIntegrationTests.cs)
-```
-✅ CreateUser_Should_Persist_ToDatabase
-✅ UpdateUserRole_Should_Propagate_ToDatabase
-✅ UserDeletion_Should_CascadeFollowingConstraints
-```
-**Purpose:** Validates user persistence, role propagation, and cleanup
-
-#### EPIC 3.4 - Reporting Module
-**File:** [ReportingIntegrationTests.cs](./ReportingIntegrationTests.cs)
-```
-✅ GetDailySalesReportAsync_Should_Query_DatabaseAccurately
-✅ GetDailySalesReportAsync_Should_Calculate_CorrectTotals
-✅ GetMonthlySalesReportAsync_Should_Query_DatabaseAccurately
-✅ GetMonthlySalesReportAsync_Should_Group_ByMonthCorrectly
-```
-**Purpose:** Validates report SQL queries, aggregations, and calculations
+#### Security
+- `Security`
+  Covers password and auth hardening, role authorization, cross-user boundaries, SQL injection protection, and token behavior
 
 ---
 
@@ -195,56 +121,11 @@ dotnet test --configuration Release
 
 ```
 Test Run Successful.
-Total tests: 47
-  Passed: 47
+Total tests: 295
+  Passed: 295
   Failed: 0
-Test execution time: 45-60 seconds
+Test execution time: depends on local database-backed integration tests
 ```
-
----
-
-## 📊 Test Matrix by Epic
-
-### EPIC 3.1: Inventory Management
-
-| User Story | Requirement | Unit Test | Integration Test | Status |
-|---|---|:---:|:---:|---|
-| US-01 | View all products with low-stock flag | ✅ | ✅ | Complete |
-| US-02 | Filter low-stock products by threshold | ✅ | ✅ | Complete |
-| US-03 | Manual stock updates with persistence | ✅ | ✅ | Complete |
-| | Concurrent stock access safety | ✅ | ✅ | Complete |
-| | Negative quantity prevention | ✅ | - | Complete |
-
-### EPIC 3.2: Supplier Management
-
-| User Story | Requirement | Unit Test | Integration Test | Status |
-|---|---|:---:|:---:|---|
-| US-04 | Add new suppliers with validation | ✅ | ✅ | Complete |
-| US-05 | Update supplier details | ✅ | - | Complete |
-| US-05 | Delete supplier with linked protection | ✅ | ✅ | Complete |
-| US-06 | Link supplier to product | ✅ | ✅ | Complete |
-| US-06 | Search/filter suppliers | ✅ | - | Complete |
-
-### EPIC 3.3: User Administration
-
-| User Story | Requirement | Unit Test | Integration Test | Status |
-|---|---|:---:|:---:|---|
-| US-07 | Create users with password hashing | ✅ | ✅ | Complete |
-| US-07 | Role assignment | ✅ | - | Complete |
-| US-08 | Update user roles persistently | ✅ | ✅ | Complete |
-| US-09 | Delete users with cascade | ✅ | ✅ | Complete |
-| US-09 | View all users with roles | ✅ | - | Complete |
-
-### EPIC 3.4: Reporting Module
-
-| User Story | Requirement | Unit Test | Integration Test | Status |
-|---|---|:---:|:---:|---|
-| US-10 | Daily sales report aggregation | ✅ | ✅ | Complete |
-| US-10 | Daily total calculations | ✅ | ✅ | Complete |
-| US-11 | Monthly sales report grouping | ✅ | ✅ | Complete |
-| US-11 | Monthly total calculations | ✅ | ✅ | Complete |
-| US-12 | Low-stock report with threshold | ✅ | ✅ | Complete |
-| US-13 | CSV export formatting | ✅ | - | Complete |
 
 ---
 

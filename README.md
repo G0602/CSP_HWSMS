@@ -1,363 +1,483 @@
-# HSMS — Hardware Store Management System
+# HSMS / HWSMS
 
-A full-stack inventory management web application for a hardware store, built as a SLIIT Year 3 Semester 1 CSP assignment.
-
----
+Hardware Store Management System built as a full-stack CSP assignment. The project combines an ASP.NET Core Web API, a React frontend, and a MySQL database to support inventory, suppliers, sales, reporting, and user-role management for a hardware store.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Tech Stack](#tech-stack)
-3. [Architecture](#architecture)
-4. [Project Structure](#project-structure)
-5. [Prerequisites](#prerequisites)
-6. [Getting Started](#getting-started)
-   - [Backend (local)](#backend-local)
-   - [Frontend (local)](#frontend-local)
-   - [Docker (full stack)](#docker-full-stack)
-7. [Environment Variables](#environment-variables)
-8. [API Reference](#api-reference)
-9. [Running Tests](#running-tests)
-10. [Database Schema](#database-schema)
+1. [Project Overview](#project-overview)
+2. [Core Features](#core-features)
+3. [Tech Stack](#tech-stack)
+4. [Architecture](#architecture)
+5. [Repository Structure](#repository-structure)
+6. [Role-Based Access](#role-based-access)
+7. [Getting Started](#getting-started)
+8. [Environment Configuration](#environment-configuration)
+9. [Running the Application](#running-the-application)
+10. [API Overview](#api-overview)
+11. [Testing](#testing)
+12. [Documentation](#documentation)
+13. [Troubleshooting](#troubleshooting)
 
----
+## Project Overview
 
-## Overview
+This system is designed to help a hardware store manage day-to-day operations from a single web interface. It supports:
 
-HSMS lets hardware-store staff manage their product inventory through a single-page React dashboard. The dashboard communicates with a RESTful ASP.NET Core API backed by a MySQL database. Products can be **created**, **viewed**, **updated**, and **deleted** (full CRUD).
+- product and inventory management
+- supplier management
+- sales transaction processing
+- invoice viewing
+- daily and monthly sales reporting
+- low-stock monitoring
+- user management with role-based permissions
+- JWT-based authentication
 
----
+The frontend lives in `frontend/HWSMS_UI` and communicates with the backend API in `backend/HSMS.API`. The backend persists data in MySQL using repository classes built on ADO.NET.
+
+## Core Features
+
+### Inventory and Products
+
+- Create, read, update, and delete products
+- Track SKU, category, price, quantity, and supplier
+- Search products by query
+- View inventory with low-stock indicators
+- Update stock quantities independently from full product edits
+
+### Suppliers
+
+- Create, update, list, and delete suppliers
+- Prevent deletion when linked records still exist
+- Associate suppliers with products
+
+### Sales
+
+- Create sales with one or more sale items
+- Prevent duplicate products inside a single sale request
+- Validate stock and business rules before saving
+- View transaction history
+- View transaction details and invoice data
+
+### Reports
+
+- Daily sales reports
+- Monthly sales reports
+- Filtered analytics
+- Low-stock reporting
+- CSV export for supported report types
+- Summary report endpoint aggregating multiple report areas
+
+### Authentication and Authorization
+
+- Login and registration endpoints
+- Password hashing
+- JWT token generation and validation
+- Policy-based authorization
+- Role-aware frontend route protection
 
 ## Tech Stack
 
-| Concern       | Technology                                      |
-|---------------|-------------------------------------------------|
-| Backend       | ASP.NET Core 8 (C# 12), .NET 8                 |
-| Database      | MySQL 8                                         |
-| ORM / DA      | Raw ADO.NET (`MySql.Data`)                      |
-| API Docs      | Swagger / OpenAPI (Swashbuckle 6)               |
-| Frontend      | React 19, TypeScript, Vite 6                    |
-| Styling       | Tailwind CSS 3                                  |
-| HTTP Client   | Axios                                           |
-| Unit Tests    | xUnit 2.5, Moq 4.20, coverlet                  |
-| Containerise  | Docker, Docker Compose                          |
-
----
+| Area | Technology |
+|---|---|
+| Backend | ASP.NET Core 8 / .NET 8 |
+| Language | C# 12 |
+| Frontend | React 19 + TypeScript |
+| Build Tool | Vite |
+| Styling | Tailwind CSS |
+| Database | MySQL |
+| Data Access | ADO.NET with `MySql.Data` |
+| API Docs | Swagger / OpenAPI |
+| Backend Tests | xUnit, Moq, coverlet |
+| Frontend Tests | Vitest, Testing Library |
 
 ## Architecture
 
-The backend follows **Clean Architecture** with four independently-compilable projects:
+The backend follows a clean layered structure:
 
+```text
+HSMS.API
+  Controllers, auth, startup, middleware, DI configuration
+
+HSMS.Application
+  DTOs and repository/service interfaces
+
+HSMS.Domain
+  Core entity models
+
+HSMS.Infrastructure
+  Database initialization, connection factory, repositories
+
+HSMS.Tests / HSMS.ApiTests / HSMS.E2E
+  Unit, integration, API, and browser-oriented test projects
 ```
-┌─────────────────────────────────────────────────────────┐
-│  HSMS.API  (ASP.NET Core — Controllers, Program.cs)     │
-│     │  depends on ↓                                     │
-│  HSMS.Application  (Interfaces, DTOs)                   │
-│     │  depends on ↓                                     │
-│  HSMS.Domain  (Entities — pure C# classes)              │
-│                                                         │
-│  HSMS.Infrastructure  (Repository — MySQL / ADO.NET)   │
-│     └─ implements HSMS.Application interfaces           │
-│                                                         │
-│  HSMS.Tests  (xUnit + Moq unit tests for the API)      │
-└─────────────────────────────────────────────────────────┘
-```
 
-Dependency direction: `API → Application ← Infrastructure`, with `Domain` at the centre. The API never references `Infrastructure` directly — it only knows the `IProductRepository` interface.
+Dependency direction is centered around contracts in `HSMS.Application`, while persistence logic is implemented in `HSMS.Infrastructure`.
 
----
+## Repository Structure
 
-## Project Structure
-
-```
+```text
 CSP_HWSMS/
 ├── backend/
 │   ├── HSMS.sln
-│   ├── HSMS.API/               # Web host: controllers, middleware, DI setup
-│   │   ├── Program.cs
-│   │   ├── appsettings.json
-│   │   └── Controllers/
-│   │       └── ProductController.cs
-│   ├── HSMS.Application/       # Business contracts (interfaces + DTOs)
-│   │   ├── DTOs/
-│   │   │   ├── ProductCreateDTO.cs
-│   │   │   └── ProductUpdateDTO.cs
-│   │   └── Interfaces/
-│   │       ├── IProductRepository.cs
-│   │       └── IProductService.cs
-│   ├── HSMS.Domain/            # Pure domain entities (no framework dependencies)
-│   │   └── Entities/
-│   │       └── Product.cs
-│   ├── HSMS.Infrastructure/    # Data access: MySQL via ADO.NET
-│   │   ├── Data/
-│   │   │   └── DbConnectionFactory.cs
-│   │   └── Repositories/
-│   │       └── ProductRepository.cs
-│   └── HSMS.Tests/             # Unit tests
-│       ├── ProductControllerTests.cs
-│       └── ProductBasicTests.cs
+│   ├── HSMS.API/
+│   ├── HSMS.Application/
+│   ├── HSMS.Domain/
+│   ├── HSMS.Infrastructure/
+│   ├── HSMS.Tests/
+│   ├── HSMS.ApiTests/
+│   └── HSMS.E2E/
 ├── frontend/
-│   └── HWSMS_UI/               # React + TypeScript + Vite SPA
-│       ├── src/
-│       │   ├── pages/          # ProductPage, ProductDashboard
-│       │   ├── components/     # Navbar, ProductTable, ProductForm, StatsCard, …
-│       │   └── services/       # Axios API wrapper
-│       ├── .env.example
-│       └── package.json
-├── hardware-store-hsms/
-│   ├── docker-compose.yml
-│   └── docker/
-│       ├── backend.Dockerfile
-│       └── frontend.Dockerfile
-└── docs/
-    ├── Diagrams/
-    │   ├── Usecase_Diagram_HWSMS_CSP..drawio
-    │   └── Sequence_diagrams/
-    ├── SRS/
-    └── Test-Documents/
+│   └── HWSMS_UI/
+├── docs/
+│   ├── Diagrams/
+│   ├── SRS/
+│   └── Test-Documents/
+├── scripts/
+├── QUICK_START.md
+├── DEPLOYMENT_GUIDE.md
+└── TEST_QUICK_REFERENCE.md
 ```
 
----
+## Role-Based Access
 
-## Prerequisites
+The application currently uses three roles:
 
-| Tool             | Minimum Version | Notes                                  |
-|------------------|-----------------|----------------------------------------|
-| .NET SDK         | 8.0             | `dotnet --version`                     |
-| MySQL Server     | 8.0             | Running locally or via Docker          |
-| Node.js          | 18 LTS          | `node --version`                       |
-| npm              | 9+              | Bundled with Node                      |
-| Docker + Compose | Latest          | Only needed for containerised run      |
+| Role | Access Summary |
+|---|---|
+| `Admin` | Full access including user management and product deletion |
+| `Manager` | Inventory, suppliers, sales views, reports, and product updates |
+| `Cashier` | Sales creation and basic inventory read access |
 
----
+### Backend authorization policies
+
+| Policy | Allowed Roles |
+|---|---|
+| `InventoryRead` | Admin, Manager, Cashier |
+| `InventoryManagerRead` | Admin, Manager |
+| `InventoryWrite` | Admin, Manager |
+| `InventoryDelete` | Admin |
+| `SalesCreate` | Admin, Manager, Cashier |
+| `SalesRead` | Admin, Manager |
+| `UsersManage` | Admin |
+
+### Frontend protected routes
+
+| Route | Access |
+|---|---|
+| `/dashboard` | Admin, Manager |
+| `/inventory` | Admin, Manager |
+| `/sales` | Admin, Manager, Cashier |
+| `/suppliers` | Admin, Manager |
+| `/transactions` | Admin, Manager |
+| `/transactions/:transactionId/invoice` | Admin, Manager |
+| `/reports/daily` | Admin, Manager |
+| `/users` | Admin only |
 
 ## Getting Started
 
-### Backend (local)
+### Prerequisites
 
-1. **Configure the connection string**
+Install the following before running the project locally:
 
-   Edit `backend/HSMS.API/appsettings.json` (or create `appsettings.Development.json` to override):
+| Tool | Recommended Version |
+|---|---|
+| .NET SDK | 8.0+ |
+| Node.js | 18+ |
+| npm | 9+ |
+| MySQL Server | 8.0+ |
 
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "server=localhost;database=CSP_HSMS;user=YOUR_USER;password=YOUR_PASSWORD;"
-     }
-   }
-   ```
-
-   > The application creates the `Products` table automatically on first startup — no migration step needed.
-
-2. **Restore dependencies and run**
-
-   ```bash
-   cd backend
-   dotnet restore
-   dotnet run --project HSMS.API
-   ```
-
-3. **Swagger UI** is available at:
-
-   ```
-   http://localhost:5162/swagger
-   ```
-
----
-
-### Frontend (local)
-
-1. **Copy the environment file**
-
-   ```bash
-   cd frontend/HWSMS_UI
-   cp .env.example .env
-   ```
-
-   The default value points to the local API:
-
-   ```env
-   VITE_API_URL=http://localhost:5162/api/Product
-   ```
-
-2. **Install dependencies and start the dev server**
-
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-3. The app is served at `http://localhost:5173`.
-
----
-
-### Docker (full stack)
-
-> The Docker Compose file is in `hardware-store-hsms/`. Dockerfiles are in `hardware-store-hsms/docker/`.
+### 1. Clone and open the repository
 
 ```bash
-cd hardware-store-hsms
-docker compose up --build
+git clone <your-repository-url>
+cd CSP_HWSMS
 ```
 
-| Service   | Exposed Port |
-|-----------|-------------|
-| Backend   | 5000        |
-| Frontend  | 3000        |
-| MySQL DB  | 3306        |
+### 2. Configure the backend
 
----
+The backend reads configuration from:
 
-## Environment Variables
+- `appsettings.json`
+- `appsettings.{Environment}.json`
+- environment variables
 
-### Frontend (`frontend/HWSMS_UI/.env`)
+Environment variables override JSON settings.
 
-| Variable       | Default                                   | Description                              |
-|----------------|-------------------------------------------|------------------------------------------|
-| `VITE_API_URL` | `http://localhost:5162/api/Product`       | Base URL for all product API requests    |
-
-### Backend (`appsettings.json`)
-
-| Key                                  | Description                         |
-|--------------------------------------|-------------------------------------|
-| `ConnectionStrings:DefaultConnection`| Full MySQL connection string        |
-
----
-
-## API Reference
-
-Base URL: `http://localhost:5162/api/product`
-
-All request/response bodies are JSON. Interactive docs available via `/swagger`.
-
-### Product Endpoints
-
-#### `GET /api/product`
-
-Returns all products.
-
-**Response `200 OK`**
-```json
-[
-  {
-    "id": 1,
-    "name": "Claw Hammer",
-    "sku": "HMR-001",
-    "price": 1500.00,
-    "quantity": 25,
-    "category": "Hand Tools",
-    "createdAt": "2026-03-01T08:00:00"
-  }
-]
-```
-
----
-
-#### `GET /api/product/{id}`
-
-Returns a single product by Id.
-
-| Parameter | Type | Description        |
-|-----------|------|--------------------|
-| `id`      | int  | Product primary key |
-
-**Responses**
-
-| Status | Meaning                        |
-|--------|--------------------------------|
-| 200    | Product found — returns object |
-| 404    | No product with that Id        |
-
----
-
-#### `POST /api/product`
-
-Creates a new product.
-
-**Request body**
-```json
-{
-  "name": "Claw Hammer",
-  "sku": "HMR-001",
-  "price": 1500.00,
-  "quantity": 25,
-  "category": "Hand Tools"
-}
-```
-
-**Validation rules**
-- `price` must be `> 0`
-- `quantity` must be `>= 0`
-
-**Responses**
-
-| Status | Meaning                                          |
-|--------|--------------------------------------------------|
-| 201    | Created — Location header points to new resource |
-| 400    | Validation failed (price ≤ 0 or negative qty)    |
-
----
-
-#### `PUT /api/product/{id}`
-
-Fully replaces an existing product's fields.
-
-**Request body** — same shape as `POST`.
-
-**Responses**
-
-| Status | Meaning                 |
-|--------|-------------------------|
-| 200    | Updated successfully    |
-| 404    | Product not found       |
-
----
-
-#### `DELETE /api/product/{id}`
-
-Permanently removes a product.
-
-**Responses**
-
-| Status | Meaning                 |
-|--------|-------------------------|
-| 200    | Deleted successfully    |
-| 404    | Product not found       |
-
----
-
-## Running Tests
-
-The test suite uses **xUnit** for test structure and **Moq** to mock the repository, so no database connection is required.
+Use the template file as a reference:
 
 ```bash
 cd backend
+cp .env.example .env
+```
+
+The current backend code does not automatically load `.env` files. Use one of these approaches instead:
+
+- set shell environment variables before running `dotnet run`
+- configure `appsettings.Development.json` locally
+- use your IDE run configuration to inject environment variables
+
+At minimum, make sure you have:
+
+- a valid MySQL connection
+- a JWT secret of at least 32 bytes
+- valid JWT issuer and audience values
+- any development seed passwords you want to use
+
+### 3. Configure the frontend
+
+```bash
+cd frontend/HWSMS_UI
+cp .env.example .env.development
+```
+
+The main frontend variable is:
+
+```env
+VITE_API_BASE_URL=http://localhost:5162
+```
+
+## Environment Configuration
+
+### Backend
+
+Important backend settings used by the API:
+
+| Setting | Purpose |
+|---|---|
+| `ConnectionStrings__DefaultConnection` | Primary MySQL connection string |
+| `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
+| `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
+| `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
+| `JWT_EXPIRY_MINUTES` or `Jwt__AccessTokenExpiryMinutes` | Token expiry |
+| `CORS_ORIGINS` | Allowed browser origins |
+| `FRONTEND_URL` | Optional frontend URL added to CORS candidates |
+| `ASPNETCORE_ENVIRONMENT` | Environment name |
+| `ASPNETCORE_URLS` | API listening URLs |
+| `LOW_STOCK_THRESHOLD` | Threshold used in inventory/reporting |
+| `ADMIN_PASSWORD` | Dev-only admin seed password |
+| `MANAGER_PASSWORD` | Dev-only manager seed password |
+| `CASHIER_PASSWORD` | Dev-only cashier seed password |
+
+### Notes about backend startup behavior
+
+- The API validates that a database connection string exists at startup.
+- In `Production`, JWT secret validation is stricter and missing values stop startup.
+- The database initializer runs automatically when the API starts.
+- Default users are seeded only in the `Development` environment.
+- Development user seeding happens only if `ADMIN_PASSWORD`, `MANAGER_PASSWORD`, and `CASHIER_PASSWORD` are all provided.
+
+### Frontend
+
+The frontend resolves its API base URL in this order:
+
+1. `VITE_API_BASE_URL`
+2. legacy `VITE_API_URL`
+3. local default `http://localhost:5162` in development
+4. deployed backend URL in production
+
+Optional frontend variables:
+
+| Variable | Purpose |
+|---|---|
+| `VITE_API_BASE_URL` | Base backend URL |
+| `VITE_DEBUG` | Optional debug toggle |
+
+Unlike the backend, the frontend does load Vite `.env` files such as `.env.development` automatically.
+
+## Running the Application
+
+### Run the backend
+
+From the `backend` folder:
+
+```bash
+dotnet restore
+dotnet run --project HSMS.API
+```
+
+By default, local development runs on:
+
+- `http://localhost:5162`
+- `https://localhost:7111`
+
+Useful backend endpoints:
+
+- Swagger UI: `http://localhost:5162/swagger`
+- Health check: `http://localhost:5162/api/health`
+
+### Run the frontend
+
+From `frontend/HWSMS_UI`:
+
+```bash
+npm install
+npm run dev
+```
+
+The Vite development server is typically available at:
+
+`http://localhost:5173`
+
+### Suggested local workflow
+
+Open two terminals:
+
+```bash
+cd backend
+dotnet run --project HSMS.API
+```
+
+```bash
+cd frontend/HWSMS_UI
+npm install
+npm run dev
+```
+
+## API Overview
+
+### Authentication
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register a user and return auth token |
+| `POST` | `/api/auth/login` | Authenticate and return auth token |
+
+### Products
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/product` or `/api/products` | List products |
+| `GET` | `/api/product/{id}` | Get product by ID |
+| `GET` | `/api/product/search?query=...&limit=20` | Search products |
+| `GET` | `/api/product/inventory` | Inventory view with low-stock flag |
+| `GET` | `/api/product/low-stock` | Low-stock products |
+| `POST` | `/api/product` | Create product |
+| `PUT` | `/api/product/{id}` | Update product |
+| `PUT` | `/api/product/{id}/stock` | Update stock only |
+| `DELETE` | `/api/product/{id}` | Delete product |
+
+### Suppliers
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/suppliers` | List suppliers |
+| `POST` | `/api/suppliers` | Create supplier |
+| `PUT` | `/api/suppliers/{id}` | Update supplier |
+| `DELETE` | `/api/suppliers/{id}` | Delete supplier |
+
+### Sales
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/sales` | Create sale |
+| `GET` | `/api/sales/history` | List transaction history |
+| `GET` | `/api/sales/{saleId}` | Get sale details |
+| `GET` | `/api/sales/{saleId}/invoice` | Get invoice data |
+
+### Reports
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/reports/daily` | Daily sales report |
+| `GET` | `/api/reports/monthly` | Monthly sales report |
+| `GET` | `/api/reports/analytics` | Filtered analytics |
+| `GET` | `/api/reports/low-stock` | Low-stock report |
+| `GET` | `/api/reports/summary` | Aggregated report summary |
+| `GET` | `/api/reports/export?type=daily` | CSV export |
+
+### Users
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/users` | List users |
+| `POST` | `/api/users` | Create user |
+| `PUT` | `/api/users/{id}/role` | Update role |
+| `DELETE` | `/api/users/{id}` | Delete user |
+
+## Testing
+
+### Backend tests
+
+From the `backend` directory:
+
+```bash
 dotnet test
 ```
 
-### Test coverage
+Individual test projects:
 
-| Test                                                       | Asserts                         |
-|------------------------------------------------------------|---------------------------------|
-| `GetProducts_Should_Return_Ok`                             | `200 OK` with product list      |
-| `AddProduct_Should_Return_Created`                         | `201 Created`                   |
-| `DeleteProduct_Should_Return_Ok_When_Deleted`              | `200 OK`                        |
-| `UpdateProduct_Should_Return_NotFound_When_Not_Updated`    | `404 Not Found`                 |
-
----
-
-## Database Schema
-
-The `Products` table is created automatically by `ProductRepository` if it does not exist.
-
-```sql
-CREATE TABLE IF NOT EXISTS Products (
-    Id         INT            AUTO_INCREMENT PRIMARY KEY,
-    Name       VARCHAR(255)   NOT NULL,
-    SKU        VARCHAR(100)   NOT NULL,
-    Price      DECIMAL(10,2)  NOT NULL,
-    Quantity   INT            NOT NULL,
-    Category   VARCHAR(255)   NOT NULL,
-    CreatedAt  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+```bash
+dotnet test HSMS.Tests/HSMS.Tests.csproj
+dotnet test HSMS.ApiTests/HSMS.ApiTests.csproj
+dotnet test HSMS.E2E/HSMS.E2E.csproj
 ```
+
+### Frontend tests
+
+From `frontend/HWSMS_UI`:
+
+```bash
+npm test
+```
+
+Other useful commands:
+
+```bash
+npm run build
+npm run lint
+npm run test:watch
+```
+
+### Test coverage references
+
+- [TEST_QUICK_REFERENCE.md](./TEST_QUICK_REFERENCE.md)
+- [backend/HSMS.Tests/README.md](./backend/HSMS.Tests/README.md)
+- [backend/HSMS.ApiTests/README.md](./backend/HSMS.ApiTests/README.md)
+
+## Documentation
+
+Additional project documentation available in the repository:
+
+- [QUICK_START.md](./QUICK_START.md)
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
+- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
+- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
+- [docs/Test-Documents/API_TEST_PLAN.md](./docs/Test-Documents/API_TEST_PLAN.md)
+- [docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md](./docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md)
+- [docs/SRS/SRS_Document.pdf](./docs/SRS/SRS_Document.pdf)
+
+## Troubleshooting
+
+### Backend fails on startup
+
+Check:
+
+- MySQL is running
+- `ConnectionStrings__DefaultConnection` points to a valid database
+- JWT settings are present and valid
+- your connection string is not empty
+
+### Frontend cannot call the API
+
+Check:
+
+- backend is running on `http://localhost:5162`
+- `VITE_API_BASE_URL` points to the correct backend
+- the backend CORS configuration includes your frontend origin
+
+### Default users were not created
+
+This is expected unless all of the following are true:
+
+- `ASPNETCORE_ENVIRONMENT=Development`
+- `ADMIN_PASSWORD` is set
+- `MANAGER_PASSWORD` is set
+- `CASHIER_PASSWORD` is set
+
+### Swagger is not visible
+
+Swagger is enabled only in the `Development` environment in the current API startup configuration.
+
+## Summary
+
+HSMS is a layered full-stack store management application that already includes authentication, role-based access control, reporting, testing, and deployment-oriented configuration support. This repository contains both the working application code and supporting academic documentation for design, testing, and system behavior.

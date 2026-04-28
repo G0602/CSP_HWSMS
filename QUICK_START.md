@@ -1,186 +1,134 @@
-# HWSMS - Quick Start / Quick Reference
+# HWSMS Quick Start
 
-## 🚀 Local Development (5 minutes)
+This guide gets the project running locally with the current repository layout and runtime behavior.
 
-### Backend
+## Prerequisites
+
+- .NET SDK 8.0+
+- Node.js 18+
+- npm 9+
+- MySQL 8.0+
+
+## Backend
+
+The backend does not auto-load `.env` files by itself. Use `backend/.env.example` as a reference, then either:
+
+- export environment variables in your shell
+- add values to `backend/HSMS.API/appsettings.Development.json`
+- configure environment variables in your IDE run profile
+
+Minimum required backend values:
+
+- `ConnectionStrings__DefaultConnection`
+- `JWT_SECRET` or `Jwt__Secret`
+- `JWT_ISSUER` or `Jwt__Issuer`
+- `JWT_AUDIENCE` or `Jwt__Audience`
+
+Optional development seed values:
+
+- `ADMIN_PASSWORD`
+- `MANAGER_PASSWORD`
+- `CASHIER_PASSWORD`
+
+Run the API:
+
 ```bash
 cd backend
-cp .env.example .env.development
-# Make sure MySQL is running on localhost:3306
-dotnet run
-# API available at: http://localhost:5162
+dotnet restore
+dotnet run --project HSMS.API
 ```
 
-### Frontend
+Local backend URLs:
+
+- `http://localhost:5162`
+- `https://localhost:7111`
+
+Useful endpoints:
+
+- Swagger: `http://localhost:5162/swagger`
+- Health check: `http://localhost:5162/api/health`
+
+## Frontend
+
+The frontend does use Vite environment files.
+
 ```bash
 cd frontend/HWSMS_UI
 cp .env.example .env.development
 npm install
 npm run dev
-# UI available at: http://localhost:5173
 ```
 
-**Default Credentials:**
-- Username: `admin` | Password: `Admin@123`
-- Username: `manager` | Password: `Manager@123`
-- Username: `cashier` | Password: `Cashier@123`
+Default frontend local URL:
 
----
+- `http://localhost:5173`
 
-## 🐳 Local Development with Docker
+Default frontend API variable:
 
-```bash
-# Copy Docker override template
-cp docker-compose.override.yml.example docker-compose.override.yml
-
-# Start application stack
-docker-compose up -d
-
-# View logs
-docker-compose logs -f backend
-
-# Access services
-# Frontend: http://localhost:3000
-# Backend: http://localhost:5000
-# API Docs: http://localhost:5000/swagger
+```env
+VITE_API_BASE_URL=http://localhost:5162
 ```
 
----
+## Local Development Flow
 
-## ☁️ Production Deployment
-
-### 1. Prepare Environment Variables
-
-```bash
-# Generate a strong JWT secret
-openssl rand -base64 48
-
-# Set environment variables
-export DB_SERVER=your-db-host.com
-export DB_NAME=hwsms_prod
-export DB_USER=hwsms_user
-export DB_PASSWORD=<secure_password>
-export JWT_SECRET=<generated_secret>
-export CORS_ORIGINS=https://yourdomain.com
-export FRONTEND_API_URL=https://api.yourdomain.com
-```
-
-### 2. Backend Deployment
+Run these in separate terminals:
 
 ```bash
 cd backend
-dotnet publish -c Release -o ./publish
-cd publish
-# Start with environment variables
-ASPNETCORE_ENVIRONMENT=Production dotnet HSMS.API.dll
+dotnet run --project HSMS.API
 ```
-
-### 3. Frontend Deployment
 
 ```bash
 cd frontend/HWSMS_UI
 npm install
+npm run dev
+```
+
+## Development Seed Users
+
+Seed users are created only when:
+
+- `ASPNETCORE_ENVIRONMENT=Development`
+- `ADMIN_PASSWORD` is set
+- `MANAGER_PASSWORD` is set
+- `CASHIER_PASSWORD` is set
+
+There are no fixed default credentials in the current code. The passwords come from your environment configuration.
+
+## Verification
+
+Check the backend:
+
+```bash
+curl http://localhost:5162/api/health
+```
+
+Build the frontend:
+
+```bash
+cd frontend/HWSMS_UI
 npm run build
-# Copy dist/ folder to web server
 ```
 
-### 4. Docker Deployment
+Run backend tests:
 
 ```bash
-# Set all environment variables (see Production Deployment section in DEPLOYMENT_GUIDE.md)
-
-# Deploy
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+cd backend
+dotnet test
 ```
 
----
+## Common Issues
 
-## 📋 Environment Variables by Scenario
+| Issue | Check |
+|---|---|
+| Backend fails on startup | Connection string and JWT settings |
+| Frontend cannot reach backend | `VITE_API_BASE_URL` and CORS origins |
+| Swagger not visible | `ASPNETCORE_ENVIRONMENT` should be `Development` |
+| Seed users missing | Development environment and all three password variables |
 
-### Development (`.env.development`)
-```env
-# Already pre-configured for local development
-DB_SERVER=localhost
-JWT_SECRET=dev-secret-key
-CORS_ORIGINS=http://localhost:5173
-SEED_DEFAULT_USERS=true
-```
+## Related Docs
 
-### Production
-```env
-DB_SERVER=<production-db-host>
-DB_PASSWORD=<strong-password>
-JWT_SECRET=<random-64-char-secret>
-CORS_ORIGINS=https://yourdomain.com
-SEED_DEFAULT_USERS=false
-ASPNETCORE_ENVIRONMENT=Production
-```
-
----
-
-## 🔍 Verify Deployment
-
-```bash
-# Check backend is running
-curl http://your-api.com/swagger
-
-# Check frontend can reach backend
-# Open browser and test login
-
-# Check logs
-docker-compose logs backend
-# Or
-journalctl -u hwsms-api -f
-```
-
----
-
-## ⚠️ Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| Frontend can't connect to backend | Check `CORS_ORIGINS` includes frontend URL |
-| API returns 401 | Check `JWT_SECRET` is same on backend |
-| Database connection fails | Check `DB_SERVER`, `DB_USER`, `DB_PASSWORD` |
-| Default users not created | Check `SEED_DEFAULT_USERS=true` and database connection |
-
----
-
-## 📚 Full Documentation
-
-See `DEPLOYMENT_GUIDE.md` for comprehensive deployment guide with:
-- Detailed environment variable reference
-- Systemd service setup
-- Nginx configuration
-- Kubernetes examples
-- Security best practices
-
----
-
-## 📦 Files Reference
-
-| File | Purpose | Action |
-|------|---------|--------|
-| `.env.example` | Template (both backend & frontend) | Copy to `.env.development` |
-| `.env.development` | Local development defaults | Pre-configured, don't commit |
-| `.env.production` | Production defaults (frontend only) | Update before deployment |
-| `docker-compose.override.yml.example` | Docker local dev setup | Copy to `docker-compose.override.yml` |
-| `docker-compose.prod.yml` | Docker production setup | Use with docker-compose.yml |
-| `DEPLOYMENT_GUIDE.md` | Full deployment documentation | Reference during deployment |
-
----
-
-## 🔐 Security Checklist
-
-Before production:
-- [ ] Generate new JWT secret
-- [ ] Set strong database password
-- [ ] Configure CORS for production domain only
-- [ ] Set `SEED_DEFAULT_USERS=false`
-- [ ] Set `ASPNETCORE_ENVIRONMENT=Production`
-- [ ] Enable HTTPS/SSL
-- [ ] Remove default credentials
-
----
-
-Quick questions? Most answers are in `DEPLOYMENT_GUIDE.md` ✅
+- [README.md](./README.md)
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
+- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
