@@ -166,12 +166,12 @@ const UsersPage = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="hw-page">
       <Navbar username={user?.username} onLogout={handleLogout} />
 
-      <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="hw-card">
             <h2 className="text-2xl font-bold text-slate-900 mb-1">Create User</h2>
             <p className="text-sm text-slate-600 mb-6">Admin can create Admin, Manager, or Cashier accounts.</p>
 
@@ -183,7 +183,7 @@ const UsersPage = () => {
                   value={form.username}
                   onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
                   placeholder="Enter username"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="hw-input px-4 py-2.5"
                   autoComplete="username"
                 />
               </div>
@@ -195,7 +195,7 @@ const UsersPage = () => {
                   value={form.password}
                   onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
                   placeholder="Minimum 8 characters"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="hw-input px-4 py-2.5"
                   autoComplete="new-password"
                 />
               </div>
@@ -205,7 +205,7 @@ const UsersPage = () => {
                 <select
                   value={form.role}
                   onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as CreateUserPayload["role"] }))}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="hw-input px-4 py-2.5"
                 >
                   <option value={AppRoles.Admin}>Admin</option>
                   <option value={AppRoles.Manager}>Manager</option>
@@ -216,14 +216,14 @@ const UsersPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-xl bg-blue-600 text-white font-semibold py-2.5 hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="hw-btn-primary w-full py-2.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? "Creating user..." : "Create User"}
               </button>
             </form>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="hw-card">
             <h2 className="text-2xl font-bold text-slate-900 mb-1">User Roles</h2>
             <p className="text-sm text-slate-600 mb-6">Change role from dropdown and save.</p>
 
@@ -231,15 +231,15 @@ const UsersPage = () => {
               <p className="text-slate-600 text-sm">Loading users...</p>
             ) : (
               <div className="max-h-[420px] overflow-auto">
-                <table className="w-full text-left">
-                  <thead className="text-sm text-gray-500 uppercase sticky top-0 bg-white">
+                <table className="hw-table text-left">
+                  <thead className="sticky top-0 bg-[#f8fbfe] text-xs uppercase tracking-[0.1em]">
                     <tr>
                       <th className="py-2">Username</th>
                       <th className="py-2">Role</th>
                       <th className="py-2 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {sortedUsers.map((item) => (
                       <tr key={item.id}>
                         <td className="py-3 font-medium">{item.username}</td>
@@ -253,7 +253,7 @@ const UsersPage = () => {
                                   [item.id]: e.target.value as UserRole,
                                 }))
                               }
-                              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="hw-input px-3 py-1.5"
                             >
                               <option value={AppRoles.Admin}>Admin</option>
                               <option value={AppRoles.Manager}>Manager</option>
@@ -271,7 +271,7 @@ const UsersPage = () => {
                                   type="button"
                                   disabled={savingUserId === item.id}
                                   onClick={() => void handleSaveRole(item)}
-                                  className="rounded-lg bg-slate-800 text-white px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-900"
+                                  className="hw-btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   {savingUserId === item.id ? "Saving..." : "Save"}
                                 </button>
@@ -284,7 +284,7 @@ const UsersPage = () => {
                                       [item.id]: item.role,
                                     }));
                                   }}
-                                  className="rounded-lg bg-slate-200 text-slate-800 px-3 py-1.5 text-sm hover:bg-slate-300"
+                                  className="hw-btn-ghost px-3 py-1.5"
                                 >
                                   Cancel
                                 </button>
@@ -293,7 +293,7 @@ const UsersPage = () => {
                               <button
                                 type="button"
                                 onClick={() => setEditingUserId(item.id)}
-                                className="rounded-lg bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700"
+                                className="hw-btn-primary px-3 py-1.5"
                               >
                                 Edit
                               </button>
@@ -302,7 +302,7 @@ const UsersPage = () => {
                               type="button"
                               disabled={deletingUserId === item.id}
                               onClick={() => void handleDeleteUser(item)}
-                              className="rounded-lg bg-red-600 text-white px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+                              className="hw-btn-danger px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {deletingUserId === item.id ? "Deleting..." : "Delete"}
                             </button>

@@ -66,7 +66,6 @@ npm run lint
 | Route | Access |
 |---|---|
 | `/login` | public |
-| `/register` | public |
 | `/dashboard` | Admin, Manager |
 | `/inventory` | Admin, Manager |
 | `/sales` | Admin, Manager, Cashier |

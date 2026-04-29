@@ -2,6 +2,7 @@ using HSMS.Application.DTOs;
 using HSMS.Application.Interfaces;
 using HSMS.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
+using MySql.Data.MySqlClient;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
@@ -48,6 +49,16 @@ public class DataIntegrityTests
             .AddInMemoryCollection(new[] { new KeyValuePair<string, string?>("ConnectionStrings:DefaultConnection", connectionString) })
             .Build();
         return new UserRepository(config);
+    }
+
+    private static async Task DeleteSaleAsync(string connectionString, int saleId)
+    {
+        await using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        await using var command = new MySqlCommand("DELETE FROM Sales WHERE Id = @Id", connection);
+        command.Parameters.AddWithValue("@Id", saleId);
+        await command.ExecuteNonQueryAsync();
     }
 
     [Fact]
@@ -128,7 +139,8 @@ public class DataIntegrityTests
         var userRepo = CreateUserRepository(connectionString);
 
         // Setup: Create user, product, and sale
-        var userId = await userRepo.CreateUserAsync("testuser", "hashed_password", "Cashier");
+        var username = $"testuser_{System.Guid.NewGuid():N}";
+        var userId = await userRepo.CreateUserAsync(username, "hashed_password", "Cashier");
 
         var productId = await productRepo.AddProduct(new ProductCreateDTO
         {
@@ -150,20 +162,20 @@ public class DataIntegrityTests
         var user = await userRepo.GetByIdAsync(userId);
         var sale = await saleRepo.CreateSaleAsync(saleDto, user!.Username);
 
-        // Execute: Delete the product
-        var deleteResult = await productRepo.DeleteProduct(productId);
-
-        // Verify: Product deletion succeeds
-        Assert.True(deleteResult);
+        // Execute: Try to delete the product while a sale item still references it
+        var deleteException = await Assert.ThrowsAsync<MySqlException>(() => productRepo.DeleteProduct(productId));
+        Assert.Contains("foreign key", deleteException.Message, System.StringComparison.OrdinalIgnoreCase);
 
         // Verify: Sale record still exists
         var saleHistory = await saleRepo.GetSalesHistoryAsync(sale.SaleId, null, null);
         Assert.NotEmpty(saleHistory);
         Assert.Single(saleHistory);
-        Assert.Equal("testuser", saleHistory[0].SoldBy);
+        Assert.Equal(username, saleHistory[0].SoldBy);
         Assert.Equal(1, saleHistory[0].ItemCount);
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, sale.SaleId);
+        await productRepo.DeleteProduct(productId);
         await userRepo.DeleteAsync(userId);
     }
 
@@ -210,6 +222,7 @@ public class DataIntegrityTests
         Assert.Equal(user.Username, saleHistory[0].SoldBy);
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, sale.SaleId);
         await productRepo.DeleteProduct(productId);
     }
 
@@ -224,7 +237,7 @@ public class DataIntegrityTests
         var userRepo = CreateUserRepository(connectionString);
 
         // Setup
-        var userId = await userRepo.CreateUserAsync("cashier_snap", "hashed_pass", "Cashier");
+        var userId = await userRepo.CreateUserAsync($"cashier_snap_{System.Guid.NewGuid():N}", "hashed_pass", "Cashier");
         var user = await userRepo.GetByIdAsync(userId);
 
         var productId = await productRepo.AddProduct(new ProductCreateDTO
@@ -268,6 +281,7 @@ public class DataIntegrityTests
         Assert.Equal(3000m, saleItem.LineSubtotal); // 1000 * 3
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, sale.SaleId);
         await productRepo.DeleteProduct(productId);
         await userRepo.DeleteAsync(userId);
     }
@@ -283,7 +297,7 @@ public class DataIntegrityTests
         var userRepo = CreateUserRepository(connectionString);
 
         // Setup
-        var userId = await userRepo.CreateUserAsync("qty_cashier", "hashed_pass", "Cashier");
+        var userId = await userRepo.CreateUserAsync($"qty_cashier_{System.Guid.NewGuid():N}", "hashed_pass", "Cashier");
         var user = await userRepo.GetByIdAsync(userId);
 
         var product1 = await productRepo.AddProduct(new ProductCreateDTO
@@ -338,6 +352,7 @@ public class DataIntegrityTests
         Assert.Equal(97, p2!.Quantity); // 100 - 3
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, sale.SaleId);
         await productRepo.DeleteProduct(product1);
         await productRepo.DeleteProduct(product2);
         await userRepo.DeleteAsync(userId);
@@ -354,7 +369,7 @@ public class DataIntegrityTests
         var userRepo = CreateUserRepository(connectionString);
 
         // Setup
-        var userId = await userRepo.CreateUserAsync("total_cashier", "hashed_pass", "Cashier");
+        var userId = await userRepo.CreateUserAsync($"total_cashier_{System.Guid.NewGuid():N}", "hashed_pass", "Cashier");
         var user = await userRepo.GetByIdAsync(userId);
 
         var product1 = await productRepo.AddProduct(new ProductCreateDTO
@@ -390,6 +405,7 @@ public class DataIntegrityTests
         Assert.Equal(9753.25m, sale.TotalAmount);
 
         // Cleanup
+        await DeleteSaleAsync(connectionString, sale.SaleId);
         await productRepo.DeleteProduct(product1);
         await productRepo.DeleteProduct(product2);
         await userRepo.DeleteAsync(userId);
