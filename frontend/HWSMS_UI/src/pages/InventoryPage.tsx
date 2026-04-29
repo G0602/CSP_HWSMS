@@ -207,21 +207,21 @@ const InventoryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar search={search} onSearchChange={setSearch} onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl p-6 lg:p-10">
+      <div className="hw-shell">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-slate-900">Inventory</h2>
-              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+              <h2 className="hw-title">Inventory</h2>
+              <span className="hw-badge">
                 {lowStockCount} low stock
               </span>
             </div>
-            <p className="mt-1 text-slate-600">Track stock levels and quickly spot low-stock items.</p>
+            <p className="hw-subtitle">Track stock levels and quickly spot low-stock items.</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+          <div className="hw-kpi text-sm text-slate-700">
             <p>
               <span className="font-semibold text-slate-900">{lowStockCount}</span> low-stock items
             </p>
@@ -259,10 +259,10 @@ const InventoryPage = () => {
           <SupplierFormCard onSubmit={submitSupplier} isSubmitting={isSupplierSubmitting} />
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <table className="w-full text-sm">
+        <div className="hw-card overflow-x-auto p-4">
+          <table className="hw-table">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Product Name</th>
                 <th className="py-2">Quantity</th>
                 <th className="py-2">Price</th>
@@ -288,10 +288,10 @@ const InventoryPage = () => {
                   ? "bg-red-50 hover:bg-red-100"
                   : isLowStock
                     ? "bg-amber-50 hover:bg-amber-100"
-                    : "hover:bg-slate-50";
+                    : "";
 
                 return (
-                  <tr key={product.id} className={`border-b border-slate-100 transition-colors ${rowClassName}`}>
+                  <tr key={product.id} className={rowClassName}>
                     <td className="py-3 font-medium text-slate-900">{product.name}</td>
                     <td className={`py-3 font-semibold ${isLowStock ? "text-red-700" : "text-slate-800"}`}>
                       {product.quantity}
@@ -306,7 +306,7 @@ const InventoryPage = () => {
                       <button
                         type="button"
                         onClick={() => openStockModal(product)}
-                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+                        className="hw-btn-primary px-3 py-1.5 text-xs"
                       >
                         Update Stock
                       </button>
@@ -320,7 +320,7 @@ const InventoryPage = () => {
       </div>
 
       {showLowStockPopup && !error && lowStockCount > 0 && (
-        <div className="fixed bottom-5 right-5 z-50 w-[320px] rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-lg">
+        <div className="fixed bottom-5 right-5 z-50 w-[320px] rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-lg animate-[hw-enter-up_220ms_ease-out]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-amber-900">Inventory Notification</p>
@@ -340,8 +340,8 @@ const InventoryPage = () => {
       )}
 
       {stockModalProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="hw-modal-overlay">
+          <div className="hw-modal">
             <h3 className="text-lg font-semibold text-slate-900">Update Stock</h3>
             <p className="mt-1 text-sm text-slate-600">
               {stockModalProduct.name} (Current: {stockModalProduct.quantity})
@@ -361,7 +361,7 @@ const InventoryPage = () => {
                 <select
                   value={stockOperation}
                   onChange={(e) => setStockOperation(e.target.value as StockOperation)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="hw-input"
                 >
                   <option value="increase">Increase</option>
                   <option value="decrease">Decrease</option>
@@ -375,7 +375,7 @@ const InventoryPage = () => {
                   min={1}
                   value={stockAmount}
                   onChange={(e) => setStockAmount(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="hw-input"
                 />
               </div>
 
@@ -386,7 +386,7 @@ const InventoryPage = () => {
                   value={stockReason}
                   onChange={(e) => setStockReason(e.target.value)}
                   placeholder="e.g., Supplier restock"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  className="hw-input"
                 />
               </div>
             </div>
@@ -397,7 +397,7 @@ const InventoryPage = () => {
               <button
                 type="button"
                 onClick={closeStockModal}
-                className="rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-300"
+                className="hw-btn-ghost"
               >
                 Cancel
               </button>
@@ -407,7 +407,7 @@ const InventoryPage = () => {
                   void submitStockUpdate();
                 }}
                 disabled={isStockUpdating}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
+                className="hw-btn-primary disabled:bg-slate-400"
               >
                 {isStockUpdating ? "Updating..." : "Save"}
               </button>

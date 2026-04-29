@@ -12,9 +12,9 @@ const TransactionDetailModal = ({ transaction, isOpen, onClose }: TransactionDet
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
-        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+    <div className="hw-modal-overlay p-4">
+      <div className="w-full max-w-3xl rounded-2xl border border-[#bfccd9] bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h3 className="text-xl font-semibold text-slate-900">Transaction #{transaction.saleId}</h3>
             <p className="text-sm text-slate-500">
@@ -24,16 +24,16 @@ const TransactionDetailModal = ({ transaction, isOpen, onClose }: TransactionDet
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm hover:bg-slate-200"
+            className="hw-btn-ghost"
           >
             Close
           </button>
         </div>
 
         <div className="p-6">
-          <table className="w-full text-sm">
+          <table className="hw-table">
             <thead>
-              <tr className="text-left border-b border-slate-200 text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Product</th>
                 <th className="py-2">SKU</th>
                 <th className="py-2">Price</th>
@@ -43,7 +43,7 @@ const TransactionDetailModal = ({ transaction, isOpen, onClose }: TransactionDet
             </thead>
             <tbody>
               {transaction.items.map((item) => (
-                <tr key={`${transaction.saleId}-${item.productId}-${item.sku}`} className="border-b border-slate-100">
+                <tr key={`${transaction.saleId}-${item.productId}-${item.sku}`}>
                   <td className="py-2">{item.productName}</td>
                   <td className="py-2">{item.sku}</td>
                   <td className="py-2">Rs. {item.unitPrice.toFixed(2)}</td>

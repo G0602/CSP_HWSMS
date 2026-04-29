@@ -122,18 +122,18 @@ const ProductDashboard = () => {
   const totalLowStock = filteredProducts.filter((p) => p.quantity < 10).length;
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="hw-page">
       <Navbar search={search} onSearchChange={setSearch} username={user?.username} onLogout={handleLogout} />
 
-      <div className="p-10">
+      <div className="hw-shell">
         {error && <div className="mb-4 rounded-md bg-red-100 p-3 text-red-700">{error}</div>}
 
         <DashboardHeader totalValuation={totalValuationFormatted} />
 
-        <div className="grid grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-3">
           <ProductFormCard onSubmit={handleSubmit} editingProduct={editingProduct} suppliers={suppliers} />
 
-          <div className="col-span-2">
+          <div className="xl:col-span-2">
             <InventoryTableCard
               products={filteredProducts}
               supplierNameById={supplierNameById}
@@ -143,7 +143,7 @@ const ProductDashboard = () => {
           </div>
         </div>
 
-        <div className="flex gap-6 mt-8">
+        <div className="mt-8 flex flex-wrap gap-6">
           <StatsCard title="Total SKUs" value={filteredProducts.length} />
           <StatsCard title="Low Stock" value={totalLowStock} highlight />
         </div>

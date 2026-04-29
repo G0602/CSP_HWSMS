@@ -15,12 +15,12 @@ const InventoryTableCard = ({ products, supplierNameById = {}, onEdit, onDelete 
   });
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold mb-6">Inventory List</h3>
+    <div className="hw-card">
+      <h3 className="text-lg font-semibold text-slate-900 mb-6">Inventory List</h3>
 
       <div className="max-h-[420px] overflow-auto">
-        <table className="w-full text-left">
-          <thead className="text-sm text-gray-500 uppercase sticky top-0 bg-white z-10">
+        <table className="hw-table text-left">
+          <thead className="sticky top-0 z-10 bg-[#f8fbfe] text-xs uppercase tracking-[0.1em]">
             <tr>
               <th>Name</th>
               <th>SKU</th>
@@ -32,9 +32,9 @@ const InventoryTableCard = ({ products, supplierNameById = {}, onEdit, onDelete 
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {products.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50 transition">
+              <tr key={p.id}>
                 <td className="py-4 font-medium">{p.name}</td>
                 <td>{p.sku}</td>
                 <td>Rs. {lkrFormatter.format(p.price)}</td>
@@ -44,10 +44,10 @@ const InventoryTableCard = ({ products, supplierNameById = {}, onEdit, onDelete 
                   <StatusBadge quantity={p.quantity} />
                 </td>
                 <td className="flex gap-2">
-                  <button onClick={() => onEdit(p)} className="p-2 rounded-lg hover:bg-gray-100">
+                  <button onClick={() => onEdit(p)} className="rounded-lg border border-slate-200 p-2 hover:bg-white">
                     ✏️
                   </button>
-                  <button onClick={() => onDelete(p.id)} className="p-2 rounded-lg hover:bg-gray-100">
+                  <button onClick={() => onDelete(p.id)} className="rounded-lg border border-slate-200 p-2 hover:bg-white">
                     🗑️
                   </button>
                 </td>
