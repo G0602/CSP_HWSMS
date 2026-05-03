@@ -67,6 +67,7 @@ public static class ApiTestConstants
         public const string Users = "/api/users";
         public const string UserById = "/api/users/{id}";
         public const string UserRole = "/api/users/{id}/role";
+        public const string UserPassword = "/api/users/{id}/password";
     }
 
     /// <summary>
