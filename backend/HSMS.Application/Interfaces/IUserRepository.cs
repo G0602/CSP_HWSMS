@@ -10,5 +10,6 @@ public interface IUserRepository
 
     Task<int> CreateUserAsync(string username, string passwordHash, string role);
     Task<bool> UpdateRoleAsync(int id, string role);
+    Task<bool> UpdatePasswordAsync(int id, string passwordHash);
     Task<bool> DeleteAsync(int id);
 }

@@ -12,6 +12,11 @@ export type CreateUserPayload = {
   role: "Admin" | "Manager" | "Cashier";
 };
 
+export type ResetPasswordPayload = {
+  newPassword: string;
+  confirmPassword: string;
+};
+
 export type UserRole = "Admin" | "Manager" | "Cashier";
 
 export type ManagedUser = {
@@ -93,6 +98,15 @@ export const deleteUser = async (userId: number) => {
   const { data } = await axios.delete<string>(`${USERS_API_URL}/${userId}`, {
     headers: getAuthHeader(),
   });
+  return data;
+};
+
+export const resetUserPassword = async (userId: number, payload: ResetPasswordPayload) => {
+  const { data } = await axios.put<string>(
+    `${USERS_API_URL}/${userId}/password`,
+    payload,
+    { headers: getAuthHeader() },
+  );
   return data;
 };
 
