@@ -82,13 +82,13 @@ Comprehensive test coverage has been added for the new password management featu
 - **Assertion:** Database query returns updated hash
 
 **TC: UpdatePasswordAsync_Should_Enforce_Hash_Format**
-- **Scenario:** Verify passwords are stored as bcrypt hashes
+- **Scenario:** Verify passwords are stored with proper hash format
 - **Test Method:**
   - Update password using UpdatePasswordAsync()
   - Query database PasswordHash column
-  - Validate format matches bcrypt pattern
-- **Expected:** Hash follows bcrypt format (starts with $2a$, $2b$, or $2y$)
-- **Assertion:** Hash.StartsWith("$2") validates bcrypt format
+  - Validate format matches ASP.NET Core PasswordHasher format (PBKDF2)
+- **Expected:** Hash follows PBKDF2 format (contains version.salt.hash structure)
+- **Assertion:** Hash contains proper dot-separated format validation
 
 **TC: UpdatePasswordAsync_For_NonExistent_User_Should_Return_False**
 - **Scenario:** Handle non-existent user gracefully

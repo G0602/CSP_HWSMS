@@ -44,6 +44,7 @@ The User Management page has been enhanced with advanced password management fea
   - **New DTO:** `PasswordResetDTO` with `NewPassword` and `ConfirmPassword` fields
   - **New Endpoint:** `PUT /api/users/{id}/password`
   - **Implementation:** `UpdatePasswordAsync()` method in `IUserRepository` and `UserRepository`
+  - Password hashing: Uses ASP.NET Core's PasswordHasher (PBKDF2 algorithm)
   - Validation:
     - Password minimum 8 characters
     - Passwords must match

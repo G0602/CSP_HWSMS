@@ -366,7 +366,9 @@ public class UserManagementIntegrationTests
             var user = await repository.GetByIdAsync(userId);
             Assert.NotNull(user);
             Assert.NotEmpty(user.PasswordHash);
-            Assert.Contains("$2", user.PasswordHash); // bcrypt format check
+            // ASP.NET Core PasswordHasher uses PBKDF2 format: "version.salt.hash"
+            Assert.Contains(".", user.PasswordHash); // PBKDF2 format contains dots
+            Assert.True(user.PasswordHash.Split('.').Length >= 2); // At least version.data format
         }
         finally
         {
