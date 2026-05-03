@@ -481,106 +481,122 @@ const UsersPage = () => {
             </div>
           </div>
 
-          {/* Reset Password Section */}
+          {/* Reset Password Modal */}
           {resetPasswordUserId && (
-            <div className="hw-card bg-blue-50 border border-blue-200">
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Reset Password</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    User: <span className="font-semibold text-slate-900">{users.find((u) => u.id === resetPasswordUserId)?.username}</span>
-                  </p>
+            <>
+              {/* Backdrop Overlay */}
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                onClick={() => {
+                  setResetPasswordUserId(null);
+                  setResetPasswordForm({ newPassword: "", confirmPassword: "" });
+                }}
+              />
+
+              {/* Modal Dialog */}
+              <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
+                  {/* Modal Header */}
+                  <div className="flex items-start justify-between p-6 border-b border-slate-200">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Reset Password</h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        User: <span className="font-semibold text-slate-900">{users.find((u) => u.id === resetPasswordUserId)?.username}</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetPasswordUserId(null);
+                        setResetPasswordForm({ newPassword: "", confirmPassword: "" });
+                      }}
+                      className="text-slate-500 hover:text-slate-700 font-bold text-lg"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+                    {/* New Password Field */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showResetPassword ? "text" : "password"}
+                          value={resetPasswordForm.newPassword}
+                          onChange={(e) =>
+                            setResetPasswordForm((prev) => ({
+                              ...prev,
+                              newPassword: e.target.value,
+                            }))
+                          }
+                          placeholder="Minimum 8 characters"
+                          className="hw-input w-full px-3 py-2.5 pr-16"
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowResetPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
+                        >
+                          {showResetPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password Field */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Confirm Password</label>
+                      <div className="relative">
+                        <input
+                          type={showResetConfirmPassword ? "text" : "password"}
+                          value={resetPasswordForm.confirmPassword}
+                          onChange={(e) =>
+                            setResetPasswordForm((prev) => ({
+                              ...prev,
+                              confirmPassword: e.target.value,
+                            }))
+                          }
+                          placeholder="Minimum 8 characters"
+                          className="hw-input w-full px-3 py-2.5 pr-16"
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowResetConfirmPassword((value) => !value)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
+                        >
+                          {showResetConfirmPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-4">
+                      <button
+                        type="submit"
+                        disabled={resettingPasswordUserId !== null}
+                        className="hw-btn-primary flex-1 px-6 py-2.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {resettingPasswordUserId !== null ? "Resetting..." : "Reset Password"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResetPasswordUserId(null);
+                          setResetPasswordForm({ newPassword: "", confirmPassword: "" });
+                        }}
+                        className="hw-btn-ghost flex-1 px-6 py-2.5 font-semibold"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetPasswordUserId(null);
-                    setResetPasswordForm({ newPassword: "", confirmPassword: "" });
-                  }}
-                  className="text-slate-500 hover:text-slate-700 font-bold text-lg"
-                  title="Close"
-                >
-                  ✕
-                </button>
               </div>
-
-              <form onSubmit={handleResetPassword} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* New Password Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">New Password</label>
-                  <div className="relative">
-                    <input
-                      type={showResetPassword ? "text" : "password"}
-                      value={resetPasswordForm.newPassword}
-                      onChange={(e) =>
-                        setResetPasswordForm((prev) => ({
-                          ...prev,
-                          newPassword: e.target.value,
-                        }))
-                      }
-                      placeholder="Minimum 8 characters"
-                      className="hw-input w-full px-3 py-2.5 pr-16"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowResetPassword((value) => !value)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                    >
-                      {showResetPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Confirm Password Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Confirm Password</label>
-                  <div className="relative">
-                    <input
-                      type={showResetConfirmPassword ? "text" : "password"}
-                      value={resetPasswordForm.confirmPassword}
-                      onChange={(e) =>
-                        setResetPasswordForm((prev) => ({
-                          ...prev,
-                          confirmPassword: e.target.value,
-                        }))
-                      }
-                      placeholder="Minimum 8 characters"
-                      className="hw-input w-full px-3 py-2.5 pr-16"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowResetConfirmPassword((value) => !value)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                    >
-                      {showResetConfirmPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="md:col-span-2 flex gap-3 pt-2">
-                  <button
-                    type="submit"
-                    disabled={resettingPasswordUserId !== null}
-                    className="hw-btn-primary px-6 py-2.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {resettingPasswordUserId !== null ? "Resetting..." : "Reset Password"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResetPasswordUserId(null);
-                      setResetPasswordForm({ newPassword: "", confirmPassword: "" });
-                    }}
-                    className="hw-btn-ghost px-6 py-2.5 font-semibold"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+            </>
           )}
         </div>
       </div>
