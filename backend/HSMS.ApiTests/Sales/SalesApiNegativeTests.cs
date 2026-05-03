@@ -49,16 +49,36 @@ public class SalesApiNegativeTests
 
     private int GetOrCreateTestProduct()
     {
-        var products = _client.Get(ApiTestConstants.Endpoints.Products);
-        using var doc = JsonDocument.Parse(products.Content);
-        
-        foreach (var product in doc.RootElement.EnumerateArray())
+        // Always create a fresh test product with sufficient stock to avoid conflicts
+        var uniqueSku = $"SALES-NEG-{Guid.NewGuid():N}";
+        var productData = new
         {
-            if (product.TryGetProperty("id", out var id))
-                return id.GetInt32();
+            name = $"Sales Negative Test Product {uniqueSku}",
+            sku = uniqueSku,
+            price = 29.99m,
+            quantity = 10000,
+            category = "Test",
+            supplierId = (int?)null
+        };
+
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Products, productData);
+        if ((int)createResponse.StatusCode != ApiTestConstants.HttpStatusCodes.Created)
+            throw new InvalidOperationException($"Failed to create test product. Status: {(int)createResponse.StatusCode}");
+
+        // The POST response doesn't include the product ID, so fetch the product list and find by SKU
+        var listResponse = _client.Get(ApiTestConstants.Endpoints.Products);
+        using var listDoc = JsonDocument.Parse(listResponse.Content);
+        foreach (var product in listDoc.RootElement.EnumerateArray())
+        {
+            string? sku = product.TryGetProperty("sku", out var skuElement) ? skuElement.GetString() : null;
+            if (string.Equals(sku, uniqueSku, StringComparison.OrdinalIgnoreCase) &&
+                product.TryGetProperty("id", out var idElement) && idElement.TryGetInt32(out var id))
+            {
+                return id;
+            }
         }
 
-        throw new InvalidOperationException("No products available for testing.");
+        throw new InvalidOperationException("Could not retrieve the created product.");
     }
 
     // NEGATIVE TESTS - CREATE SALES
