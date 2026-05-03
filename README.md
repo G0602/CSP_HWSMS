@@ -74,6 +74,17 @@ The frontend lives in `frontend/HWSMS_UI` and communicates with the backend API 
 - Policy-based authorization
 - Role-aware frontend route protection
 
+### User Management
+
+- Create new users with role assignment
+- Update user roles
+- Delete users
+- **Reset user passwords with confirmation** (NEW)
+- **Password confirmation on user creation** (NEW)
+- **Password visibility toggles** (NEW)
+- Organized user list with filtering and sorting
+- Admin-only access with proper authorization
+
 ## Tech Stack
 
 | Area | Technology |
@@ -391,6 +402,7 @@ npm run dev
 | `GET` | `/api/users` | List users |
 | `POST` | `/api/users` | Create user |
 | `PUT` | `/api/users/{id}/role` | Update role |
+| `PUT` | `/api/users/{id}/password` | Reset password (NEW) |
 | `DELETE` | `/api/users/{id}` | Delete user |
 
 ## Testing
@@ -442,6 +454,7 @@ Additional project documentation available in the repository:
 - [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
 - [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
 - [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
+- [USER_MANAGEMENT_FEATURES.md](./USER_MANAGEMENT_FEATURES.md) - Detailed user management enhancements
 - [docs/Test-Documents/API_TEST_PLAN.md](./docs/Test-Documents/API_TEST_PLAN.md)
 - [docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md](./docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md)
 - [docs/SRS/SRS_Document.pdf](./docs/SRS/SRS_Document.pdf)

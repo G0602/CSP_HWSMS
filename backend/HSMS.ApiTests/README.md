@@ -101,6 +101,26 @@ The API suite is now grouped by feature area:
   - Special character handling
   - Duplicate name handling
 
+### Member 13 - `UsersApiTests.cs`
+**Focus:** User Management API - CRUD & Password Operations
+- **22+ test cases** covering user creation, role management, and password reset
+- Tests positive scenarios: create, list, update role, reset password
+- Tests negative scenarios: validation, authorization, not found errors
+- Includes password confirmation validation and mismatch detection
+- **Key Tests:**
+  - Get all users (200 OK)
+  - Create user with password confirmation
+  - Create user with password mismatch (400 Bad Request)
+  - Update user role (200 OK)
+  - Reset user password with confirmation
+  - Reset with mismatched passwords (400 Bad Request)
+  - Reset with short password (400 Bad Request)
+  - Delete user (200 OK)
+  - Duplicate username handling (409 Conflict)
+  - Invalid role rejection
+  - Non-existent user handling (404 Not Found)
+  - Authorization validation for all operations
+
 ---
 
 ## 🔧 Setup Instructions
@@ -155,7 +175,8 @@ dotnet test HSMS.ApiTests/HSMS.ApiTests.csproj /p:CollectCoverage=true
 | Authentication (Negative) | 2 | AuthApiNegativeTests.cs | 13 | Error handling & security |
 | Products (Positive) | 3 | ProductApiTests.cs | 12 | CRUD operations |
 | Products (Negative) | 4 | ProductApiNegativeTests.cs | 19 | Edge cases & validation |
-| **TOTAL** | - | - | **51** | **Complete coverage** |
+| Users (CRUD & Password Reset) | 13 | UsersApiTests.cs | 22+ | User management & password operations |
+| **TOTAL** | - | - | **73+** | **Complete coverage** |
 
 ---
 
