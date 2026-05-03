@@ -39,7 +39,7 @@ Excluded from this plan:
 | Suppliers | `GET/POST /api/suppliers`, `PUT/DELETE /api/suppliers/{id}` |
 | Sales | `POST /api/Sales`, `GET /api/Sales/history`, `GET /api/Sales/{saleId}`, `GET /api/Sales/{saleId}/invoice` |
 | Reports | `GET /api/reports/daily`, `GET /api/reports/monthly`, `GET /api/reports/low-stock`, `GET /api/reports/export?type=` |
-| Users | `GET/POST /api/users`, `PUT /api/users/{id}/role`, `DELETE /api/users/{id}` |
+| Users | `GET/POST /api/users`, `PUT /api/users/{id}/role`, `PUT /api/users/{id}/password`, `DELETE /api/users/{id}` |
 | Health | `GET /api/health` |
 
 ## 5. Test Types
@@ -313,6 +313,14 @@ Keep the following reusable IDs in Postman environment variables:
 - Admin updates own role and receives refreshed auth payload
 - Missing user returns `404`
 - Invalid role returns `400`
+
+`PUT /api/users/{id}/password`
+
+- Admin resets user password with matching passwords
+- Password and confirm password must match, else returns `400`
+- Password must be at least 8 characters, else returns `400`
+- Missing user returns `404`
+- Empty password fields return `400`
 
 `DELETE /api/users/{id}`
 

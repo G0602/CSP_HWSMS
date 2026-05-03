@@ -299,6 +299,103 @@ public class UserManagementIntegrationTests
 
     #endregion
 
+    #region Story S3-US-09: Password Reset
+
+    [Fact]
+    public async Task UpdatePasswordAsync_Should_Persist_New_Password_Hash()
+    {
+        string? connectionString = GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        // Arrange
+        var repository = CreateRepository(connectionString);
+        string username = $"pwd_reset_{System.Guid.NewGuid():N}";
+        var passwordHasher = new PasswordHasher();
+        string originalPassword = "OriginalPass123!";
+        int userId = await repository.CreateUserAsync(username, passwordHasher.HashPassword(originalPassword), "Cashier");
+
+        string newPassword = "NewPassword@456";
+        string newPasswordHash = passwordHasher.HashPassword(newPassword);
+
+        try
+        {
+            // Act
+            bool updated = await repository.UpdatePasswordAsync(userId, newPasswordHash);
+
+            // Assert
+            Assert.True(updated);
+
+            var user = await repository.GetByIdAsync(userId);
+            Assert.NotNull(user);
+            Assert.NotEqual(passwordHasher.HashPassword(originalPassword), user.PasswordHash);
+            
+            // Verify new password is valid
+            bool newPasswordValid = passwordHasher.VerifyPassword(newPassword, user.PasswordHash);
+            Assert.True(newPasswordValid);
+            
+            // Verify old password is no longer valid
+            bool oldPasswordValid = passwordHasher.VerifyPassword(originalPassword, user.PasswordHash);
+            Assert.False(oldPasswordValid);
+        }
+        finally
+        {
+            await CleanupUserAsync(connectionString, userId);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatePasswordAsync_Should_Enforce_Hash_Format()
+    {
+        string? connectionString = GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        // Arrange
+        var repository = CreateRepository(connectionString);
+        string username = $"pwd_format_{System.Guid.NewGuid():N}";
+        var passwordHasher = new PasswordHasher();
+        int userId = await repository.CreateUserAsync(username, passwordHasher.HashPassword("Pass123!"), "Admin");
+
+        try
+        {
+            // Act
+            bool updated = await repository.UpdatePasswordAsync(userId, passwordHasher.HashPassword("UpdatedPass@789"));
+
+            // Assert
+            Assert.True(updated);
+
+            var user = await repository.GetByIdAsync(userId);
+            Assert.NotNull(user);
+            Assert.NotEmpty(user.PasswordHash);
+            // ASP.NET Core PasswordHasher uses PBKDF2 format: "version.salt.hash"
+            Assert.Contains(".", user.PasswordHash); // PBKDF2 format contains dots
+            Assert.True(user.PasswordHash.Split('.').Length >= 2); // At least version.data format
+        }
+        finally
+        {
+            await CleanupUserAsync(connectionString, userId);
+        }
+    }
+
+    [Fact]
+    public async Task UpdatePasswordAsync_For_NonExistent_User_Should_Return_False()
+    {
+        string? connectionString = GetConnectionString();
+        if (string.IsNullOrWhiteSpace(connectionString)) return;
+
+        // Arrange
+        var repository = CreateRepository(connectionString);
+        var passwordHasher = new PasswordHasher();
+        const int nonExistentUserId = 999999;
+
+        // Act
+        bool updated = await repository.UpdatePasswordAsync(nonExistentUserId, passwordHasher.HashPassword("NewPass@123"));
+
+        // Assert
+        Assert.False(updated);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static async Task CleanupUserAsync(string connectionString, int userId)

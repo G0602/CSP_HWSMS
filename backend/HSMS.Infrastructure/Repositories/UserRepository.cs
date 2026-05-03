@@ -136,6 +136,23 @@ public class UserRepository : IUserRepository
         return rows > 0;
     }
 
+    public async Task<bool> UpdatePasswordAsync(int id, string passwordHash)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"UPDATE Users
+                               SET PasswordHash = @PasswordHash
+                               WHERE Id = @Id";
+
+        using var command = new MySqlCommand(query, connection);
+        command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        command.Parameters.AddWithValue("@Id", id);
+
+        int rows = await command.ExecuteNonQueryAsync();
+        return rows > 0;
+    }
+
     public async Task<bool> DeleteAsync(int id)
     {
         using var connection = new MySqlConnection(_connectionString);

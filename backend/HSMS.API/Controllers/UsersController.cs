@@ -129,6 +129,36 @@ public class UsersController : ControllerBase
         return Ok("User deleted successfully.");
     }
 
+    [Authorize(Policy = AuthPolicies.UsersManage)]
+    [HttpPut("{id:int}/password")]
+    public async Task<IActionResult> ResetUserPassword(int id, PasswordResetDTO dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.NewPassword) || dto.NewPassword.Length < 8)
+        {
+            return BadRequest("Password must be at least 8 characters long.");
+        }
+
+        if (dto.NewPassword != dto.ConfirmPassword)
+        {
+            return BadRequest("Passwords do not match.");
+        }
+
+        var existingUser = await _userRepository.GetByIdAsync(id);
+        if (existingUser is null)
+        {
+            return NotFound("User not found.");
+        }
+
+        string passwordHash = _passwordHasher.HashPassword(dto.NewPassword);
+        bool updated = await _userRepository.UpdatePasswordAsync(id, passwordHash);
+        if (!updated)
+        {
+            return NotFound("User not found.");
+        }
+
+        return Ok("Password reset successfully.");
+    }
+
     private int? GetCurrentUserId()
     {
         string? subject = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value

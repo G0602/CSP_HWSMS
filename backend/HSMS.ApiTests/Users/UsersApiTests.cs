@@ -555,4 +555,202 @@ public class UsersApiTests
         Assert.NotNull(responseTime);
         Assert.True(responseTime.Value.TotalMilliseconds < 2000);
     }
+
+    // POSITIVE TESTS - PASSWORD RESET
+
+    /// <summary>
+    /// Test Case 13.21: Reset User Password - Positive Scenario
+    /// Scenario: Admin resets password for existing user with valid matching passwords
+    /// Expected: Returns 200 OK with success message
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_WithValidMatchingPasswords_Should_Return_200()
+    {
+        // Arrange - Create user to reset password for
+        var createRequest = new
+        {
+            username = $"reset_{Guid.NewGuid():N}",
+            password = "OriginalPass@123",
+            role = "Cashier"
+        };
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Users, createRequest);
+        using var createDoc = JsonDocument.Parse(createResponse.Content);
+        var userId = createDoc.RootElement.GetProperty("id").GetInt32();
+
+        var resetRequest = new
+        {
+            newPassword = "NewPassword@123",
+            confirmPassword = "NewPassword@123"
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", userId.ToString());
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.OK, (int)response.StatusCode);
+        Assert.Contains("successfully", response.Content ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Test Case 13.22: Reset User Password Validation
+    /// Scenario: Verify password reset response contains success message
+    /// Expected: Response confirms password reset completion
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_Response_ShouldConfirmChange()
+    {
+        // Arrange - Create user
+        var createRequest = new
+        {
+            username = $"reset_{Guid.NewGuid():N}",
+            password = "OriginalPass@123",
+            role = "Manager"
+        };
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Users, createRequest);
+        using var createDoc = JsonDocument.Parse(createResponse.Content);
+        var userId = createDoc.RootElement.GetProperty("id").GetInt32();
+
+        var resetRequest = new
+        {
+            newPassword = "UpdatedPass@123",
+            confirmPassword = "UpdatedPass@123"
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", userId.ToString());
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.OK, (int)response.StatusCode);
+        Assert.NotNull(response.Content);
+    }
+
+    // NEGATIVE TESTS - PASSWORD RESET
+
+    /// <summary>
+    /// Test Case 13.23: Reset Password With Mismatched Passwords
+    /// Scenario: New password and confirm password do not match
+    /// Expected: Returns 400 Bad Request with mismatch error
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_WithMismatchedPasswords_Should_Return_400()
+    {
+        // Arrange - Create user
+        var createRequest = new
+        {
+            username = $"reset_{Guid.NewGuid():N}",
+            password = "OriginalPass@123",
+            role = "Cashier"
+        };
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Users, createRequest);
+        using var createDoc = JsonDocument.Parse(createResponse.Content);
+        var userId = createDoc.RootElement.GetProperty("id").GetInt32();
+
+        var resetRequest = new
+        {
+            newPassword = "NewPassword@123",
+            confirmPassword = "DifferentPass@123"
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", userId.ToString());
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+        Assert.Contains("match", response.Content?.ToLower() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Test Case 13.24: Reset Password With Short Password
+    /// Scenario: New password is less than 8 characters
+    /// Expected: Returns 400 Bad Request with validation error
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_WithShortPassword_Should_Return_400()
+    {
+        // Arrange - Create user
+        var createRequest = new
+        {
+            username = $"reset_{Guid.NewGuid():N}",
+            password = "OriginalPass@123",
+            role = "Admin"
+        };
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Users, createRequest);
+        using var createDoc = JsonDocument.Parse(createResponse.Content);
+        var userId = createDoc.RootElement.GetProperty("id").GetInt32();
+
+        var resetRequest = new
+        {
+            newPassword = "Short1!",
+            confirmPassword = "Short1!"
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", userId.ToString());
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+        Assert.Contains("password", response.Content?.ToLower() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Test Case 13.25: Reset Password For Non-existent User
+    /// Scenario: User ID doesn't exist
+    /// Expected: Returns 404 Not Found
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_NonExistentId_Should_Return_404()
+    {
+        // Arrange
+        var resetRequest = new
+        {
+            newPassword = "NewPassword@123",
+            confirmPassword = "NewPassword@123"
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", "999999");
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.NotFound, (int)response.StatusCode);
+        Assert.Contains("not found", response.Content?.ToLower() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Test Case 13.26: Reset Password With Empty New Password
+    /// Scenario: New password field is empty
+    /// Expected: Returns 400 Bad Request
+    /// </summary>
+    [Fact]
+    public void ResetUserPassword_WithEmptyPassword_Should_Return_400()
+    {
+        // Arrange - Create user
+        var createRequest = new
+        {
+            username = $"reset_{Guid.NewGuid():N}",
+            password = "OriginalPass@123",
+            role = "Manager"
+        };
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Users, createRequest);
+        using var createDoc = JsonDocument.Parse(createResponse.Content);
+        var userId = createDoc.RootElement.GetProperty("id").GetInt32();
+
+        var resetRequest = new
+        {
+            newPassword = "",
+            confirmPassword = ""
+        };
+        var endpoint = ApiTestConstants.Endpoints.UserPassword.Replace("{id}", userId.ToString());
+
+        // Act
+        var response = _client.Put(endpoint, resetRequest);
+
+        // Assert
+        Assert.Equal(ApiTestConstants.HttpStatusCodes.BadRequest, (int)response.StatusCode);
+    }
 }
+
