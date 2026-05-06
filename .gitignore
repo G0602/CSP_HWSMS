@@ -101,9 +101,3 @@ docker-compose.override.yml
 *.tmp
 *.temp
 *.swp
-
-#############################################
-#Test files
-############################################
-postman/
-jmeter/
