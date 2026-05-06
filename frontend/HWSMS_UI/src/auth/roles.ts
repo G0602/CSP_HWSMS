@@ -10,6 +10,10 @@ export const canAccessInventory = (role?: string) => {
   return role === AppRoles.Admin || role === AppRoles.Manager;
 };
 
+export const canAccessDashboard = (role?: string) => {
+  return role === AppRoles.Admin || role === AppRoles.Manager;
+};
+
 export const canAccessSales = (role?: string) => {
   return role === AppRoles.Admin || role === AppRoles.Manager || role === AppRoles.Cashier;
 };
