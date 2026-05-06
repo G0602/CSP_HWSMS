@@ -1,90 +1,65 @@
 # Testing Overview
 
-This is the canonical testing summary for HWSMS. Use this file first, then follow links for detailed plans, execution guides, and reports.
+This is the canonical landing page for active testing documentation in the repository.
 
-## What This Covers
+## Active Test Suites
 
-- How tests are organized in the repository
-- Where to find test plans and execution guides
-- Where to find test reports and audits
-- How to run the main test suites
-
-## Test Structure (Quick Map)
-
-- Backend unit/integration tests: `backend/HSMS.Tests`
-- API tests: `backend/HSMS.ApiTests`
-- E2E tests (Selenium): `backend/HSMS.E2E` (optional / not required for some submissions)
+| Suite | Location | Current validated result |
+|---|---|---|
+| Backend unit/integration/security | `backend/HSMS.Tests` | `296` passing tests |
+| Backend API tests | `backend/HSMS.ApiTests` | `194` passing tests |
+| Frontend tests | `frontend/HWSMS_UI` | `17` passing tests |
+| Browser E2E | `backend/HSMS.E2E` | Optional, environment-driven |
 
 ## Core Test Documents
 
-- Master test plan: [HSMS_MASTER_TEST_PLAN.md](./HSMS_MASTER_TEST_PLAN.md)
-- API test plan: [API_TEST_PLAN.md](./API_TEST_PLAN.md)
-- Integration test notes: [INTEGRATION_TEST_ISSUES.md](./INTEGRATION_TEST_ISSUES.md)
-- JMeter plan: [JMETER_LOAD_TEST.md](./JMETER_LOAD_TEST.md)
+- [HSMS_MASTER_TEST_PLAN.md](./HSMS_MASTER_TEST_PLAN.md)
+- [API_TEST_PLAN.md](./API_TEST_PLAN.md)
+- [INTEGRATION_TEST_ISSUES.md](./INTEGRATION_TEST_ISSUES.md)
+- [JMETER_LOAD_TEST.md](./JMETER_LOAD_TEST.md)
 
 ## Execution Guides
 
-- Test execution guide: [Guides/TEST_EXECUTION_GUIDE.md](./Guides/TEST_EXECUTION_GUIDE.md)
-- Delivery checklist: [Guides/DELIVERY_CHECKLIST.md](./Guides/DELIVERY_CHECKLIST.md)
-- HSMS.Tests README: [Guides/HSMS_TESTS_README.md](./Guides/HSMS_TESTS_README.md)
-- HSMS.ApiTests README: [Guides/HSMS_APITESTS_README.md](./Guides/HSMS_APITESTS_README.md)
+- [Guides/TEST_EXECUTION_GUIDE.md](./Guides/TEST_EXECUTION_GUIDE.md)
+- [Guides/DELIVERY_CHECKLIST.md](./Guides/DELIVERY_CHECKLIST.md)
+- [Guides/HSMS_TESTS_README.md](./Guides/HSMS_TESTS_README.md)
+- [Guides/HSMS_APITESTS_README.md](./Guides/HSMS_APITESTS_README.md)
 
-## Reports and Audits (Archived)
+## Historical Material
 
-These are kept for historical reference:
+Superseded test reports, sprint-era summaries, and archival audits live under:
 
-- [Archive/README_Tests.md](./Archive/README_Tests.md)
-- [Archive/TEST_QUICK_REFERENCE.md](./Archive/TEST_QUICK_REFERENCE.md)
-- [Archive/TEST_INVENTORY_ANALYSIS.md](./Archive/TEST_INVENTORY_ANALYSIS.md)
-- [Archive/TEST_COVERAGE_UPDATE_REPORT.md](./Archive/TEST_COVERAGE_UPDATE_REPORT.md)
-- [Archive/API_TEST_COVERAGE_AUDIT.md](./Archive/API_TEST_COVERAGE_AUDIT.md)
-- [Archive/TEST_SUITE_COMPLETION_REPORT.md](./Archive/TEST_SUITE_COMPLETION_REPORT.md)
+- [Archive](./Archive)
 
-## How To Run Tests (Short)
+Those files are retained for historical reference only and should not be treated as the current source of truth.
 
-Backend tests:
+## Standard Commands
+
+Backend test projects:
 
 ```bash
-cd backend
-dotnet test HSMS.Tests/HSMS.Tests.csproj
+dotnet test backend/HSMS.Tests/HSMS.Tests.csproj --no-restore
+dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj --no-restore
 ```
 
-API tests (start API first):
+Frontend test and build:
 
 ```bash
-cd backend
-dotnet run --project HSMS.API
+cd frontend/HWSMS_UI
+npm test
+npm run build
 ```
 
-```bash
-cd backend
-dotnet test HSMS.ApiTests/HSMS.ApiTests.csproj
-```
+## Current Test Tooling
 
-## Test Credentials
+- backend unit/integration/security: xUnit, Moq, coverlet
+- API tests: xUnit + RestSharp
+- frontend tests: Vitest + Testing Library
+- load tests: JMeter
+- collection-based API coverage: Postman
 
-Use dedicated test accounts for all test runs. Do not commit real passwords to the repository.
+## Notes
 
-### Development and Local Testing
-
-Seeded accounts are created only in Development when the seed password environment variables are set. If you use the API test suite, align the credentials with what you configured in your environment.
-
-Common local placeholders used in docs:
-
-| Role | Username | Password |
-|---|---|---|
-| Admin | admin | Admin@123 |
-| Manager | manager | Manager@123 |
-| Cashier | cashier | Cashier@123 |
-
-### Deployment Testing (Staging or Production)
-
-Create separate test-only accounts in the deployed environment and store the credentials in your secret manager or CI/CD variables. Do not reuse development passwords.
-
-Recommended format:
-
-| Role | Username | Password |
-|---|---|---|
-| Admin | admin | change-admin-password |
-| Manager | manager | change-manager-password |
-| Cashier | cashier | change-cashier-password |
+- `backend/HSMS.Tests` uses `HSMS_TEST_CONNECTION_STRING` for DB-backed integration coverage.
+- `backend/HSMS.E2E` is opt-in and depends on environment variables and a reachable app instance.
+- Postman and JMeter artifacts are generated from current source-aware scripts in `scripts/`.

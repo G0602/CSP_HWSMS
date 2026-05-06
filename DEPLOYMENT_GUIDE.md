@@ -1,30 +1,33 @@
 # HWSMS Deployment Guide
 
-This guide documents the current deployment model for the project as it exists in this repository.
+This guide describes the current deployment model represented in this repository.
 
-## Scope
+## Deployment Model
 
-This repository currently contains:
+The project is deployed as two parts:
 
-- an ASP.NET Core backend in `backend/HSMS.API`
-- a Vite/React frontend in `frontend/HWSMS_UI`
-- environment-variable driven backend configuration
-- static frontend production build output via `npm run build`
+1. ASP.NET Core backend API hosted separately
+2. React/Vite frontend built to static files and deployed separately
 
-This repository does not currently include active Docker Compose deployment files at the root, so deployment guidance below focuses on direct backend hosting and static frontend hosting.
+The repo currently does not use root-level Docker Compose deployment files. CI/CD is handled through GitHub Actions.
 
-## Deployment Overview
+## CI/CD Workflow
 
-Typical production deployment has two parts:
+The active pipeline is [`.github/workflows/ci-cd.yml`](./.github/workflows/ci-cd.yml).
 
-1. Publish and host the backend API.
-2. Build and host the frontend static files.
+It currently performs:
+
+- backend restore, build, and test execution
+- backend API startup and API test execution
+- frontend dependency install, test run, and production build
+- backend deployment to Azure App Service on push to `main`
+- frontend deployment to Azure Static Web Apps on push to `main`
+- post-deploy smoke checks
+- optional Slack failure notification when `SLACK_WEBHOOK_URL` is configured
 
 ## Backend Deployment
 
-### Required configuration
-
-Provide these values through environment variables or hosting platform configuration:
+### Required runtime settings
 
 | Setting | Purpose |
 |---|---|
@@ -32,26 +35,19 @@ Provide these values through environment variables or hosting platform configura
 | `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
 | `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
 | `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
-| `CORS_ORIGINS` | Comma-separated allowed frontend origins |
-| `ASPNETCORE_ENVIRONMENT` | `Production` in production |
-| `ASPNETCORE_URLS` | Optional listening URLs |
+| `CORS_ORIGINS` | Allowed frontend origins |
+| `ASPNETCORE_ENVIRONMENT` | Use `Production` in production |
 
-Optional:
+Useful optional settings:
 
 | Setting | Purpose |
 |---|---|
-| `FRONTEND_URL` | Added to CORS candidates |
-| `LOW_STOCK_THRESHOLD` | Inventory/report threshold |
-| `JWT_EXPIRY_MINUTES` | Token lifetime |
+| `FRONTEND_URL` | Additional CORS origin source |
+| `ASPNETCORE_URLS` | Explicit bind address |
+| `LOW_STOCK_THRESHOLD` | Reporting threshold |
+| `JWT_EXPIRY_MINUTES` | Token lifetime alias |
 
-### Production security notes
-
-- Use a strong JWT secret at least 32 bytes long.
-- Do not rely on development seed users in production.
-- Set `ASPNETCORE_ENVIRONMENT=Production`.
-- Ensure production database credentials are not stored in source control.
-
-### Publish and run
+### Publish
 
 ```bash
 cd backend
@@ -59,46 +55,19 @@ dotnet restore
 dotnet publish HSMS.API/HSMS.API.csproj -c Release -o ./publish
 ```
 
-Start the API:
+### Run
 
 ```bash
 cd backend/publish
 ASPNETCORE_ENVIRONMENT=Production dotnet HSMS.API.dll
 ```
 
-### systemd example
+### Production notes
 
-Example service:
-
-```ini
-[Unit]
-Description=HWSMS API
-After=network.target
-
-[Service]
-WorkingDirectory=/var/www/hwsms-api
-ExecStart=/usr/bin/dotnet /var/www/hwsms-api/HSMS.API.dll
-Environment=ASPNETCORE_ENVIRONMENT=Production
-Environment=ASPNETCORE_URLS=http://0.0.0.0:5162
-Environment=ConnectionStrings__DefaultConnection=Server=...;Database=...;Uid=...;Pwd=...;
-Environment=Jwt__Secret=replace-with-real-secret
-Environment=Jwt__Issuer=HSMS.API
-Environment=Jwt__Audience=HSMS.Client
-Environment=CORS_ORIGINS=https://your-frontend.example.com
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Then:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable hwsms-api
-sudo systemctl start hwsms-api
-```
+- Use a strong JWT secret of at least 32 bytes.
+- Do not rely on development user seeding in production.
+- Store secrets in the host platform configuration, not in source control.
+- Set `CORS_ORIGINS` explicitly to real frontend origins.
 
 ## Frontend Deployment
 
@@ -109,7 +78,7 @@ cd frontend/HWSMS_UI
 cp .env.example .env.production
 ```
 
-Set:
+Example:
 
 ```env
 VITE_API_BASE_URL=https://your-api.example.com
@@ -124,97 +93,59 @@ npm install
 npm run build
 ```
 
-The deployable output is created in `frontend/HWSMS_UI/dist`.
+Deployable output:
 
-### Static hosting options
+- `frontend/HWSMS_UI/dist`
 
-You can host the frontend on:
+### Supported hosting pattern
+
+The built app is suitable for:
 
 - Azure Static Web Apps
 - Vercel
 - Netlify
 - Nginx / Apache
-- any static file host that supports SPA routing fallback
+- other static hosts with SPA fallback support
 
-### Nginx SPA example
+## GitHub Secrets and Variables
 
-```nginx
-server {
-    listen 80;
-    server_name your-frontend.example.com;
+### Secrets
 
-    root /var/www/hwsms-ui;
-    index index.html;
+- `AZURE_WEBAPP_PUBLISH_PROFILE`
+- `AZURE_STATIC_WEB_APP_TOKEN`
+- `SLACK_WEBHOOK_URL` optional
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
+### Variables
 
-## CORS
+- `AZURE_BACKEND_APP_NAME`
+- `BACKEND_PUBLIC_URL`
+- `FRONTEND_PUBLIC_URL`
+- `VITE_API_BASE_URL`
 
-The backend builds its allow-list from:
+## Smoke Verification
 
-- `CORS_ORIGINS`
-- `FRONTEND_URL`
-- built-in defaults depending on environment
-
-For production, explicitly set `CORS_ORIGINS` to your real frontend origins.
-
-Example:
-
-```bash
-export CORS_ORIGINS="https://your-frontend.example.com,https://www.your-frontend.example.com"
-```
-
-## Health Checks and Verification
-
-After deployment, verify:
+Backend:
 
 ```bash
 curl https://your-api.example.com/api/health
 ```
 
-In production, Swagger is normally hidden because the current API only enables Swagger in `Development`.
+Frontend:
 
-Verify frontend build locally before release:
-
-```bash
-cd frontend/HWSMS_UI
-npm run build
-```
-
-Verify backend startup:
-
-```bash
-cd backend
-dotnet test
-```
-
-## Deployment Testing Credentials
-
-Use dedicated test-only accounts in deployed environments. Store credentials in a secret manager or CI/CD variables and avoid reusing local development passwords.
-
-Recommended format:
-
-| Role | Username | Password |
-|---|---|---|
-| Admin | admin_test | change-admin-password |
-| Manager | manager_test | change-Manager-password |
-| Cashier | cashier_test | change-Cashier-password |
+- confirm the site loads successfully
+- confirm the app root renders
+- confirm login requests target the correct backend URL
 
 ## Troubleshooting
 
-### Backend starts locally but not in production
+### Backend starts locally but fails in production
 
 Check:
 
 - `ConnectionStrings__DefaultConnection`
-- `JWT_SECRET` / `Jwt__Secret`
-- `JWT_ISSUER`
-- `JWT_AUDIENCE`
-- port binding permissions
+- JWT issuer, audience, and secret
+- host bind settings
+- MySQL reachability from the host platform
 
 ### Browser requests fail with CORS errors
 
@@ -222,21 +153,21 @@ Check:
 
 - `CORS_ORIGINS`
 - `FRONTEND_URL`
+- correct deployed frontend origin
 - trailing slash mismatches
-- correct frontend deployment URL
 
-### Login works but protected requests fail
+### Login works but protected API requests fail
 
 Check:
 
-- token issuer and audience settings
-- JWT secret consistency
-- production time synchronization if tokens appear immediately expired
+- JWT issuer and audience consistency
+- signing secret consistency
+- system clock drift if tokens appear expired immediately
 
 ## Related Docs
 
 - [README.md](./README.md)
 - [QUICK_START.md](./QUICK_START.md)
+- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
+- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
 - [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
-- [backend/.env.example](./backend/.env.example)
-- [frontend/HWSMS_UI/.env.example](./frontend/HWSMS_UI/.env.example)

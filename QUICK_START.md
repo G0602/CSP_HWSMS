@@ -1,30 +1,25 @@
 # HWSMS Quick Start
 
-This guide gets the project running locally with the current repository layout and runtime behavior.
+This guide is the fastest path to running the current project locally.
 
 ## Prerequisites
 
 - .NET SDK 8.0+
-- Node.js 18+
-- npm 9+
+- Node.js 18+ and npm
 - MySQL 8.0+
 
-## Backend
+## 1. Backend setup
 
-The backend does not auto-load `.env` files by itself. Use `backend/.env.example` as a reference, then either:
+The backend does not auto-load `.env` files. Use `backend/.env.example` as a reference only, then provide values through environment variables, local appsettings overrides, or your IDE run profile.
 
-- export environment variables in your shell
-- add values to `backend/HSMS.API/appsettings.Development.json`
-- configure environment variables in your IDE run profile
-
-Minimum required backend values:
+Minimum backend settings:
 
 - `ConnectionStrings__DefaultConnection`
 - `JWT_SECRET` or `Jwt__Secret`
 - `JWT_ISSUER` or `Jwt__Issuer`
 - `JWT_AUDIENCE` or `Jwt__Audience`
 
-Optional development seed values:
+Optional local development seed settings:
 
 - `ADMIN_PASSWORD`
 - `MANAGER_PASSWORD`
@@ -38,7 +33,7 @@ dotnet restore
 dotnet run --project HSMS.API
 ```
 
-Local backend URLs:
+Default local backend URLs:
 
 - `http://localhost:5162`
 - `https://localhost:7111`
@@ -46,11 +41,11 @@ Local backend URLs:
 Useful endpoints:
 
 - Swagger: `http://localhost:5162/swagger`
-- Health check: `http://localhost:5162/api/health`
+- Health: `http://localhost:5162/api/health`
 
-## Frontend
+## 2. Frontend setup
 
-The frontend does use Vite environment files.
+The frontend uses Vite environment loading.
 
 ```bash
 cd frontend/HWSMS_UI
@@ -59,17 +54,17 @@ npm install
 npm run dev
 ```
 
-Default frontend local URL:
+Default local frontend URL:
 
 - `http://localhost:5173`
 
-Default frontend API variable:
+Recommended development value:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5162
 ```
 
-## Local Development Flow
+## 3. Typical local workflow
 
 Run these in separate terminals:
 
@@ -80,55 +75,56 @@ dotnet run --project HSMS.API
 
 ```bash
 cd frontend/HWSMS_UI
-npm install
 npm run dev
 ```
 
-## Development Seed Users
+## 4. Development seed users
 
-Seed users are created only when:
+Seed users are created only when all of these are true:
 
 - `ASPNETCORE_ENVIRONMENT=Development`
 - `ADMIN_PASSWORD` is set
 - `MANAGER_PASSWORD` is set
 - `CASHIER_PASSWORD` is set
 
-There are no fixed default credentials in the current code. The passwords come from your environment configuration.
+There are no guaranteed hard-coded default passwords in the current implementation.
 
-## Verification
+## 5. Verify the setup
 
-Check the backend:
+Backend health:
 
 ```bash
 curl http://localhost:5162/api/health
 ```
 
-Build the frontend:
+Backend tests:
+
+```bash
+dotnet test backend/HSMS.Tests/HSMS.Tests.csproj --no-restore
+dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj --no-restore
+```
+
+Frontend tests and production build:
 
 ```bash
 cd frontend/HWSMS_UI
+npm test
 npm run build
 ```
 
-Run backend tests:
-
-```bash
-cd backend
-dotnet test
-```
-
-## Common Issues
+## Troubleshooting
 
 | Issue | Check |
 |---|---|
-| Backend fails on startup | Connection string and JWT settings |
+| Backend startup fails | Connection string and JWT settings |
 | Frontend cannot reach backend | `VITE_API_BASE_URL` and CORS origins |
-| Swagger not visible | `ASPNETCORE_ENVIRONMENT` should be `Development` |
-| Seed users missing | Development environment and all three password variables |
+| Swagger is missing | `ASPNETCORE_ENVIRONMENT` should be `Development` |
+| Seed users are missing | Development environment and all three password variables |
 
 ## Related Docs
 
 - [README.md](./README.md)
-- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
 - [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
+- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
+- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
