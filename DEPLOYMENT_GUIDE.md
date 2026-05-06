@@ -192,6 +192,18 @@ cd backend
 dotnet test
 ```
 
+## Deployment Testing Credentials
+
+Use dedicated test-only accounts in deployed environments. Store credentials in a secret manager or CI/CD variables and avoid reusing local development passwords.
+
+Recommended format:
+
+| Role | Username | Password |
+|---|---|---|
+| Admin | admin_test | change-admin-password |
+| Manager | manager_test | change-Manager-password |
+| Cashier | cashier_test | change-Cashier-password |
+
 ## Troubleshooting
 
 ### Backend starts locally but not in production
