@@ -38,7 +38,7 @@ Excluded from this plan:
 | Products | `GET/POST /api/Product`, `GET /api/Product/inventory`, `GET /api/Product/low-stock`, `GET /api/Product/search`, `GET/PUT/DELETE /api/Product/{id}`, `PUT /api/Product/{id}/stock` |
 | Suppliers | `GET/POST /api/suppliers`, `PUT/DELETE /api/suppliers/{id}` |
 | Sales | `POST /api/Sales`, `GET /api/Sales/history`, `GET /api/Sales/{saleId}`, `GET /api/Sales/{saleId}/invoice` |
-| Reports | `GET /api/reports/daily`, `GET /api/reports/monthly`, `GET /api/reports/low-stock`, `GET /api/reports/export?type=` |
+| Reports | `GET /api/reports/daily`, `GET /api/reports/monthly`, `GET /api/reports/analytics`, `GET /api/reports/low-stock`, `GET /api/reports/summary`, `GET /api/reports/export?type=` |
 | Users | `GET/POST /api/users`, `PUT /api/users/{id}/role`, `PUT /api/users/{id}/password`, `DELETE /api/users/{id}` |
 | Health | `GET /api/health` |
 
@@ -64,7 +64,7 @@ Excluded from this plan:
 
 ### 5.3 Security and Authorization Testing
 
-- Anonymous access allowed only for login, register, and health
+- Anonymous access allowed only for login and health
 - `Cashier` access limited from manager/admin-only endpoints
 - `Manager` blocked from admin-only user and delete operations
 - Token refresh response after self role update
@@ -137,6 +137,7 @@ Keep the following reusable IDs in Postman environment variables:
 - Database connection is healthy
 - Swagger or controller routes match current implementation
 - Test users and minimum seed data are available
+- Self-registration is confirmed disabled (expects `403` on register)
 
 ## 10. Exit Criteria
 
@@ -151,12 +152,8 @@ Keep the following reusable IDs in Postman environment variables:
 
 `POST /api/Auth/register`
 
-- Register user with valid username, password, and role
-- Register user with empty username
-- Register user with password shorter than 8 characters
-- Register user with unsupported role
-- Register duplicate username
-- Verify token and role are returned on success
+- Attempt register and confirm `403 Forbidden` with the expected message
+- Verify no user is created when self-registration is disabled
 
 `POST /api/Auth/login`
 
@@ -281,6 +278,11 @@ Keep the following reusable IDs in Postman environment variables:
 
 - Returns monthly totals for Admin and Manager
 
+`GET /api/reports/analytics`
+
+- Returns analytics with optional filters
+- `fromDate > toDate` returns `400`
+
 `GET /api/reports/low-stock`
 
 - Returns low-stock inventory report for Admin and Manager
@@ -291,6 +293,10 @@ Keep the following reusable IDs in Postman environment variables:
 - Export `daily`, `monthly`, and `low-stock`
 - Unsupported type returns `400`
 - Verify CSV content type and filename
+
+`GET /api/reports/summary`
+
+- Returns aggregated daily/monthly/low-stock data
 
 ### 11.6 Users
 

@@ -145,7 +145,7 @@ CSP_HWSMS/
 ├── scripts/
 ├── QUICK_START.md
 ├── DEPLOYMENT_GUIDE.md
-└── TEST_QUICK_REFERENCE.md
+└── docs/Test-Documents/TESTING_OVERVIEW.md
 ```
 
 ## Role-Based Access
@@ -441,9 +441,9 @@ npm run test:watch
 
 ### Test coverage references
 
-- [TEST_QUICK_REFERENCE.md](./TEST_QUICK_REFERENCE.md)
-- [backend/HSMS.Tests/README.md](./backend/HSMS.Tests/README.md)
-- [backend/HSMS.ApiTests/README.md](./backend/HSMS.ApiTests/README.md)
+- [docs/Test-Documents/TESTING_OVERVIEW.md](./docs/Test-Documents/TESTING_OVERVIEW.md)
+- [docs/Test-Documents/Guides/HSMS_TESTS_README.md](./docs/Test-Documents/Guides/HSMS_TESTS_README.md)
+- [docs/Test-Documents/Guides/HSMS_APITESTS_README.md](./docs/Test-Documents/Guides/HSMS_APITESTS_README.md)
 
 ## Documentation
 
@@ -455,6 +455,7 @@ Additional project documentation available in the repository:
 - [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
 - [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
 - [USER_MANAGEMENT_FEATURES.md](./USER_MANAGEMENT_FEATURES.md) - Detailed user management enhancements
+- [docs/Test-Documents/TESTING_OVERVIEW.md](./docs/Test-Documents/TESTING_OVERVIEW.md)
 - [docs/Test-Documents/API_TEST_PLAN.md](./docs/Test-Documents/API_TEST_PLAN.md)
 - [docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md](./docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md)
 - [docs/SRS/SRS_Document.pdf](./docs/SRS/SRS_Document.pdf)

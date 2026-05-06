@@ -164,7 +164,7 @@
 | `/api/suppliers/{id}` | DELETE | Positive: Delete supplier without linked records |
 | | | Negative: Delete supplier with linked records (conflict), non-existent ID |
 
-**Test Cases Needed:** ~16+ tests (8+ positive, 8+ negative)
+**Test Cases Needed:** ~20+ tests (10+ positive, 10+ negative)
 
 ---
 
@@ -179,6 +179,8 @@
 | | | Negative: Duplicate username, invalid role, short password, missing fields |
 | `/api/users/{id}/role` | PUT | Positive: Update user role, session token refresh |
 | | | Negative: Non-existent user, invalid role, invalid role format |
+| `/api/users/{id}/password` | PUT | Positive: Reset password with matching confirmation |
+| | | Negative: Mismatch confirmation, short password, non-existent user |
 | `/api/users/{id}` | DELETE | Positive: Delete existing user |
 | | | Negative: Non-existent user, delete self, authorization |
 
@@ -197,9 +199,9 @@
 │ Sales              │ 0/4        │ 0 ❌       │ 0 ❌         │ 0%          │
 │ Reports            │ 0/6        │ 0 ❌       │ 0 ❌         │ 0%          │
 │ Suppliers          │ 0/4        │ 0 ❌       │ 0 ❌         │ 0%          │
-│ Users              │ 0/4        │ 0 ❌       │ 0 ❌         │ 0%          │
+│ Users              │ 0/5        │ 0 ❌       │ 0 ❌         │ 0%          │
 ├────────────────────┼────────────┼────────────┼──────────────┼─────────────┤
-│ TOTAL              │ 5/29       │ 19 ✅      │ 32 ✅        │ 17%         │
+│ TOTAL              │ 5/30       │ 19 ✅      │ 32 ✅        │ 17%         │
 └────────────────────┴────────────┴────────────┴──────────────┴─────────────┘
 
 * Auth: Register endpoint still not tested (partial)
@@ -229,7 +231,7 @@
 
 ### Priority 3: MEDIUM
 5. **Users API Testing** - User management
-   - Missing: All 4 endpoints with 16+ test cases
+   - Missing: All 5 endpoints with 20+ test cases
    - Impact: Cannot verify user creation, role updates, and deletion
 
 6. **Auth Register Endpoint** - User registration
@@ -263,8 +265,7 @@
 
 ### Phase 1: IMMEDIATE (Add ~50 tests)
 1. Complete Auth Controller:
-   - Add register endpoint tests (positive + negative)
-   - Add role-based registration tests
+   - Add register endpoint tests (expect `403` when self-registration is disabled)
 
 2. Complete Product Controller:
    - Add PUT (update) endpoint tests
