@@ -1,14 +1,14 @@
 # HWSMS Configuration Index
 
-This document is the navigation page for project configuration and deployment references.
+This document is the navigation page for current configuration and deployment references.
 
 ## Start Here
 
-- [README.md](./README.md): full project overview
-- [QUICK_START.md](./QUICK_START.md): fastest local setup path
-- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md): production-focused deployment steps
-- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md): deployment verification checklist
-- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md): summary of how configuration works
+- [README.md](./README.md)
+- [QUICK_START.md](./QUICK_START.md)
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md)
+- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)
 
 ## Configuration Sources
 
@@ -20,7 +20,10 @@ The backend uses ASP.NET Core configuration layering:
 2. `appsettings.{Environment}.json`
 3. environment variables
 
-Important: the current backend does not auto-load a `.env` file on its own. Use `.env.example` only as a template/reference.
+Important current behavior:
+
+- the backend does not auto-load `backend/.env.example`
+- alias environment variables are applied in `backend/HSMS.API/Program.cs`
 
 Primary backend files:
 
@@ -32,7 +35,7 @@ Primary backend files:
 
 ### Frontend
 
-The frontend uses Vite environment variables and does read `.env.*` files automatically.
+The frontend uses Vite environment loading and does read `.env.*` files automatically.
 
 Primary frontend files:
 
@@ -40,70 +43,38 @@ Primary frontend files:
 - `frontend/HWSMS_UI/src/config/api.ts`
 - `frontend/HWSMS_UI/package.json`
 
-## Key Configuration Values
+## Runtime Variable Families
 
 ### Backend
 
-| Setting | Purpose |
-|---|---|
-| `ConnectionStrings__DefaultConnection` | Database connection |
-| `JWT_SECRET` / `Jwt__Secret` | JWT signing secret |
-| `JWT_ISSUER` / `Jwt__Issuer` | Token issuer |
-| `JWT_AUDIENCE` / `Jwt__Audience` | Token audience |
-| `CORS_ORIGINS` | Allowed frontend origins |
-| `FRONTEND_URL` | Additional frontend origin source |
-| `LOW_STOCK_THRESHOLD` | Low-stock threshold |
-| `ADMIN_PASSWORD` | Dev seed password |
-| `MANAGER_PASSWORD` | Dev seed password |
-| `CASHIER_PASSWORD` | Dev seed password |
+- database: `ConnectionStrings__DefaultConnection`
+- JWT aliases: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_EXPIRY_MINUTES`
+- JWT config keys: `Jwt__Secret`, `Jwt__Issuer`, `Jwt__Audience`, `Jwt__AccessTokenExpiryMinutes`
+- deployment aliases: `AZURE_MYSQL_CONNECTIONSTRING`, `MYSQLCONNSTR_DefaultConnection`
+- CORS: `CORS_ORIGINS`, `FRONTEND_URL`
+- development seeding: `ADMIN_PASSWORD`, `MANAGER_PASSWORD`, `CASHIER_PASSWORD`
 
 ### Frontend
 
-| Setting | Purpose |
-|---|---|
-| `VITE_API_BASE_URL` | Base backend URL |
-| `VITE_DEBUG` | Optional debug logging flag |
+- `VITE_API_BASE_URL`
+- legacy `VITE_API_URL`
+- `VITE_DEBUG`
 
-## Current Repository Reality
+## Current Repo Reality
 
-- Root Docker Compose deployment files are not present in this repository.
-- Swagger is only enabled in `Development` by current API startup code.
-- Seed users are created only in `Development`, and only when all three seed password variables are present.
-- The frontend route protection mirrors backend role-based access control but does not replace backend authorization.
+- backend API startup validates required configuration
+- Swagger is only exposed in `Development`
+- seed users are only attempted in `Development`
+- seed users require all three seed password variables
+- CI/CD is handled by GitHub Actions, not by a checked-in root deployment compose file
 
-## Suggested Local Setup
-
-Backend:
-
-```bash
-cd backend
-dotnet restore
-dotnet run --project HSMS.API
-```
-
-Frontend:
-
-```bash
-cd frontend/HWSMS_UI
-cp .env.example .env.development
-npm install
-npm run dev
-```
-
-## Suggested Production Setup
-
-- publish backend with `dotnet publish`
-- provide backend secrets and connection string via environment variables
-- build frontend with `npm run build`
-- host frontend `dist` output on static hosting
-
-## Related Docs by Need
+## By Need
 
 | Need | Document |
 |---|---|
-| Understand the whole system | [README.md](./README.md) |
-| Run the app locally | [QUICK_START.md](./QUICK_START.md) |
-| Deploy to production | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) |
-| Verify deployment settings | [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md) |
-| Review backend details | [backend/README.md](./backend/README.md) |
-| Review frontend details | [frontend/HWSMS_UI/README.md](./frontend/HWSMS_UI/README.md) |
+| Run locally | [QUICK_START.md](./QUICK_START.md) |
+| Deploy | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) |
+| Understand variables | [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md) |
+| Preflight a demo or deploy | [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md) |
+| Backend-specific runtime notes | [backend/README.md](./backend/README.md) |
+| Frontend-specific runtime notes | [frontend/HWSMS_UI/README.md](./frontend/HWSMS_UI/README.md) |

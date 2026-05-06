@@ -1,39 +1,35 @@
 # Environment Variables Summary
 
-This document summarizes how configuration currently works in the repository.
+This document is the concise reference for runtime configuration in the current repository.
 
-## What Changed in the Documentation
+## Backend Configuration Model
 
-The documentation set has been aligned to the current codebase:
-
-- removed instructions that assumed backend `.env` files auto-load automatically
-- removed references to root Docker Compose files that are not present in this repository
-- removed fixed default passwords that are no longer guaranteed by the code
-- aligned backend and frontend run commands with the real project structure
-- aligned Swagger guidance with the current `Development`-only behavior
-
-## Current Configuration Model
-
-### Backend
-
-The backend uses standard ASP.NET Core configuration precedence:
+The backend uses this precedence order:
 
 1. `appsettings.json`
 2. `appsettings.{Environment}.json`
 3. environment variables
 
-Environment variables win over JSON values.
+Environment variables override JSON values.
 
-Examples:
+The backend also maps alias variables in `backend/HSMS.API/Program.cs`.
 
-- `ConnectionStrings__DefaultConnection`
-- `Jwt__Secret`
-- `Jwt__Issuer`
-- `Jwt__Audience`
-- `CORS_ORIGINS`
-- `FRONTEND_URL`
+### Common backend variables
 
-The backend also supports alias environment variables in `Program.cs`, including:
+| Variable | Purpose |
+|---|---|
+| `ConnectionStrings__DefaultConnection` | Main MySQL connection string |
+| `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
+| `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
+| `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
+| `JWT_EXPIRY_MINUTES` or `Jwt__AccessTokenExpiryMinutes` | Access token lifetime |
+| `CORS_ORIGINS` | Allowed browser origins |
+| `FRONTEND_URL` | Additional CORS origin source |
+| `LOW_STOCK_THRESHOLD` | Low-stock reporting threshold |
+| `ASPNETCORE_ENVIRONMENT` | Environment name |
+| `ASPNETCORE_URLS` | API bind URLs |
+
+### Supported alias variables
 
 - `JWT_SECRET`
 - `JWT_ISSUER`
@@ -42,64 +38,42 @@ The backend also supports alias environment variables in `Program.cs`, including
 - `AZURE_MYSQL_CONNECTIONSTRING`
 - `MYSQLCONNSTR_DefaultConnection`
 
-### Frontend
+### Development-only seed variables
 
-The frontend uses Vite environment loading. It resolves the API base URL in this order:
+- `ADMIN_PASSWORD`
+- `MANAGER_PASSWORD`
+- `CASHIER_PASSWORD`
+
+Seed users are created only in `Development` and only when all three seed password variables are present.
+
+## Frontend Configuration Model
+
+The frontend uses Vite environment loading.
+
+API base URL resolution currently follows:
 
 1. `VITE_API_BASE_URL`
 2. legacy `VITE_API_URL`
 3. local default in development
 4. deployed default in production
 
-## Operational Notes
-
-- Backend `.env.example` is a template, not an automatically loaded runtime source.
-- Frontend `.env.example` can be copied to `.env.development` or `.env.production`.
-- Seed users are only attempted in `Development`.
-- Seed users are skipped unless all three password variables are set.
-- Swagger is exposed only in `Development`.
-
-## Recommended Backend Variables
+### Common frontend variables
 
 | Variable | Purpose |
 |---|---|
-| `ConnectionStrings__DefaultConnection` | Database connection string |
-| `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
-| `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
-| `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
-| `CORS_ORIGINS` | Allowed frontend origins |
-| `ASPNETCORE_ENVIRONMENT` | Environment selection |
+| `VITE_API_BASE_URL` | Backend API base URL |
+| `VITE_DEBUG` | Optional debug logging |
 
-## Recommended Frontend Variables
+## Important Behavior Notes
 
-| Variable | Purpose |
-|---|---|
-| `VITE_API_BASE_URL` | Backend API URL |
-| `VITE_DEBUG` | Optional debug flag |
+- `backend/.env.example` is a template, not an auto-loaded runtime source.
+- `frontend/HWSMS_UI/.env.example` can be copied to `.env.development` or `.env.production`.
+- Swagger is only available in `Development`.
+- Backend CORS allow-lists are built from configured origins plus current code defaults.
 
-## Practical Setup Summary
+## Related Docs
 
-### Local backend
-
-```bash
-cd backend
-dotnet run --project HSMS.API
-```
-
-Before running, set environment variables in your shell or local appsettings override.
-
-### Local frontend
-
-```bash
-cd frontend/HWSMS_UI
-cp .env.example .env.development
-npm install
-npm run dev
-```
-
-## Where to Look Next
-
-- [README.md](./README.md)
+- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
 - [QUICK_START.md](./QUICK_START.md)
 - [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md)
+- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md)

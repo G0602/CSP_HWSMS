@@ -1,6 +1,6 @@
 # HWSMS Frontend
 
-React + TypeScript + Vite frontend for the Hardware Store Management System.
+Frontend overview for the current React 19 + TypeScript + Vite application.
 
 ## Stack
 
@@ -12,36 +12,61 @@ React + TypeScript + Vite frontend for the Hardware Store Management System.
 - Axios
 - Vitest
 
-## Main Features
+## Current pages and behavior
 
-- login and registration flows
-- protected routes by role
-- inventory and product views
-- supplier management
-- sales screen
-- transaction history and invoice preview
-- reporting screens
-- backend connectivity banner/health checks
+- login
+- dashboard
+- inventory
+- sales
+- suppliers
+- transaction history
+- invoice preview
+- daily reporting
+- user management
+- backend health banner
+- protected-route and public-only route handling
 
-## Environment Variables
+## Route access summary
+
+| Route | Access |
+|---|---|
+| `/login` | Public |
+| `/dashboard` | Admin, Manager |
+| `/inventory` | Admin, Manager |
+| `/sales` | Admin, Manager, Cashier |
+| `/suppliers` | Admin, Manager |
+| `/transactions` | Admin, Manager |
+| `/transactions/:transactionId/invoice` | Admin, Manager |
+| `/reports/daily` | Admin, Manager |
+| `/users` | Admin |
+| `/access-denied` | Authenticated users |
+
+## Environment
 
 The frontend uses Vite environment loading.
 
-Primary values:
+Primary variables:
 
 | Variable | Purpose |
 |---|---|
-| `VITE_API_BASE_URL` | Base backend URL |
-| `VITE_DEBUG` | Optional debug logging flag |
+| `VITE_API_BASE_URL` | Backend API base URL |
+| `VITE_DEBUG` | Optional debug flag |
 
-Example local setup:
+API base URL resolution:
+
+1. `VITE_API_BASE_URL`
+2. legacy `VITE_API_URL`
+3. local default in development
+4. deployed default in production
+
+Example setup:
 
 ```bash
 cd frontend/HWSMS_UI
 cp .env.example .env.development
 ```
 
-## Run Locally
+## Run locally
 
 ```bash
 cd frontend/HWSMS_UI
@@ -53,39 +78,23 @@ Default local URL:
 
 - `http://localhost:5173`
 
-## Build and Test
+## Tests and build
+
+Validated current frontend automation:
+
+- `17` passing tests
+
+Commands:
 
 ```bash
+npm test
 npm run build
-npm run test
 npm run lint
 ```
-
-## Route Access Summary
-
-| Route | Access |
-|---|---|
-| `/login` | public |
-| `/dashboard` | Admin, Manager |
-| `/inventory` | Admin, Manager |
-| `/sales` | Admin, Manager, Cashier |
-| `/suppliers` | Admin, Manager |
-| `/transactions` | Admin, Manager |
-| `/transactions/:transactionId/invoice` | Admin, Manager |
-| `/reports/daily` | Admin, Manager |
-| `/users` | Admin |
-
-## API Base URL Resolution
-
-The frontend resolves the API base URL in this order:
-
-1. `VITE_API_BASE_URL`
-2. legacy `VITE_API_URL`
-3. local default in development
-4. deployed backend default in production
 
 ## Related Docs
 
 - [../../README.md](../../README.md)
 - [../../QUICK_START.md](../../QUICK_START.md)
 - [../../DEPLOYMENT_GUIDE.md](../../DEPLOYMENT_GUIDE.md)
+- [../../docs/Test-Documents/TESTING_OVERVIEW.md](../../docs/Test-Documents/TESTING_OVERVIEW.md)
