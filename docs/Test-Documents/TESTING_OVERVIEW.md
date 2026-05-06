@@ -60,3 +60,31 @@ dotnet run --project HSMS.API
 cd backend
 dotnet test HSMS.ApiTests/HSMS.ApiTests.csproj
 ```
+
+## Test Credentials
+
+Use dedicated test accounts for all test runs. Do not commit real passwords to the repository.
+
+### Development and Local Testing
+
+Seeded accounts are created only in Development when the seed password environment variables are set. If you use the API test suite, align the credentials with what you configured in your environment.
+
+Common local placeholders used in docs:
+
+| Role | Username | Password |
+|---|---|---|
+| Admin | admin | Admin@123 |
+| Manager | manager | Manager@123 |
+| Cashier | cashier | Cashier@123 |
+
+### Deployment Testing (Staging or Production)
+
+Create separate test-only accounts in the deployed environment and store the credentials in your secret manager or CI/CD variables. Do not reuse development passwords.
+
+Recommended format:
+
+| Role | Username | Password |
+|---|---|---|
+| Admin | admin | change-admin-password |
+| Manager | manager | change-manager-password |
+| Cashier | cashier | change-cashier-password |
