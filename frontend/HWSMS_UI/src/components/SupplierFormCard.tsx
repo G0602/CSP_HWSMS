@@ -31,7 +31,7 @@ const SupplierFormCard = ({ onSubmit, isSubmitting }: SupplierFormCardProps) => 
   };
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="hw-card">
       <h3 className="text-lg font-semibold text-slate-900">Add Supplier</h3>
       <p className="mt-1 text-sm text-slate-600">Create a supplier record for inventory operations.</p>
 
@@ -45,7 +45,7 @@ const SupplierFormCard = ({ onSubmit, isSubmitting }: SupplierFormCardProps) => 
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="hw-input"
             placeholder="ABC Suppliers"
           />
         </div>
@@ -59,7 +59,7 @@ const SupplierFormCard = ({ onSubmit, isSubmitting }: SupplierFormCardProps) => 
             type="text"
             value={contactInfo}
             onChange={(e) => setContactInfo(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="hw-input"
             placeholder="Phone or email"
           />
         </div>
@@ -69,7 +69,7 @@ const SupplierFormCard = ({ onSubmit, isSubmitting }: SupplierFormCardProps) => 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-slate-400"
+          className="hw-btn-primary disabled:bg-slate-400"
         >
           {isSubmitting ? "Saving..." : "Add Supplier"}
         </button>

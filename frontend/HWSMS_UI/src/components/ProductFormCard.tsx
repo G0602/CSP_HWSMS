@@ -45,14 +45,14 @@ const ProductFormCard = ({ onSubmit, editingProduct, suppliers }: ProductFormCar
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold mb-6">Add / Update Product</h3>
+    <div className="hw-card">
+      <h3 className="text-lg font-semibold text-slate-900 mb-6">Add / Update Product</h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           value={form.name}
           placeholder="Product Name"
-          className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200"
+          className="hw-input"
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
@@ -60,13 +60,13 @@ const ProductFormCard = ({ onSubmit, editingProduct, suppliers }: ProductFormCar
           <input
             value={form.sku}
             placeholder="SKU"
-            className="bg-gray-50 p-3 rounded-xl border border-gray-200"
+            className="hw-input"
             onChange={(e) => setForm({ ...form, sku: e.target.value })}
           />
           <input
             value={form.category}
             placeholder="Category"
-            className="bg-gray-50 p-3 rounded-xl border border-gray-200"
+            className="hw-input"
             onChange={(e) => setForm({ ...form, category: e.target.value })}
           />
         </div>
@@ -76,21 +76,21 @@ const ProductFormCard = ({ onSubmit, editingProduct, suppliers }: ProductFormCar
             type="number"
             value={form.price || ""}
             placeholder="Price"
-            className="bg-gray-50 p-3 rounded-xl border border-gray-200"
+            className="hw-input"
             onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
           />
           <input
             type="number"
             value={form.quantity || ""}
             placeholder="Quantity"
-            className="bg-gray-50 p-3 rounded-xl border border-gray-200"
+            className="hw-input"
             onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
           />
         </div>
 
         <select
           value={form.supplierId ?? ""}
-          className="w-full bg-gray-50 p-3 rounded-xl border border-gray-200"
+          className="hw-input"
           onChange={(e) =>
             setForm({
               ...form,
@@ -106,7 +106,7 @@ const ProductFormCard = ({ onSubmit, editingProduct, suppliers }: ProductFormCar
           ))}
         </select>
 
-        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl transition">
+        <button className="hw-btn-primary w-full py-3">
           {editingProduct ? "Update Product" : "+ Add Product"}
         </button>
       </form>

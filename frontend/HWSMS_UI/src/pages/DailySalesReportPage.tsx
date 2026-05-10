@@ -172,21 +172,21 @@ const DailySalesReportPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar username={user?.username} onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl p-6 lg:p-10">
+      <div className="hw-shell">
         <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">Sales Analytics Dashboard</h2>
-            <p className="text-slate-600 mt-1">Business performance, profit, and sales trends for managers and admins.</p>
+            <h2 className="hw-title">Sales Analytics Dashboard</h2>
+            <p className="hw-subtitle">Business performance, profit, and sales trends for managers and admins.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => void handleExportCsv("daily")}
               disabled={isExporting}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="hw-btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isExporting ? "Exporting..." : "Export Daily CSV"}
             </button>
@@ -194,7 +194,7 @@ const DailySalesReportPage = () => {
               type="button"
               onClick={() => void handleExportCsv("monthly")}
               disabled={isExporting}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="hw-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isExporting ? "Exporting..." : "Export Monthly CSV"}
             </button>
@@ -202,7 +202,7 @@ const DailySalesReportPage = () => {
               type="button"
               onClick={() => void handleExportCsv("low-stock")}
               disabled={isExporting}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="hw-btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isExporting ? "Exporting..." : "Export Low-Stock CSV"}
             </button>
@@ -211,7 +211,7 @@ const DailySalesReportPage = () => {
 
         {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
 
-        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="hw-card mb-6 p-4">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <label className="text-sm font-medium text-slate-700">
               From date
@@ -219,7 +219,7 @@ const DailySalesReportPage = () => {
                 type="date"
                 value={filters.fromDate}
                 onChange={(event) => handleFilterChange("fromDate", event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="hw-input mt-1"
               />
             </label>
             <label className="text-sm font-medium text-slate-700">
@@ -228,7 +228,7 @@ const DailySalesReportPage = () => {
                 type="date"
                 value={filters.toDate}
                 onChange={(event) => handleFilterChange("toDate", event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="hw-input mt-1"
               />
             </label>
             <label className="text-sm font-medium text-slate-700">
@@ -236,7 +236,7 @@ const DailySalesReportPage = () => {
               <select
                 value={filters.productId}
                 onChange={(event) => handleFilterChange("productId", event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="hw-input mt-1"
               >
                 <option value="">All products</option>
                 {products.map((product) => (
@@ -251,7 +251,7 @@ const DailySalesReportPage = () => {
               <select
                 value={filters.category}
                 onChange={(event) => handleFilterChange("category", event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                className="hw-input mt-1"
               >
                 <option value="">All categories</option>
                 {categories.map((category) => (
@@ -265,7 +265,7 @@ const DailySalesReportPage = () => {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="hw-btn-ghost w-full"
               >
                 Clear filters
               </button>
@@ -274,26 +274,26 @@ const DailySalesReportPage = () => {
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="hw-kpi">
             <p className="text-sm font-medium text-slate-500">Total sales</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(analytics.totalSales)}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="hw-kpi">
             <p className="text-sm font-medium text-slate-500">Estimated cost</p>
             <p className="mt-2 text-2xl font-bold text-amber-700">{formatCurrency(analytics.totalCost)}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="hw-kpi">
             <p className="text-sm font-medium text-slate-500">Profit</p>
             <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(analytics.totalProfit)}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="hw-kpi">
             <p className="text-sm font-medium text-slate-500">Profit margin</p>
-            <p className="mt-2 text-2xl font-bold text-blue-700">{profitMargin.toFixed(1)}%</p>
+            <p className="mt-2 text-2xl font-bold text-[#1f6b8c]">{profitMargin.toFixed(1)}%</p>
           </div>
         </div>
 
         <div className="mb-6 grid gap-6 xl:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="hw-card p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-800">Daily Sales Trend</h3>
               {isLoading && <span className="text-sm text-slate-500">Loading...</span>}
@@ -325,7 +325,7 @@ const DailySalesReportPage = () => {
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="hw-card p-4">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-800">Monthly Sales vs Profit</h3>
               {isLoading && <span className="text-sm text-slate-500">Loading...</span>}
@@ -363,11 +363,11 @@ const DailySalesReportPage = () => {
           </div>
         </div>
 
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-x-auto">
+        <div className="hw-card mb-6 overflow-x-auto p-4">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">Monthly Sales and Profit</h3>
-          <table className="w-full text-sm">
+          <table className="hw-table">
             <thead>
-              <tr className="text-left border-b border-slate-200 text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Month</th>
                 <th className="py-2">Sales</th>
                 <th className="py-2">Cost</th>
@@ -383,7 +383,7 @@ const DailySalesReportPage = () => {
                 </tr>
               )}
               {analytics.monthlyTrends.map((item) => (
-                <tr key={`table-${item.month}`} className="border-b border-slate-100">
+                <tr key={`table-${item.month}`}>
                   <td className="py-2">
                     {new Date(item.month).toLocaleDateString(undefined, {
                       year: "numeric",
@@ -407,11 +407,11 @@ const DailySalesReportPage = () => {
           </table>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-x-auto">
+        <div className="hw-card overflow-x-auto p-4">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">Daily Sales and Profit</h3>
-          <table className="w-full text-sm">
+          <table className="hw-table">
             <thead>
-              <tr className="text-left border-b border-slate-200 text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Date</th>
                 <th className="py-2">Sales</th>
                 <th className="py-2">Cost</th>
@@ -428,7 +428,7 @@ const DailySalesReportPage = () => {
               )}
 
               {analytics.dailyTrends.map((item) => (
-                <tr key={item.date} className="border-b border-slate-100">
+                <tr key={item.date}>
                   <td className="py-2">{new Date(item.date).toLocaleDateString()}</td>
                   <td className="py-2 font-medium">{formatCurrency(item.sales)}</td>
                   <td className="py-2">{formatCurrency(item.cost)}</td>
@@ -447,11 +447,11 @@ const DailySalesReportPage = () => {
           </table>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm overflow-x-auto">
+        <div className="hw-card mt-6 overflow-x-auto p-4">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">Low-Stock Products</h3>
-          <table className="w-full text-sm">
+          <table className="hw-table">
             <thead>
-              <tr className="text-left border-b border-slate-200 text-slate-500">
+              <tr className="text-left">
                 <th className="py-2">Product</th>
                 <th className="py-2">SKU</th>
                 <th className="py-2">Category</th>
@@ -468,7 +468,7 @@ const DailySalesReportPage = () => {
                 </tr>
               )}
               {lowStockReport.map((item) => (
-                <tr key={item.id} className="border-b border-slate-100">
+                <tr key={item.id}>
                   <td className="py-2">{item.name}</td>
                   <td className="py-2">{item.sku}</td>
                   <td className="py-2">{item.category}</td>

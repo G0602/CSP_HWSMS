@@ -6,9 +6,9 @@ type StatsCardProps = {
 
 const StatsCard = ({ title, value, highlight = false }: StatsCardProps) => {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 w-60">
-      <p className="text-sm text-gray-500 uppercase">{title}</p>
-      <h3 className={`text-2xl font-bold mt-2 ${highlight ? "text-red-500" : "text-gray-800"}`}>{value}</h3>
+    <div className="hw-card w-60">
+      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">{title}</p>
+      <h3 className={`mt-2 text-2xl font-bold ${highlight ? "text-[#b62b31]" : "text-slate-800"}`}>{value}</h3>
     </div>
   );
 };

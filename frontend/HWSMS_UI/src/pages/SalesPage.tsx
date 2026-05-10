@@ -124,23 +124,23 @@ const SalesPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl p-6 lg:p-10">
+      <div className="hw-shell">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900">Sales Transaction</h2>
-            <p className="text-slate-600 mt-1">Search products, add quantities, and confirm checkout.</p>
+            <h2 className="hw-title">Sales Transaction</h2>
+            <p className="hw-subtitle">Search products, add quantities, and confirm checkout.</p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:min-w-[360px]">
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="hw-kpi">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Cart items</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">{lineTotals.length}</p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="hw-kpi">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sale total</p>
-              <p className="mt-1 text-2xl font-bold text-blue-700">Rs. {saleTotal.toFixed(2)}</p>
+              <p className="mt-1 text-2xl font-bold text-[#c2500f]">Rs. {saleTotal.toFixed(2)}</p>
             </div>
           </div>
         </div>
@@ -155,13 +155,13 @@ const SalesPage = () => {
             refreshSignal={stockRefreshSignal}
           />
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="hw-card">
             <h3 className="text-xl font-semibold text-slate-900">Cart</h3>
 
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="hw-table">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 text-left">
+                  <tr className="text-left">
                     <th className="py-2">Item</th>
                     <th className="py-2">Price</th>
                     <th className="py-2">Qty</th>
@@ -179,7 +179,7 @@ const SalesPage = () => {
                   )}
 
                   {lineTotals.map((item) => (
-                    <tr key={item.productId} className="border-b border-slate-100">
+                    <tr key={item.productId}>
                       <td className="py-3">
                         <div className="font-medium text-slate-900">{item.name}</div>
                         <div className="text-xs text-slate-500">{item.sku}</div>
@@ -192,7 +192,7 @@ const SalesPage = () => {
                           max={item.stockAtAdd}
                           value={item.quantity}
                           onChange={(e) => onUpdateQuantity(item.productId, Number(e.target.value))}
-                          className="w-20 rounded-lg border border-slate-300 px-2 py-1"
+                          className="hw-input w-20 px-2 py-1"
                         />
                       </td>
                       <td className="py-3 font-semibold text-slate-800">Rs. {item.lineSubtotal.toFixed(2)}</td>
@@ -200,7 +200,7 @@ const SalesPage = () => {
                         <button
                           type="button"
                           onClick={() => onRemoveItem(item.productId)}
-                          className="rounded-lg bg-slate-200 px-3 py-1 hover:bg-slate-300"
+                          className="hw-btn-ghost px-3 py-1"
                         >
                           Remove
                         </button>
@@ -211,10 +211,10 @@ const SalesPage = () => {
               </table>
             </div>
 
-            <div className="mt-6 border-t border-slate-200 pt-4 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between border-t border-slate-200 pt-4">
               <div>
                 <p className="text-sm text-slate-500">Total Amount</p>
-                <p className="text-2xl font-bold text-blue-700">Rs. {saleTotal.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-[#c2500f]">Rs. {saleTotal.toFixed(2)}</p>
               </div>
 
               <button
@@ -223,7 +223,7 @@ const SalesPage = () => {
                 onClick={() => {
                   void submitSale();
                 }}
-                className="rounded-xl bg-blue-600 px-5 py-2.5 text-white font-semibold hover:bg-blue-700 disabled:bg-slate-400"
+                className="hw-btn-primary px-5 py-2.5 disabled:bg-slate-400"
               >
                 {isSubmitting ? "Saving..." : "Confirm Sale"}
               </button>

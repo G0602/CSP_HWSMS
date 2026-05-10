@@ -47,9 +47,9 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-100 flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-white/70 bg-white/90 shadow-xl p-8 backdrop-blur">
-        <p className="text-sm font-semibold tracking-[0.2em] text-blue-700 uppercase">HWSMS Portal</p>
+    <div className="hw-page flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-[#bfccd9] bg-white/92 p-8 shadow-[0_35px_70px_-45px_rgba(16,32,51,0.9)] backdrop-blur">
+        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#1f6b8c]">HWSMS Portal</p>
         <h1 className="mt-2 text-3xl font-bold text-slate-900">Sign In</h1>
         <p className="mt-2 text-sm text-slate-600">Access your inventory dashboard with your account.</p>
 
@@ -61,7 +61,7 @@ const LoginPage = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter username"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="hw-input px-4 py-2.5"
               autoComplete="username"
             />
           </div>
@@ -74,13 +74,13 @@ const LoginPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 pr-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="hw-input px-4 py-2.5 pr-20"
                 autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-blue-700 hover:text-blue-800"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#1f6b8c] hover:text-[#15516c]"
               >
                 {showPassword ? "Hide" : "Show"}
               </button>
@@ -92,7 +92,7 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-xl bg-blue-600 text-white font-semibold py-2.5 hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="hw-btn-primary w-full py-2.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Signing in..." : "Sign In"}
           </button>

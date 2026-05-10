@@ -72,7 +72,7 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
   const getQty = (productId: number) => quantities[productId] ?? 1;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="hw-card">
       <h3 className="text-xl font-semibold text-slate-900">Product Search</h3>
       <p className="text-sm text-slate-500 mt-1">Type at least 2 characters by name, SKU, or category.</p>
 
@@ -81,7 +81,7 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search product..."
-        className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="hw-input mt-4"
       />
 
       {isLoading && <p className="mt-3 text-sm text-slate-500">Searching...</p>}
@@ -97,7 +97,7 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
           const maxQty = Math.max(1, product.quantity);
 
           return (
-            <div key={product.id} className="rounded-xl border border-slate-200 p-3">
+            <div key={product.id} className="hw-card-soft">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium text-slate-900">{product.name}</p>
@@ -115,13 +115,13 @@ const ProductSearchSelect = ({ selectedProductIds, onAddItem, refreshSignal = 0 
                       const safeValue = Number.isNaN(parsed) ? 1 : Math.min(Math.max(parsed, 1), maxQty);
                       setQuantities((prev) => ({ ...prev, [product.id]: safeValue }));
                     }}
-                    className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                    className="hw-input w-20 px-2 py-1.5"
                   />
                   <button
                     type="button"
                     disabled={isSelected}
                     onClick={() => onAddItem(product, quantity)}
-                    className="rounded-lg bg-blue-600 text-white px-3 py-1.5 text-sm hover:bg-blue-700 disabled:bg-slate-400"
+                    className="hw-btn-primary px-3 py-1.5 disabled:bg-slate-400"
                   >
                     {isSelected ? "Added" : "Add"}
                   </button>

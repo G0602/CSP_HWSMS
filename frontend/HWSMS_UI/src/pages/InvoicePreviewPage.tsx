@@ -58,16 +58,16 @@ const InvoicePreviewPage = () => {
   }, [params.transactionId]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="hw-page">
       <Navbar onLogout={handleLogout} />
 
       <div className="mx-auto max-w-4xl p-6 lg:p-10">
-        {isLoading && <div className="rounded-lg bg-white p-4 border border-slate-200">Loading invoice...</div>}
+        {isLoading && <div className="hw-card p-4">Loading invoice...</div>}
 
         {error && <div className="rounded-lg bg-red-100 px-4 py-3 text-red-700">{error}</div>}
 
         {!isLoading && !error && invoice && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="hw-card p-6">
             <div className="flex items-start justify-between border-b border-slate-200 pb-4">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">Invoice</h1>
@@ -77,7 +77,7 @@ const InvoicePreviewPage = () => {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm font-medium hover:bg-blue-700"
+                className="hw-btn-primary"
               >
                 Print
               </button>
@@ -103,9 +103,9 @@ const InvoicePreviewPage = () => {
             </div>
 
             <div className="mt-6 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="hw-table">
                 <thead>
-                  <tr className="text-left border-b border-slate-200 text-slate-500">
+                  <tr className="text-left">
                     <th className="py-2">Product</th>
                     <th className="py-2">SKU</th>
                     <th className="py-2">Price</th>
@@ -115,7 +115,7 @@ const InvoicePreviewPage = () => {
                 </thead>
                 <tbody>
                   {invoice.items.map((item) => (
-                    <tr key={`${item.productId}-${item.sku}-${item.quantity}`} className="border-b border-slate-100">
+                    <tr key={`${item.productId}-${item.sku}-${item.quantity}`}>
                       <td className="py-2">{item.productName}</td>
                       <td className="py-2">{item.sku}</td>
                       <td className="py-2">Rs. {item.unitPrice.toFixed(2)}</td>
@@ -139,7 +139,7 @@ const InvoicePreviewPage = () => {
                 </div>
                 <div className="flex justify-between border-t border-slate-200 pt-2">
                   <span className="text-slate-900 font-semibold">Grand Total</span>
-                  <span className="text-blue-700 text-xl font-bold">Rs. {invoice.grandTotal.toFixed(2)}</span>
+                  <span className="text-[#c2500f] text-xl font-bold">Rs. {invoice.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
