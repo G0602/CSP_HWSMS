@@ -27,10 +27,6 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
       isActive
         ? "bg-[linear-gradient(140deg,#e46b1f,#c2500f)] text-white shadow-md"
         : "text-slate-600 hover:bg-white/80 hover:text-slate-900",
-      "rounded-xl px-3 py-2 text-sm font-semibold transition-all",
-      isActive
-        ? "bg-[linear-gradient(140deg,#e46b1f,#c2500f)] text-white shadow-md"
-        : "text-slate-600 hover:bg-white/80 hover:text-slate-900",
     ].join(" ");
 
   return (
@@ -106,7 +102,6 @@ const Navbar = ({ search, onSearchChange, username, onLogout }: NavbarProps) => 
             <button
               type="button"
               onClick={onLogout}
-              className="hw-btn-primary"
               className="hw-btn-primary"
             >
               Logout

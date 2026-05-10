@@ -234,7 +234,6 @@ const UsersPage = () => {
 
   return (
     <div className="hw-page">
-    <div className="hw-page">
       <Navbar username={user?.username} onLogout={handleLogout} />
 
       <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
