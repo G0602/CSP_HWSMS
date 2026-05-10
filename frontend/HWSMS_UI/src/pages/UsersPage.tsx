@@ -234,344 +234,156 @@ const UsersPage = () => {
 
   return (
     <div className="hw-page">
+    <div className="hw-page">
       <Navbar username={user?.username} onLogout={handleLogout} />
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
-          <p className="mt-2 text-slate-600">Create, manage roles, and reset passwords for users.</p>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-6 px-6 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="hw-card">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">Create User</h2>
+            <p className="text-sm text-slate-600 mb-6">Admin can create Admin, Manager, or Cashier accounts.</p>
 
-        {/* Alerts */}
-        <div className="space-y-3 mb-6">
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-              <p className="font-medium">Error</p>
-              <p>{error}</p>
-            </div>
-          )}
-          {message && (
-            <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-              <p className="font-medium">Success</p>
-              <p>{message}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="space-y-8">
-          {/* Top Section: Create User & Users List */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Create User Form */}
-            <div className="lg:col-span-3">
-              <div className="hw-card h-full flex flex-col">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-slate-900">Create New User</h2>
-                  <p className="mt-1 text-sm text-slate-600">Add a new team member account.</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-4">
-                  {/* Username Field */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Username</label>
-                    <input
-                      type="text"
-                      value={form.username}
-                      onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
-                      placeholder="Enter username"
-                      className="hw-input w-full px-3 py-2.5"
-                      autoComplete="username"
-                    />
-                  </div>
-
-                  {/* Password Field */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={form.password}
-                        onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-                        placeholder="Minimum 8 characters"
-                        className="hw-input w-full px-3 py-2.5 pr-16"
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((value) => !value)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Confirm Password Field */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Confirm Password</label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Minimum 8 characters"
-                        className="hw-input w-full px-3 py-2.5 pr-16"
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((value) => !value)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                      >
-                        {showConfirmPassword ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Role Field */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Role</label>
-                    <select
-                      value={form.role}
-                      onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as CreateUserPayload["role"] }))}
-                      className="hw-input w-full px-3 py-2.5"
-                    >
-                      <option value={AppRoles.Admin}>Admin</option>
-                      <option value={AppRoles.Manager}>Manager</option>
-                      <option value={AppRoles.Cashier}>Cashier</option>
-                    </select>
-                  </div>
-
-                  {/* Submit Button */}
-                  <div className="pt-4">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="hw-btn-primary w-full py-2.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isSubmitting ? "Creating..." : "Create User"}
-                    </button>
-                  </div>
-                </form>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => setForm((prev) => ({ ...prev, username: e.target.value }))}
+                  placeholder="Enter username"
+                  className="hw-input px-4 py-2.5"
+                  autoComplete="username"
+                />
               </div>
-            </div>
 
-            {/* Users List */}
-            <div className="lg:col-span-3">
-              <div className="hw-card">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-slate-900">Users</h2>
-                  <p className="mt-1 text-sm text-slate-600">Manage user roles and permissions.</p>
-                </div>
-
-                {loadingUsers ? (
-                  <div className="flex items-center justify-center py-12">
-                    <p className="text-slate-600 text-sm">Loading users...</p>
-                  </div>
-                ) : sortedUsers.length === 0 ? (
-                  <div className="flex items-center justify-center py-12">
-                    <p className="text-slate-500 text-sm">No users found.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-200">
-                          <th className="px-4 py-3 text-left font-semibold text-slate-700">Username</th>
-                          <th className="px-4 py-3 text-left font-semibold text-slate-700">Role</th>
-                          <th className="px-4 py-3 text-right font-semibold text-slate-700">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sortedUsers.map((item) => (
-                          <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="px-4 py-4 font-medium text-slate-900">{item.username}</td>
-                            <td className="px-4 py-4">
-                              {editingUserId === item.id ? (
-                                <select
-                                  value={roleDraftByUserId[item.id] ?? item.role}
-                                  onChange={(e) =>
-                                    setRoleDraftByUserId((prev) => ({
-                                      ...prev,
-                                      [item.id]: e.target.value as UserRole,
-                                    }))
-                                  }
-                                  className="hw-input px-2.5 py-1.5 text-sm"
-                                >
-                                  <option value={AppRoles.Admin}>Admin</option>
-                                  <option value={AppRoles.Manager}>Manager</option>
-                                  <option value={AppRoles.Cashier}>Cashier</option>
-                                </select>
-                              ) : (
-                                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                                  {item.role}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2 flex-wrap">
-                                {editingUserId === item.id ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={savingUserId === item.id}
-                                      onClick={() => void handleSaveRole(item)}
-                                      className="hw-btn-secondary px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
-                                      {savingUserId === item.id ? "Saving..." : "Save"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setEditingUserId(null);
-                                        setRoleDraftByUserId((prev) => ({
-                                          ...prev,
-                                          [item.id]: item.role,
-                                        }));
-                                      }}
-                                      className="hw-btn-ghost px-3 py-1.5 text-xs"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingUserId(item.id)}
-                                      className="hw-btn-primary px-3 py-1.5 text-xs"
-                                      title="Edit user role"
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setResetPasswordUserId(item.id);
-                                        setResetPasswordForm({ newPassword: "", confirmPassword: "" });
-                                        setShowResetPassword(false);
-                                        setShowResetConfirmPassword(false);
-                                      }}
-                                      className="hw-btn-secondary px-3 py-1.5 text-xs"
-                                      title="Reset password"
-                                    >
-                                      Reset
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={deletingUserId === item.id}
-                                      onClick={() => void handleDeleteUser(item)}
-                                      className="hw-btn-danger px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                                      title="Delete user"
-                                    >
-                                      {deletingUserId === item.id ? "..." : "Delete"}
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+                  placeholder="Minimum 8 characters"
+                  className="hw-input px-4 py-2.5"
+                  autoComplete="new-password"
+                />
               </div>
-            </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value as CreateUserPayload["role"] }))}
+                  className="hw-input px-4 py-2.5"
+                >
+                  <option value={AppRoles.Admin}>Admin</option>
+                  <option value={AppRoles.Manager}>Manager</option>
+                  <option value={AppRoles.Cashier}>Cashier</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="hw-btn-primary w-full py-2.5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? "Creating user..." : "Create User"}
+              </button>
+            </form>
           </div>
 
-          {/* Reset Password Modal */}
-          {resetPasswordUserId && (
-            <>
-              {/* Backdrop Overlay */}
-              <div
-                className="fixed inset-0 bg-black bg-opacity-50 z-40"
-                onClick={() => {
-                  setResetPasswordUserId(null);
-                  setResetPasswordForm({ newPassword: "", confirmPassword: "" });
-                }}
-              />
+          <div className="hw-card">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">User Roles</h2>
+            <p className="text-sm text-slate-600 mb-6">Change role from dropdown and save.</p>
 
-              {/* Modal Dialog */}
-              <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
-                  {/* Modal Header */}
-                  <div className="flex items-start justify-between p-6 border-b border-slate-200">
-                    <div>
-                      <h2 className="text-xl font-bold text-slate-900">Reset Password</h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        User: <span className="font-semibold text-slate-900">{users.find((u) => u.id === resetPasswordUserId)?.username}</span>
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResetPasswordUserId(null);
-                        setResetPasswordForm({ newPassword: "", confirmPassword: "" });
-                      }}
-                      className="text-slate-500 hover:text-slate-700 font-bold text-lg"
-                      title="Close"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* Modal Body */}
-                  <form onSubmit={handleResetPassword} className="p-6 space-y-4">
-                    {/* New Password Field */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">New Password</label>
-                      <div className="relative">
-                        <input
-                          type={showResetPassword ? "text" : "password"}
-                          value={resetPasswordForm.newPassword}
-                          onChange={(e) =>
-                            setResetPasswordForm((prev) => ({
-                              ...prev,
-                              newPassword: e.target.value,
-                            }))
-                          }
-                          placeholder="Minimum 8 characters"
-                          className="hw-input w-full px-3 py-2.5 pr-16"
-                          autoComplete="new-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowResetPassword((value) => !value)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                        >
-                          {showResetPassword ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Confirm Password Field */}
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Confirm Password</label>
-                      <div className="relative">
-                        <input
-                          type={showResetConfirmPassword ? "text" : "password"}
-                          value={resetPasswordForm.confirmPassword}
-                          onChange={(e) =>
-                            setResetPasswordForm((prev) => ({
-                              ...prev,
-                              confirmPassword: e.target.value,
-                            }))
-                          }
-                          placeholder="Minimum 8 characters"
-                          className="hw-input w-full px-3 py-2.5 pr-16"
-                          autoComplete="new-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowResetConfirmPassword((value) => !value)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#1f6b8c] hover:text-[#15516c] whitespace-nowrap"
-                        >
-                          {showResetConfirmPassword ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                    </div>
+            {loadingUsers ? (
+              <p className="text-slate-600 text-sm">Loading users...</p>
+            ) : (
+              <div className="max-h-[420px] overflow-auto">
+                <table className="hw-table text-left">
+                  <thead className="sticky top-0 bg-[#f8fbfe] text-xs uppercase tracking-[0.1em]">
+                    <tr>
+                      <th className="py-2">Username</th>
+                      <th className="py-2">Role</th>
+                      <th className="py-2 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedUsers.map((item) => (
+                      <tr key={item.id}>
+                        <td className="py-3 font-medium">{item.username}</td>
+                        <td className="py-3">
+                          {editingUserId === item.id ? (
+                            <select
+                              value={roleDraftByUserId[item.id] ?? item.role}
+                              onChange={(e) =>
+                                setRoleDraftByUserId((prev) => ({
+                                  ...prev,
+                                  [item.id]: e.target.value as UserRole,
+                                }))
+                              }
+                              className="hw-input px-3 py-1.5"
+                            >
+                              <option value={AppRoles.Admin}>Admin</option>
+                              <option value={AppRoles.Manager}>Manager</option>
+                              <option value={AppRoles.Cashier}>Cashier</option>
+                            </select>
+                          ) : (
+                            <span>{item.role}</span>
+                          )}
+                        </td>
+                        <td className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {editingUserId === item.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={savingUserId === item.id}
+                                  onClick={() => void handleSaveRole(item)}
+                                  className="hw-btn-secondary px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {savingUserId === item.id ? "Saving..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingUserId(null);
+                                    setRoleDraftByUserId((prev) => ({
+                                      ...prev,
+                                      [item.id]: item.role,
+                                    }));
+                                  }}
+                                  className="hw-btn-ghost px-3 py-1.5"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditingUserId(item.id)}
+                                className="hw-btn-primary px-3 py-1.5"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={deletingUserId === item.id}
+                              onClick={() => void handleDeleteUser(item)}
+                              className="hw-btn-danger px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {deletingUserId === item.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-4">
