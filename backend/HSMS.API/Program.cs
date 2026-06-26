@@ -12,18 +12,21 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySql.Data.MySqlClient;
+using System.Runtime.ConstrainedExecution;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// WebApplication.CreateBuilder loads appsettings.json, appsettings.{Environment}.json,
-// and environment variables in the correct order, with environment variables winning.
+if(builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" && builder.Configuration["DevelopmentEenvironment"] == "true")
+{
+	throw new InvalidOperationException("CRITICAL: .env file is missing or not loaded in Development environment.Ensure that the .env file exists and is properly configured.");
+}
 
-ApplyEnvironmentVariableAliases(builder.Configuration);
-ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
-ApplyConnectionStringOptimizations(builder.Configuration);
+// WebApplication.CreateBuilder loads appsettings.json and environment variables in the correct order, with environment variables winning.
+
+CheckEnvironmentVariables(builder.Configuration);
 
 // ----- CRITICAL: Validate mandatory configuration at startup -----
-string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+string? connectionString = AssignconnenctionStrings(builder.Configuration);
 if (string.IsNullOrWhiteSpace(connectionString))
 {
 	throw new InvalidOperationException(
@@ -32,19 +35,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 	);
 }
 
-// Validate JWT secret in production
-if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
-{
-	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
-	if (string.IsNullOrWhiteSpace(jwtSecretValue))
-	{
-		throw new InvalidOperationException(
-			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
-			"Set the environment variable: Jwt__Secret=\"your-secure-secret-key\""
-		);
-	}
-}
-// Environment variables automatically override all JSON configuration files.
+builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -104,21 +95,32 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ----- JWT Authentication -----
-string jwtSecret = builder.Configuration["Jwt:Secret"]
-	?? throw new InvalidOperationException("Jwt:Secret is missing. Set Jwt__Secret or JWT_SECRET.");
-string jwtIssuer = builder.Configuration["Jwt:Issuer"]
-	?? throw new InvalidOperationException("Jwt:Issuer is missing. Set Jwt__Issuer or JWT_ISSUER.");
-string jwtAudience = builder.Configuration["Jwt:Audience"]
-	?? throw new InvalidOperationException("Jwt:Audience is missing. Set Jwt__Audience or JWT_AUDIENCE.");
+string? jwtSecret = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_SECRET"] : builder.Configuration["jwt:Secret"];
+ if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+	throw new InvalidOperationException("JWT_SECRET is missing. Set the environment variable.");
+}
+
+string? jwtIssuer = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_ISSUER"] : builder.Configuration["jwt:Issuer"];
+ if (string.IsNullOrWhiteSpace(jwtIssuer))
+{
+	throw new InvalidOperationException("JWT_ISSUER is missing. Set the environment variable.");
+}
+
+string? jwtAudience = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_AUDIENCE"] : builder.Configuration["jwt:Audience"];
+ if (string.IsNullOrWhiteSpace(jwtAudience))
+{
+	throw new InvalidOperationException("JWT_AUDIENCE is missing. Set the environment variable.");
+}
 
 if (string.IsNullOrWhiteSpace(jwtSecret))
 {
-	throw new InvalidOperationException("Jwt:Secret is empty. Set Jwt__Secret or JWT_SECRET.");
+	throw new InvalidOperationException("JWT_SECRET is empty. Set the environment variable.");
 }
 
 if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
 {
-	throw new InvalidOperationException("Jwt:Secret must be at least 32 bytes for secure signing.");
+	throw new InvalidOperationException("JWT_SECRET must be at least 32 bytes for secure signing.");
 }
 
 builder.Services
@@ -176,15 +178,16 @@ builder.Services.AddAuthorization(options =>
 // ----- CORS -----
 // Allowed browser origins for API calls.
 // Database hosts are not browser origins and are not part of CORS.
-const string AzureStaticWebAppOrigin = "https://delightful-tree-0e4ad5000.7.azurestaticapps.net";
 
 string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
 string? frontendUrl = builder.Configuration["FRONTEND_URL"];
+string? backendUrl = builder.Configuration["BACKEND_PUBLIC_URL"];
 
 var originCandidates = new List<string>();
 
 if (!string.IsNullOrWhiteSpace(corsOrigins))
 {
+	Console.WriteLine("\n\ndid this\n\n");
 	originCandidates.AddRange(ParseOriginCandidates(corsOrigins));
 }
 
@@ -193,30 +196,14 @@ if (!string.IsNullOrWhiteSpace(frontendUrl))
 	originCandidates.AddRange(ParseOriginCandidates(frontendUrl));
 }
 
-// Always allow the primary Azure Static Web App frontend origin.
-originCandidates.Add(AzureStaticWebAppOrigin);
+if (!string.IsNullOrWhiteSpace(backendUrl))
+{
+	originCandidates.AddRange(ParseOriginCandidates(backendUrl));
+}
 
-// Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
 {
-	if (builder.Environment.IsDevelopment())
-	{
-		originCandidates.AddRange(
-		[
-			"http://localhost:5173",
-			"http://localhost:3000"
-		]
-		);
-	}
-	else
-	{
-		originCandidates.AddRange(
-		[
-			"https://delightful-tree-0e4ad5000.7.azurestaticapps.net",
-			"https://csp-hwsms-hnqk.vercel.app"
-		]
-		);
-	}
+	throw new InvalidOperationException("No CORS origins configured. Set CORS_ORIGINS environment variable or configure FRONTEND_URL or BACKEND_PUBLIC_URL.");
 }
 
 var allowedOrigins = originCandidates
@@ -253,9 +240,7 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-await DatabaseInitializer.InitializeAsync(
-    builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing."));
+await DatabaseInitializer.InitializeAsync(connectionString);
 
 // Seed default users ONLY in development environment
 bool seedDefaultUsers = app.Environment.IsDevelopment();
@@ -312,55 +297,58 @@ static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
 		.Select(origin => origin.TrimEnd('/'));
 }
 
-static void ApplyEnvironmentVariableAliases(IConfigurationManager configuration)
+static void CheckEnvironmentVariables(IConfigurationManager configuration)
 {
-	ApplyAlias(configuration, "JWT_SECRET", "Jwt:Secret");
-	ApplyAlias(configuration, "JWT_ISSUER", "Jwt:Issuer");
-	ApplyAlias(configuration, "JWT_AUDIENCE", "Jwt:Audience");
-	ApplyAlias(configuration, "JWT_EXPIRY_MINUTES", "Jwt:AccessTokenExpiryMinutes");
-	ApplyAlias(configuration, "AZURE_MYSQL_CONNECTIONSTRING", "ConnectionStrings:DefaultConnection");
-	ApplyAlias(configuration, "MYSQLCONNSTR_DefaultConnection", "ConnectionStrings:DefaultConnection");
-}
-
-static void ApplyAlias(IConfigurationManager configuration, string aliasKey, string targetKey)
-{
-	string? aliasValue = configuration[aliasKey];
-	if (!string.IsNullOrWhiteSpace(aliasValue))
+	if(configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
 	{
-		configuration[targetKey] = aliasValue;
+		Check(configuration, "ConnectionStrings:DefaultConnection");
+		Check(configuration, "Jwt:Secret");
+		Check(configuration, "Jwt:Issuer");
+		Check(configuration, "Jwt:Audience");
+		Check(configuration, "Jwt:AccessTokenExpiryMinutes");
+	}
+	else if(configuration["ASPNETCORE_ENVIRONMENT"] == "Production")
+	{
+		Check(configuration, "DB_HOST");
+		Check(configuration, "DB_PORT");
+		Check(configuration, "DB_NAME");
+		Check(configuration, "DB_USER");
+		Check(configuration, "DB_PASSWORD");
+		Check(configuration, "JWT_SECRET");
+		Check(configuration, "JWT_ISSUER");
+		Check(configuration, "JWT_AUDIENCE");
+		Check(configuration, "JWT_ACCESS_TOKEN_EXPIRY_MINUTES");
 	}
 }
 
-static void ApplyAzureMySqlDatabaseConfiguration(IConfigurationManager configuration)
+static void Check(IConfigurationManager configuration, string targetKey)
 {
-	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
-	string normalizedCurrentConnection = currentConnection ?? string.Empty;
-	bool isMissingConnection = string.IsNullOrWhiteSpace(currentConnection);
-	bool isLocalConnection = !isMissingConnection &&
-		(normalizedCurrentConnection.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-		|| normalizedCurrentConnection.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase));
-
-	if (!isMissingConnection && !isLocalConnection)
+	string? value = configuration[targetKey];
+	if (string.IsNullOrWhiteSpace(value))
 	{
-		return;
-	}
-
-	string? azureConnection = configuration["AZURE_MYSQL_CONNECTIONSTRING"]
-		?? BuildAzureMySqlConnectionStringFromParts(configuration);
-
-	if (!string.IsNullOrWhiteSpace(azureConnection))
-	{
-		configuration["ConnectionStrings:DefaultConnection"] = azureConnection;
+		throw new InvalidOperationException($"CRITICAL: Environment variable '{targetKey}' is missing or empty. Ensure it is set in the environment or in appsettings files.");
 	}
 }
 
-static string? BuildAzureMySqlConnectionStringFromParts(IConfiguration configuration)
+static string? AssignconnenctionStrings(IConfiguration configuration)
 {
-	string? host = configuration["AZURE_MYSQL_HOST"] ?? configuration["HOST"] ?? configuration["DB_HOST"];
-	string? port = configuration["AZURE_MYSQL_PORT"] ?? configuration["PORT"] ?? configuration["DB_PORT"];
-	string? database = configuration["AZURE_MYSQL_DATABASE"] ?? configuration["DB"] ?? configuration["DB_NAME"];
-	string? username = configuration["AZURE_MYSQL_USER"] ?? configuration["USER"] ?? configuration["DB_USER"];
-	string? password = configuration["AZURE_MYSQL_PASSWORD"] ?? configuration["PASSWORD"] ?? configuration["DB_PASSWORD"];
+	if(configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
+	{
+		return configuration.GetConnectionString("DefaultConnection");
+	} else if(configuration["ASPNETCORE_ENVIRONMENT"] == "Production")
+	{
+		return BuildMySqlConnectionStringFromParts(configuration);
+	}
+	return null;
+}
+
+static string? BuildMySqlConnectionStringFromParts(IConfiguration configuration)
+{
+	string? host = configuration["DB_HOST"];
+	string? port = configuration["DB_PORT"];
+	string? database = configuration["DB_NAME"];
+	string? username = configuration["DB_USER"];
+	string? password = configuration["DB_PASSWORD"];
 
 	if (string.IsNullOrWhiteSpace(host)
 		|| string.IsNullOrWhiteSpace(database)
@@ -372,31 +360,6 @@ static string? BuildAzureMySqlConnectionStringFromParts(IConfiguration configura
 
 	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
 	return $"Server={host};Port={normalizedPort};Database={database};Uid={username};Pwd={password};SslMode=Required;";
-}
-
-static void ApplyConnectionStringOptimizations(IConfigurationManager configuration)
-{
-	string? connectionString = configuration.GetConnectionString("DefaultConnection");
-	if (string.IsNullOrWhiteSpace(connectionString))
-	{
-		return;
-	}
-
-	var builder = new MySqlConnectionStringBuilder(connectionString)
-	{
-		Pooling = true,
-		MinimumPoolSize = 0,
-		MaximumPoolSize = 20,
-		ConnectionTimeout = Math.Max(15u, new MySqlConnectionStringBuilder(connectionString).ConnectionTimeout)
-	};
-
-	if (!builder.Server.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-		&& !builder.Server.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
-	{
-		builder.SslMode = MySqlSslMode.Required;
-	}
-
-	configuration["ConnectionStrings:DefaultConnection"] = builder.ConnectionString;
 }
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
