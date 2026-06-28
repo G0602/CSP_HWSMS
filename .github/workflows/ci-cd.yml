@@ -80,7 +80,7 @@ jobs:
 
       - name: Start backend API for API tests
         working-directory: backend
-        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
+        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build --no-launch-profile > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
 
       - name: Wait for backend health endpoint
         run: |
