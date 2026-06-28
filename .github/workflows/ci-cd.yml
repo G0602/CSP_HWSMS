@@ -37,8 +37,7 @@ jobs:
           --health-retries=10
 
     env:
-      HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
-      DefaultConnection: ${{ env.HSMS_TEST_CONNECTION_STRING }}
+      DefaultConnection: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://127.0.0.1:5162
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
