@@ -90,28 +90,11 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ----- JWT Authentication -----
-string? jwtSecret = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_SECRET"] : builder.Configuration["jwt:Secret"];
- if (string.IsNullOrWhiteSpace(jwtSecret))
-{
-	throw new InvalidOperationException("JWT_SECRET is missing. Set the environment variable.");
-}
+string? jwtSecret = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Secret"] : builder.Configuration["JWT_SECRET"];
 
-string? jwtIssuer = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_ISSUER"] : builder.Configuration["jwt:Issuer"];
- if (string.IsNullOrWhiteSpace(jwtIssuer))
-{
-	throw new InvalidOperationException("JWT_ISSUER is missing. Set the environment variable.");
-}
+string? jwtIssuer = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Issuer"] : builder.Configuration["JWT_ISSUER"];
 
-string? jwtAudience = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Production" ? builder.Configuration["JWT_AUDIENCE"] : builder.Configuration["jwt:Audience"];
- if (string.IsNullOrWhiteSpace(jwtAudience))
-{
-	throw new InvalidOperationException("JWT_AUDIENCE is missing. Set the environment variable.");
-}
-
-if (string.IsNullOrWhiteSpace(jwtSecret))
-{
-	throw new InvalidOperationException("JWT_SECRET is empty. Set the environment variable.");
-}
+string? jwtAudience = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Audience"] : builder.Configuration["JWT_AUDIENCE"];
 
 if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
 {
