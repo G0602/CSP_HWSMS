@@ -187,7 +187,6 @@ var originCandidates = new List<string>();
 
 if (!string.IsNullOrWhiteSpace(corsOrigins))
 {
-	Console.WriteLine("\n\ndid this\n\n");
 	originCandidates.AddRange(ParseOriginCandidates(corsOrigins));
 }
 

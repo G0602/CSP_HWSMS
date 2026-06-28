@@ -38,15 +38,16 @@ jobs:
 
     env:
       HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
-      ConnectionStrings__DefaultConnection: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
+      DefaultConnection: ${{ env.HSMS_TEST_CONNECTION_STRING }}
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://127.0.0.1:5162
-      ADMIN_PASSWORD: Admin@123
-      MANAGER_PASSWORD: Manager@123
-      CASHIER_PASSWORD: Cashier@123
-      Jwt__Secret: ThisIsADevelopmentOnlySecretKey123!
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      MANAGER_PASSWORD: ${{ secrets.MANAGER_PASSWORD }}
+      CASHIER_PASSWORD: ${{ secrets.CASHIER_PASSWORD }}
+      Jwt__Secret: ${{ secrets.JWT_SECRET }}
       Jwt__Issuer: hsms-ci
       Jwt__Audience: hsms-ci-clients
+      CORS_ORIGINS: http://127.0.0.1
 
     steps:
       - name: Checkout
