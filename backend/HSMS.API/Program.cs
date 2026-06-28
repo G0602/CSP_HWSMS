@@ -16,11 +16,6 @@ using System.Runtime.ConstrainedExecution;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if(builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" && builder.Configuration["DevelopmentEenvironment"] == "true")
-{
-	throw new InvalidOperationException("CRITICAL: .env file is missing or not loaded in Development environment.Ensure that the .env file exists and is properly configured.");
-}
-
 // WebApplication.CreateBuilder loads appsettings.json and environment variables in the correct order, with environment variables winning.
 
 CheckEnvironmentVariables(builder.Configuration);
@@ -306,7 +301,7 @@ static void CheckEnvironmentVariables(IConfigurationManager configuration)
 		Check(configuration, "Jwt:Audience");
 		Check(configuration, "Jwt:AccessTokenExpiryMinutes");
 	}
-	else if(configuration["ASPNETCORE_ENVIRONMENT"] == "Production")
+	else
 	{
 		Check(configuration, "DB_HOST");
 		Check(configuration, "DB_PORT");
