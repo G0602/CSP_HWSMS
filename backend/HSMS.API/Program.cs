@@ -329,11 +329,10 @@ static string? AssignconnenctionStrings(IConfiguration configuration)
 	if(configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
 	{
 		return configuration.GetConnectionString("DefaultConnection");
-	} else if(configuration["ASPNETCORE_ENVIRONMENT"] == "Production")
+	} else
 	{
 		return BuildMySqlConnectionStringFromParts(configuration);
 	}
-	return null;
 }
 
 static string? BuildMySqlConnectionStringFromParts(IConfiguration configuration)
