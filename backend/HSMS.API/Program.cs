@@ -13,17 +13,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySql.Data.MySqlClient;
 
+// WebApplication.CreateBuilder loads appsettings.json and environment variables in the correct order, with environment variables winning.
 var builder = WebApplication.CreateBuilder(args);
 
-// WebApplication.CreateBuilder loads appsettings.json, appsettings.{Environment}.json,
-// and environment variables in the correct order, with environment variables winning.
-
-ApplyEnvironmentVariableAliases(builder.Configuration);
-ApplyAzureMySqlDatabaseConfiguration(builder.Configuration);
-ApplyConnectionStringOptimizations(builder.Configuration);
-
 // ----- CRITICAL: Validate mandatory configuration at startup -----
-string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+CheckEnvironmentVariables(builder.Configuration);
+
+string? connectionString = AssignconnenctionStrings(builder.Configuration);
 if (string.IsNullOrWhiteSpace(connectionString))
 {
 	throw new InvalidOperationException(
@@ -32,19 +28,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 	);
 }
 
-// Validate JWT secret in production
-if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
-{
-	var jwtSecretValue = builder.Configuration["Jwt:Secret"];
-	if (string.IsNullOrWhiteSpace(jwtSecretValue))
-	{
-		throw new InvalidOperationException(
-			"CRITICAL: Jwt:Secret must be changed from default value in production.\n" +
-			"Set the environment variable: Jwt__Secret=\"your-secure-secret-key\""
-		);
-	}
-}
-// Environment variables automatically override all JSON configuration files.
+builder.Configuration["ConnectionStrings:DefaultConnection"] = connectionString;
 
 // ----- MVC & API Explorer -----
 builder.Services.AddControllers();
@@ -104,21 +88,15 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ----- JWT Authentication -----
-string jwtSecret = builder.Configuration["Jwt:Secret"]
-	?? throw new InvalidOperationException("Jwt:Secret is missing. Set Jwt__Secret or JWT_SECRET.");
-string jwtIssuer = builder.Configuration["Jwt:Issuer"]
-	?? throw new InvalidOperationException("Jwt:Issuer is missing. Set Jwt__Issuer or JWT_ISSUER.");
-string jwtAudience = builder.Configuration["Jwt:Audience"]
-	?? throw new InvalidOperationException("Jwt:Audience is missing. Set Jwt__Audience or JWT_AUDIENCE.");
+//Following variables are guaranteed to be non-null due to CheckEnvironmentVariables() above.
+string jwtIssuer = builder.Configuration["jwt:Issuer"]!;
+string jwtAudience = builder.Configuration["jwt:Audience"]!;
+string jwtSecret = builder.Configuration["jwt:Secret"]!;
 
-if (string.IsNullOrWhiteSpace(jwtSecret))
-{
-	throw new InvalidOperationException("Jwt:Secret is empty. Set Jwt__Secret or JWT_SECRET.");
-}
-
+// Validate JWT configuration and ensure the secret is sufficiently long for security.
 if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
 {
-	throw new InvalidOperationException("Jwt:Secret must be at least 32 bytes for secure signing.");
+	throw new InvalidOperationException("JWT_SECRET must be at least 32 bytes for secure signing.");
 }
 
 builder.Services
@@ -176,47 +154,25 @@ builder.Services.AddAuthorization(options =>
 // ----- CORS -----
 // Allowed browser origins for API calls.
 // Database hosts are not browser origins and are not part of CORS.
-const string AzureStaticWebAppOrigin = "https://delightful-tree-0e4ad5000.7.azurestaticapps.net";
 
-string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
-string? frontendUrl = builder.Configuration["FRONTEND_URL"];
+string? frontendUrl = builder.Configuration["Url:Frontend"];
+string? backendUrl = builder.Configuration["Url:Backend"];
 
 var originCandidates = new List<string>();
-
-if (!string.IsNullOrWhiteSpace(corsOrigins))
-{
-	originCandidates.AddRange(ParseOriginCandidates(corsOrigins));
-}
 
 if (!string.IsNullOrWhiteSpace(frontendUrl))
 {
 	originCandidates.AddRange(ParseOriginCandidates(frontendUrl));
 }
 
-// Always allow the primary Azure Static Web App frontend origin.
-originCandidates.Add(AzureStaticWebAppOrigin);
+if (!string.IsNullOrWhiteSpace(backendUrl))
+{
+	originCandidates.AddRange(ParseOriginCandidates(backendUrl));
+}
 
-// Development-safe defaults - only used in development environment
 if (originCandidates.Count == 0)
 {
-	if (builder.Environment.IsDevelopment())
-	{
-		originCandidates.AddRange(
-		[
-			"http://localhost:5173",
-			"http://localhost:3000"
-		]
-		);
-	}
-	else
-	{
-		originCandidates.AddRange(
-		[
-			"https://delightful-tree-0e4ad5000.7.azurestaticapps.net",
-			"https://csp-hwsms-hnqk.vercel.app"
-		]
-		);
-	}
+	throw new InvalidOperationException("No CORS origins configured. Set CORS_ORIGINS environment variable or configure FRONTEND_URL or BACKEND_PUBLIC_URL.");
 }
 
 var allowedOrigins = originCandidates
@@ -253,12 +209,10 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
 var app = builder.Build();
 
-await DatabaseInitializer.InitializeAsync(
-    builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing."));
+await DatabaseInitializer.InitializeAsync(connectionString);
 
 // Seed default users ONLY in development environment
-bool seedDefaultUsers = app.Environment.IsDevelopment();
+bool seedDefaultUsers = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Integration");
 if (seedDefaultUsers)
 {
 	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
@@ -312,91 +266,56 @@ static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
 		.Select(origin => origin.TrimEnd('/'));
 }
 
-static void ApplyEnvironmentVariableAliases(IConfigurationManager configuration)
+static void CheckEnvironmentVariables(IConfigurationManager configuration)
 {
-	ApplyAlias(configuration, "JWT_SECRET", "Jwt:Secret");
-	ApplyAlias(configuration, "JWT_ISSUER", "Jwt:Issuer");
-	ApplyAlias(configuration, "JWT_AUDIENCE", "Jwt:Audience");
-	ApplyAlias(configuration, "JWT_EXPIRY_MINUTES", "Jwt:AccessTokenExpiryMinutes");
-	ApplyAlias(configuration, "AZURE_MYSQL_CONNECTIONSTRING", "ConnectionStrings:DefaultConnection");
-	ApplyAlias(configuration, "MYSQLCONNSTR_DefaultConnection", "ConnectionStrings:DefaultConnection");
-}
-
-static void ApplyAlias(IConfigurationManager configuration, string aliasKey, string targetKey)
-{
-	string? aliasValue = configuration[aliasKey];
-	if (!string.IsNullOrWhiteSpace(aliasValue))
+	
+	if (string.IsNullOrWhiteSpace(configuration["ConnectionStrings:DefaultConnection"]))
 	{
-		configuration[targetKey] = aliasValue;
-	}
-}
-
-static void ApplyAzureMySqlDatabaseConfiguration(IConfigurationManager configuration)
-{
-	string? currentConnection = configuration.GetConnectionString("DefaultConnection");
-	string normalizedCurrentConnection = currentConnection ?? string.Empty;
-	bool isMissingConnection = string.IsNullOrWhiteSpace(currentConnection);
-	bool isLocalConnection = !isMissingConnection &&
-		(normalizedCurrentConnection.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-		|| normalizedCurrentConnection.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase));
-
-	if (!isMissingConnection && !isLocalConnection)
-	{
-		return;
+		Check(configuration, "Db:Host");
+		Check(configuration, "Db:Port");
+		Check(configuration, "Db:Name");
+		Check(configuration, "Db:User");
+		Check(configuration, "Db:Password");
 	}
 
-	string? azureConnection = configuration["AZURE_MYSQL_CONNECTIONSTRING"]
-		?? BuildAzureMySqlConnectionStringFromParts(configuration);
+	Check(configuration, "Jwt:Secret");
+	Check(configuration, "Jwt:Issuer");
+	Check(configuration, "Jwt:Audience");
+	Check(configuration, "Jwt:AccessTokenExpiryMinutes");
+}
 
-	if (!string.IsNullOrWhiteSpace(azureConnection))
+static void Check(IConfigurationManager configuration, string targetKey)
+{
+	string? value = configuration[targetKey];
+	if (string.IsNullOrWhiteSpace(value))
 	{
-		configuration["ConnectionStrings:DefaultConnection"] = azureConnection;
+		throw new InvalidOperationException($"CRITICAL: Environment variable '{targetKey}' is missing or empty. Ensure it is set in the environment or in appsettings files.");
 	}
 }
 
-static string? BuildAzureMySqlConnectionStringFromParts(IConfiguration configuration)
+static string? AssignconnenctionStrings(IConfiguration configuration)
 {
-	string? host = configuration["AZURE_MYSQL_HOST"] ?? configuration["HOST"] ?? configuration["DB_HOST"];
-	string? port = configuration["AZURE_MYSQL_PORT"] ?? configuration["PORT"] ?? configuration["DB_PORT"];
-	string? database = configuration["AZURE_MYSQL_DATABASE"] ?? configuration["DB"] ?? configuration["DB_NAME"];
-	string? username = configuration["AZURE_MYSQL_USER"] ?? configuration["USER"] ?? configuration["DB_USER"];
-	string? password = configuration["AZURE_MYSQL_PASSWORD"] ?? configuration["PASSWORD"] ?? configuration["DB_PASSWORD"];
 
-	if (string.IsNullOrWhiteSpace(host)
-		|| string.IsNullOrWhiteSpace(database)
-		|| string.IsNullOrWhiteSpace(username)
-		|| string.IsNullOrWhiteSpace(password))
+	string? defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+	
+	if(string.IsNullOrWhiteSpace(defaultConnectionString))
 	{
-		return null;
+		defaultConnectionString = BuildMySqlConnectionStringFromParts(configuration);
 	}
 
-	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
-	return $"Server={host};Port={normalizedPort};Database={database};Uid={username};Pwd={password};SslMode=Required;";
+	return defaultConnectionString;
 }
 
-static void ApplyConnectionStringOptimizations(IConfigurationManager configuration)
+static string BuildMySqlConnectionStringFromParts(IConfiguration configuration)
 {
-	string? connectionString = configuration.GetConnectionString("DefaultConnection");
-	if (string.IsNullOrWhiteSpace(connectionString))
-	{
-		return;
-	}
+	//These Values can't be null or empty at this point because CheckEnvironmentVariables ensures they are set.
+	string host = configuration["Db:Host"]!;
+	string port = configuration["Db:Port"]!;
+	string database = configuration["Db:Name"]!;
+	string username = configuration["Db:User"]!;
+	string password = configuration["Db:Password"]!;
 
-	var builder = new MySqlConnectionStringBuilder(connectionString)
-	{
-		Pooling = true,
-		MinimumPoolSize = 0,
-		MaximumPoolSize = 20,
-		ConnectionTimeout = Math.Max(15u, new MySqlConnectionStringBuilder(connectionString).ConnectionTimeout)
-	};
-
-	if (!builder.Server.Contains("localhost", StringComparison.OrdinalIgnoreCase)
-		&& !builder.Server.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
-	{
-		builder.SslMode = MySqlSslMode.Required;
-	}
-
-	configuration["ConnectionStrings:DefaultConnection"] = builder.ConnectionString;
+	return $"Server={host};Port={port};Database={database};Uid={username};Pwd={password};SslMode=Required;";
 }
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
@@ -406,9 +325,9 @@ static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguratio
 	var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
 	// Development seed credentials must be provided via environment variables.
-	string? adminPassword = configuration["ADMIN_PASSWORD"];
-	string? managerPassword = configuration["MANAGER_PASSWORD"];
-	string? cashierPassword = configuration["CASHIER_PASSWORD"];
+	string? adminPassword = configuration["Password:Admin"];
+	string? managerPassword = configuration["Password:Manager"];
+	string? cashierPassword = configuration["Password:Cashier"];
 
 	if (string.IsNullOrWhiteSpace(adminPassword)
 		|| string.IsNullOrWhiteSpace(managerPassword)

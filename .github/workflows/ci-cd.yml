@@ -37,16 +37,21 @@ jobs:
           --health-retries=10
 
     env:
-      HSMS_TEST_CONNECTION_STRING: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
-      ConnectionStrings__DefaultConnection: Server=127.0.0.1;Port=3306;Database=hsms_test;Uid=root;Pwd=root
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Integration
       ASPNETCORE_URLS: http://127.0.0.1:5162
-      ADMIN_PASSWORD: Admin@123
-      MANAGER_PASSWORD: Manager@123
-      CASHIER_PASSWORD: Cashier@123
-      Jwt__Secret: ThisIsADevelopmentOnlySecretKey123!
-      Jwt__Issuer: hsms-ci
-      Jwt__Audience: hsms-ci-clients
+      Password:Admin: ${{ secrets.Password__Admin }}
+      Password:Manager: ${{ secrets.Password__Manager }}
+      Password:Cashier: ${{ secrets.Password__Cashier }}
+      DB__HOST: 127.0.0.1
+      DB__PORT: 3306
+      DB__NAME: hsms_test
+      DB__USER: root
+      DB__PASSWORD: root
+      JWT__SECRET: ${{ secrets.JWT__SECRET }}
+      JWT__ISSUER: hsms-ci
+      JWT__AUDIENCE: hsms-ci-clients
+      JWT__ACCESS_TOKEN_EXPIRY_MINUTES: 60
+      URL__BACKEND: http://127.0.0.1:5162
 
     steps:
       - name: Checkout
@@ -76,7 +81,7 @@ jobs:
 
       - name: Start backend API for API tests
         working-directory: backend
-        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
+        run: dotnet run --project HSMS.API/HSMS.API.csproj -c Release --no-build --no-launch-profile > "$RUNNER_TEMP/hsms-api.log" 2>&1 &
 
       - name: Wait for backend health endpoint
         run: |
