@@ -53,8 +53,9 @@ publish/
 # Visual Studio
 .vs/
 
-#development configuration files
+#configuration files
 appsettings.Development.json
+appsettings.Production.json
 
 ############################################
 # TEST RESULTS

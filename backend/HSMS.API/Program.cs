@@ -12,15 +12,13 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MySql.Data.MySqlClient;
-using System.Runtime.ConstrainedExecution;
-
-var builder = WebApplication.CreateBuilder(args);
 
 // WebApplication.CreateBuilder loads appsettings.json and environment variables in the correct order, with environment variables winning.
-
-CheckEnvironmentVariables(builder.Configuration);
+var builder = WebApplication.CreateBuilder(args);
 
 // ----- CRITICAL: Validate mandatory configuration at startup -----
+CheckEnvironmentVariables(builder.Configuration);
+
 string? connectionString = AssignconnenctionStrings(builder.Configuration);
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -90,12 +88,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // ----- JWT Authentication -----
-string? jwtSecret = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Secret"] : builder.Configuration["JWT_SECRET"];
+//Following variables are guaranteed to be non-null due to CheckEnvironmentVariables() above.
+string jwtIssuer = builder.Configuration["jwt:Issuer"]!;
+string jwtAudience = builder.Configuration["jwt:Audience"]!;
+string jwtSecret = builder.Configuration["jwt:Secret"]!;
 
-string? jwtIssuer = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Issuer"] : builder.Configuration["JWT_ISSUER"];
-
-string? jwtAudience = builder.Configuration["ASPNETCORE_ENVIRONMENT"] == "Development" ? builder.Configuration["jwt:Audience"] : builder.Configuration["JWT_AUDIENCE"];
-
+// Validate JWT configuration and ensure the secret is sufficiently long for security.
 if (Encoding.UTF8.GetByteCount(jwtSecret) < 32)
 {
 	throw new InvalidOperationException("JWT_SECRET must be at least 32 bytes for secure signing.");
@@ -157,16 +155,10 @@ builder.Services.AddAuthorization(options =>
 // Allowed browser origins for API calls.
 // Database hosts are not browser origins and are not part of CORS.
 
-string? corsOrigins = builder.Configuration["CORS_ORIGINS"];
-string? frontendUrl = builder.Configuration["FRONTEND_URL"];
-string? backendUrl = builder.Configuration["BACKEND_PUBLIC_URL"];
+string? frontendUrl = builder.Configuration["Url:Frontend"];
+string? backendUrl = builder.Configuration["Url:Backend"];
 
 var originCandidates = new List<string>();
-
-if (!string.IsNullOrWhiteSpace(corsOrigins))
-{
-	originCandidates.AddRange(ParseOriginCandidates(corsOrigins));
-}
 
 if (!string.IsNullOrWhiteSpace(frontendUrl))
 {
@@ -276,26 +268,20 @@ static IEnumerable<string> ParseOriginCandidates(string rawOrigins)
 
 static void CheckEnvironmentVariables(IConfigurationManager configuration)
 {
-	if(configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
+	
+	if (string.IsNullOrWhiteSpace(configuration["ConnectionStrings:DefaultConnection"]))
 	{
-		Check(configuration, "ConnectionStrings:DefaultConnection");
-		Check(configuration, "Jwt:Secret");
-		Check(configuration, "Jwt:Issuer");
-		Check(configuration, "Jwt:Audience");
-		Check(configuration, "Jwt:AccessTokenExpiryMinutes");
+		Check(configuration, "Db:Host");
+		Check(configuration, "Db:Port");
+		Check(configuration, "Db:Name");
+		Check(configuration, "Db:User");
+		Check(configuration, "Db:Password");
 	}
-	else
-	{
-		Check(configuration, "DB_HOST");
-		Check(configuration, "DB_PORT");
-		Check(configuration, "DB_NAME");
-		Check(configuration, "DB_USER");
-		Check(configuration, "DB_PASSWORD");
-		Check(configuration, "JWT_SECRET");
-		Check(configuration, "JWT_ISSUER");
-		Check(configuration, "JWT_AUDIENCE");
-		Check(configuration, "JWT_ACCESS_TOKEN_EXPIRY_MINUTES");
-	}
+
+	Check(configuration, "Jwt:Secret");
+	Check(configuration, "Jwt:Issuer");
+	Check(configuration, "Jwt:Audience");
+	Check(configuration, "Jwt:AccessTokenExpiryMinutes");
 }
 
 static void Check(IConfigurationManager configuration, string targetKey)
@@ -309,33 +295,27 @@ static void Check(IConfigurationManager configuration, string targetKey)
 
 static string? AssignconnenctionStrings(IConfiguration configuration)
 {
-	if(configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
+
+	string? defaultConnectionString = configuration.GetConnectionString("DefaultConnection");
+	
+	if(string.IsNullOrWhiteSpace(defaultConnectionString))
 	{
-		return configuration.GetConnectionString("DefaultConnection");
-	} else
-	{
-		return BuildMySqlConnectionStringFromParts(configuration);
+		defaultConnectionString = BuildMySqlConnectionStringFromParts(configuration);
 	}
+
+	return defaultConnectionString;
 }
 
-static string? BuildMySqlConnectionStringFromParts(IConfiguration configuration)
+static string BuildMySqlConnectionStringFromParts(IConfiguration configuration)
 {
-	string? host = configuration["DB_HOST"];
-	string? port = configuration["DB_PORT"];
-	string? database = configuration["DB_NAME"];
-	string? username = configuration["DB_USER"];
-	string? password = configuration["DB_PASSWORD"];
+	//These Values can't be null or empty at this point because CheckEnvironmentVariables ensures they are set.
+	string host = configuration["Db:Host"]!;
+	string port = configuration["Db:Port"]!;
+	string database = configuration["Db:Name"]!;
+	string username = configuration["Db:User"]!;
+	string password = configuration["Db:Password"]!;
 
-	if (string.IsNullOrWhiteSpace(host)
-		|| string.IsNullOrWhiteSpace(database)
-		|| string.IsNullOrWhiteSpace(username)
-		|| string.IsNullOrWhiteSpace(password))
-	{
-		return null;
-	}
-
-	string normalizedPort = string.IsNullOrWhiteSpace(port) ? "3306" : port;
-	return $"Server={host};Port={normalizedPort};Database={database};Uid={username};Pwd={password};SslMode=Required;";
+	return $"Server={host};Port={port};Database={database};Uid={username};Pwd={password};SslMode=Required;";
 }
 
 static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguration configuration)
