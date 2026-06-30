@@ -212,7 +212,7 @@ var app = builder.Build();
 await DatabaseInitializer.InitializeAsync(connectionString);
 
 // Seed default users ONLY in development environment
-bool seedDefaultUsers = app.Environment.IsDevelopment();
+bool seedDefaultUsers = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Integration");
 if (seedDefaultUsers)
 {
 	await SeedDefaultUsersAsync(app.Services, builder.Configuration);
@@ -325,9 +325,9 @@ static async Task SeedDefaultUsersAsync(IServiceProvider services, IConfiguratio
 	var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
 	// Development seed credentials must be provided via environment variables.
-	string? adminPassword = configuration["ADMIN_PASSWORD"];
-	string? managerPassword = configuration["MANAGER_PASSWORD"];
-	string? cashierPassword = configuration["CASHIER_PASSWORD"];
+	string? adminPassword = configuration["Password:Admin"];
+	string? managerPassword = configuration["Password:Manager"];
+	string? cashierPassword = configuration["Password:Cashier"];
 
 	if (string.IsNullOrWhiteSpace(adminPassword)
 		|| string.IsNullOrWhiteSpace(managerPassword)

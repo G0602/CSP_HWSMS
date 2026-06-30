@@ -39,18 +39,19 @@ jobs:
     env:
       ASPNETCORE_ENVIRONMENT: Integration
       ASPNETCORE_URLS: http://127.0.0.1:5162
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      MANAGER_PASSWORD: ${{ secrets.MANAGER_PASSWORD }}
-      CASHIER_PASSWORD: ${{ secrets.CASHIER_PASSWORD }}
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_NAME: hsms_test
-      DB_USER: root
-      DB_PASSWORD: root
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      JWT_ISSUER: hsms-ci
-      JWT_AUDIENCE: hsms-ci-clients
-      JWT_ACCESS_TOKEN_EXPIRY_MINUTES: 60
+      Password:Admin: ${{ secrets.Password__Admin }}
+      Password:Manager: ${{ secrets.Password__Manager }}
+      Password:Cashier: ${{ secrets.Password__Cashier }}
+      DB__HOST: 127.0.0.1
+      DB__PORT: 3306
+      DB__NAME: hsms_test
+      DB__USER: root
+      DB__PASSWORD: root
+      JWT__SECRET: ${{ secrets.JWT__SECRET }}
+      JWT__ISSUER: hsms-ci
+      JWT__AUDIENCE: hsms-ci-clients
+      JWT__ACCESS_TOKEN_EXPIRY_MINUTES: 60
+      URL__BACKEND: http://127.0.0.1:5162
 
     steps:
       - name: Checkout
