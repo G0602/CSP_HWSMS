@@ -39,9 +39,9 @@ jobs:
     env:
       ASPNETCORE_ENVIRONMENT: Integration
       ASPNETCORE_URLS: http://127.0.0.1:5162
-      Password:Admin: ${{ secrets.Password__Admin }}
-      Password:Manager: ${{ secrets.Password__Manager }}
-      Password:Cashier: ${{ secrets.Password__Cashier }}
+      Password__Admin: ${{ secrets.Password__Admin }}
+      Password__Manager: ${{ secrets.Password__Manager }}
+      Password__Cashier: ${{ secrets.Password__Cashier }}
       DB__HOST: 127.0.0.1
       DB__PORT: 3306
       DB__NAME: hsms_test
@@ -171,6 +171,51 @@ jobs:
 
       - name: Publish backend API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release -o ${{ runner.temp }}/backend_publish
+
+      - name: Prepare Azure App Service settings
+        shell: bash
+        run: |
+          SETTINGS="[]"
+
+          add_setting() {
+            local name="$1"
+            local value="$2"
+            if [ -n "$value" ]; then
+              SETTINGS=$(echo "$SETTINGS" | jq --arg n "$name" --arg v "$value" '. += [{"name": $n, "value": $v, "slotSetting": false}]')
+            fi
+          }
+
+          add_setting "ASPNETCORE_ENVIRONMENT" "Production"
+
+          add_setting "ConnectionStrings__DefaultConnection" "${{ secrets.ConnectionStrings__DefaultConnection }}"
+          add_setting "Db__Host" "${{ secrets.DB__HOST }}"
+          add_setting "Db__Port" "${{ secrets.DB__PORT }}"
+          add_setting "Db__Name" "${{ secrets.DB__NAME }}"
+          add_setting "Db__User" "${{ secrets.DB__USER }}"
+          add_setting "Db__Password" "${{ secrets.DB__PASSWORD }}"
+
+          add_setting "Jwt__Secret" "${{ secrets.JWT__SECRET }}"
+          add_setting "Jwt__Issuer" "${{ secrets.JWT__ISSUER }}"
+          add_setting "Jwt__Audience" "${{ secrets.JWT__AUDIENCE }}"
+          
+          JWT_EXPIRY="${{ secrets.JWT_EXPIRY_MINUTES }}"
+          add_setting "Jwt__AccessTokenExpiryMinutes" "${JWT_EXPIRY:-60}"
+
+          add_setting "Url__Frontend" "${{ secrets.Url__Frontend }}"
+          add_setting "Url__Backend" "${{ secrets.Url__Backend }}"
+          add_setting "CORS_ORIGINS" "${{ secrets.Url__Frontend }}"
+          add_setting "FRONTEND_URL" "${{ secrets.Url__Frontend }}"
+
+          echo "APP_SETTINGS_JSON<<EOF" >> "$GITHUB_ENV"
+          echo "$SETTINGS" >> "$GITHUB_ENV"
+          echo "EOF" >> "$GITHUB_ENV"
+
+      - name: Update Azure App Service settings
+        uses: azure/appservice-settings@v1
+        with:
+          app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          app-settings-json: ${{ env.APP_SETTINGS_JSON }}
 
       - name: Deploy backend to Azure Web App
         uses: azure/webapps-deploy@v3
