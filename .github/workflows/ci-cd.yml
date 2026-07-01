@@ -213,24 +213,23 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 10
     env:
-      BACKEND_PUBLIC_URL: ${{ vars.BACKEND_PUBLIC_URL }}
-      AZURE_BACKEND_APP_NAME: ${{ vars.AZURE_BACKEND_APP_NAME }}
-      FRONTEND_PUBLIC_URL: ${{ vars.FRONTEND_PUBLIC_URL }}
+      Url__Backend: ${{ secrets.Url__Backend }}
+      Url__Frontend: ${{ secrets.Url__Frontend }}
 
     steps:
       - name: Check backend and database health
         run: |
-          BACKEND_URL="${BACKEND_PUBLIC_URL}"
-          if [ -z "$BACKEND_URL" ] && [ -n "$AZURE_BACKEND_APP_NAME" ]; then
-            BACKEND_URL="https://${AZURE_BACKEND_APP_NAME}.azurewebsites.net"
-          fi
+          BACKEND_URL="${Url__Backend}"
 
+          # CRITICAL CHECK: Exit immediately if the backend URL is missing
           if [ -z "$BACKEND_URL" ]; then
-            echo "Missing backend URL. Set BACKEND_PUBLIC_URL or AZURE_BACKEND_APP_NAME in repository variables."
+            echo "ERROR: Backend URL is not available! Please set 'Url__Backend' in your GitHub."
             exit 1
           fi
 
+          # Strip any trailing slash to avoid double slashes in the curl command
           BACKEND_URL="${BACKEND_URL%/}"
+          echo "Checking backend health at: ${BACKEND_URL}/api/health"
 
           for i in {1..20}; do
             RESPONSE="$(curl --silent --show-error --fail "${BACKEND_URL}/api/health")" && break
@@ -238,23 +237,29 @@ jobs:
           done
 
           if [ -z "$RESPONSE" ]; then
-            echo "Backend health endpoint did not return a healthy response."
+            echo "ERROR: Backend health endpoint did not respond within the time limit."
             exit 1
           fi
 
-          echo "$RESPONSE"
+          echo "Response received: $RESPONSE"
           echo "$RESPONSE" | grep -q '"status":"healthy"'
           echo "$RESPONSE" | grep -q '"mysql"'
           echo "$RESPONSE" | grep -q '"status":"healthy","description":"Database connection is available."'
+          echo "Backend and Database are healthy!"
 
       - name: Check frontend availability
         run: |
-          if [ -z "${FRONTEND_PUBLIC_URL}" ]; then
-            echo "Missing frontend URL. Set FRONTEND_PUBLIC_URL in repository variables."
+          FRONTEND_URL="${Url__Frontend}"
+
+          # CRITICAL CHECK: Exit immediately if the frontend URL is missing
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "ERROR: Frontend URL is not available! Please set 'Url__Frontend' in your GitHub."
             exit 1
           fi
 
-          FRONTEND_URL="${FRONTEND_PUBLIC_URL%/}"
+          # Strip any trailing slash
+          FRONTEND_URL="${FRONTEND_URL%/}"
+          echo "Checking frontend availability at: ${FRONTEND_URL}/"
 
           for i in {1..20}; do
             HTML="$(curl --silent --show-error --fail "${FRONTEND_URL}/")" && break
@@ -262,11 +267,12 @@ jobs:
           done
 
           if [ -z "$HTML" ]; then
-            echo "Frontend did not respond successfully."
+            echo "ERROR: Frontend did not respond successfully."
             exit 1
           fi
 
           echo "$HTML" | grep -q '<div id="root"></div>'
+          echo "Frontend is live and hosting the React container container!"
 
   notify_failure:
     name: Notify Failure
