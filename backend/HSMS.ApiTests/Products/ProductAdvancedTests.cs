@@ -41,6 +41,27 @@ public class ProductAdvancedTests
         }
 
         _client.SetAuthToken(token);
+        CreateBaselineLowStockProduct();
+    }
+
+    private void CreateBaselineLowStockProduct()
+    {
+        var uniqueSku = $"ADV-BASE-{Guid.NewGuid():N}";
+        var baselineProduct = new
+        {
+            name = $"Baseline Advanced Product {uniqueSku}",
+            sku = uniqueSku,
+            price = 15.99m,
+            quantity = 3, // Below default threshold of 10 to ensure it is low-stock
+            category = "Hand Tools",
+            supplierId = (int?)null
+        };
+
+        var createResponse = _client.Post(ApiTestConstants.Endpoints.Products, baselineProduct);
+        if ((int)createResponse.StatusCode != ApiTestConstants.HttpStatusCodes.Created)
+        {
+            throw new InvalidOperationException($"Unable to seed product advanced tests. Status code: {(int)createResponse.StatusCode}");
+        }
     }
 
     // INVENTORY TESTS - POSITIVE
