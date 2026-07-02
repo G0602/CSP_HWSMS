@@ -1,111 +1,129 @@
-# HSMS / HWSMS
+# HSMS — Hardware Store Management System
 
-Hardware Store Management System for the CSP assignment. This repository contains a .NET 8 backend API, a React 19 + Vite frontend, MySQL-backed persistence, automated tests, generated API artifacts, and supporting project documentation.
+> **A full-stack web application for managing hardware store inventory, sales, suppliers, and reporting.**
+> Built as a SLIIT CSP Y3S1 assignment.
 
-## Overview
+---
 
-HSMS supports the day-to-day workflows of a hardware store:
+## Quick Links
 
-- authentication with JWT
-- product and inventory management
-- supplier management
-- sales creation and transaction history
-- invoice retrieval
-- daily, monthly, analytics, summary, and low-stock reporting
-- admin-only user management with role changes and password reset
+| Document | Description |
+|---|---|
+| [Quick Start](./QUICK_START.md) | Get the app running locally in minutes |
+| [Architecture](./docs/architecture.md) | System design, layer breakdown, request flow |
+| [Backend Overview](./docs/backend_overview.md) | API endpoints, auth, configuration reference |
+| [Frontend Overview](./docs/frontend_overview.md) | Pages, routing, services, environment variables |
+| [Database Schema](./docs/database_schema.md) | All tables, columns, indexes, relationships |
+| [Testing Strategy](./docs/testing_strategy.md) | All 5 testing layers explained |
+| [CI/CD Pipeline](./docs/ci_cd_pipeline.md) | GitHub Actions pipeline — all 6 jobs |
+| [Maintenance Guide](./docs/maintenance.md) | How to add features, rotate secrets, update deps |
+| [Contributing Guide](./docs/contributing.md) | Branching, code style, PR workflow |
+| [Deployment Guide](./DEPLOYMENT_GUIDE.md) | Azure deployment step-by-step |
+| [Environment Variables](./ENVIRONMENT_VARIABLES_SUMMARY.md) | All runtime configuration keys |
+| [Pre-Deploy Checklist](./ENV_VARIABLES_CHECKLIST.md) | Checklist before going live |
 
-The current repository structure is:
+---
 
-```text
-CSP_HWSMS/
-├── backend/
-│   ├── HSMS.API/
-│   ├── HSMS.Application/
-│   ├── HSMS.Domain/
-│   ├── HSMS.Infrastructure/
-│   ├── HSMS.Tests/
-│   ├── HSMS.ApiTests/
-│   └── HSMS.E2E/
-├── frontend/
-│   └── HWSMS_UI/
-├── docs/
-│   ├── Diagrams/
-│   ├── SRS/
-│   └── Test-Documents/
-├── jmeter/
-├── postman/
-└── scripts/
-```
+## What is HSMS?
 
-## Stack
+HSMS (Hardware Store Management System) supports the day-to-day operations of a hardware store:
+
+- 🔐 **Authentication** — JWT-based login with role-enforced access control
+- 📦 **Inventory management** — full product CRUD, stock updates, low-stock alerts
+- 🏭 **Supplier management** — manage supplier records linked to products
+- 🛒 **Sales processing** — POS-style transaction creation with automatic stock deduction
+- 🧾 **Invoices** — retrieve and preview invoices for completed transactions
+- 📊 **Reports** — daily, monthly, analytics, summary, and low-stock reports with CSV exports
+- 👥 **User management** — admin-only user creation, role management, and password reset
+
+---
+
+## Technology Stack
 
 | Area | Technology |
 |---|---|
-| Backend | ASP.NET Core 8 / .NET 8 |
-| Frontend | React 19 + TypeScript + Vite |
-| Styling | Tailwind CSS |
-| Database | MySQL |
-| Data access | ADO.NET with `MySql.Data` |
-| API docs | Swagger in `Development` |
-| Backend tests | xUnit, Moq, coverlet |
-| Frontend tests | Vitest, Testing Library |
-| CI/CD | GitHub Actions + Azure App Service + Azure Static Web Apps |
+| **Backend** | ASP.NET Core 8 / .NET 8 / C# 12 |
+| **Frontend** | React 19 + TypeScript + Vite 7 |
+| **Styling** | Tailwind CSS 3 |
+| **Database** | MySQL 8 |
+| **Data Access** | Raw ADO.NET (`MySql.Data`) — no ORM |
+| **Authentication** | JWT Bearer (HMAC-SHA256) + BCrypt passwords |
+| **API Documentation** | Swagger (Development only) |
+| **Backend Tests** | xUnit, Moq, Coverlet |
+| **Frontend Tests** | Vitest, @testing-library/react |
+| **E2E Tests** | Selenium WebDriver (Chrome headless) |
+| **Load Tests** | Apache JMeter |
+| **CI/CD** | GitHub Actions |
+| **Backend Hosting** | Azure App Service (Linux) |
+| **Frontend Hosting** | Azure Static Web Apps |
+| **Database Hosting** | Azure Database for MySQL Flexible Server |
 
-## Current Application Surface
+---
 
-### Backend controllers
+## Repository Structure
 
-- `AuthController`
-- `ProductController`
-- `SuppliersController`
-- `SalesController`
-- `ReportsController`
-- `UsersController`
+```
+CSP_HWSMS/
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml              ← GitHub Actions CI/CD pipeline
+│
+├── backend/                       ← ASP.NET Core 8 solution
+│   ├── HSMS.sln
+│   ├── HSMS.API/                  ← HTTP layer: controllers, auth, middleware
+│   ├── HSMS.Application/          ← Interfaces, DTOs, business logic
+│   ├── HSMS.Domain/               ← Pure entity classes (no dependencies)
+│   ├── HSMS.Infrastructure/       ← ADO.NET repositories + DatabaseInitializer
+│   ├── HSMS.Tests/                ← Unit + Integration + Security tests (296)
+│   ├── HSMS.ApiTests/             ← Live HTTP integration tests (194)
+│   └── HSMS.E2E/                  ← Selenium browser E2E tests
+│
+├── frontend/
+│   └── HWSMS_UI/                  ← React 19 SPA (Vite + TypeScript + Tailwind)
+│
+├── docs/
+│   ├── architecture.md            ← System architecture and layer breakdown
+│   ├── backend_overview.md        ← API endpoints and configuration reference
+│   ├── frontend_overview.md       ← Pages, routing, services
+│   ├── database_schema.md         ← Full schema with column types and relationships
+│   ├── testing_strategy.md        ← All test layers documented
+│   ├── ci_cd_pipeline.md          ← All 6 CI/CD jobs explained
+│   ├── maintenance.md             ← How to add features and maintain the app
+│   ├── contributing.md            ← Developer setup and contribution workflow
+│   ├── Diagrams/                  ← Architecture, ER, sequence, activity diagrams
+│   ├── SRS/                       ← Software Requirements Specification
+│   └── Test-Documents/            ← Test plans, guides, load test docs
+│
+├── jmeter/                        ← JMeter load test plan (100 concurrent users)
+├── postman/                       ← Postman collection + local environment
+├── scripts/                       ← DB seed, Postman/JMeter generation scripts
+│
+├── README.md                      ← This file
+├── QUICK_START.md                 ← Local dev setup
+├── DEPLOYMENT_GUIDE.md            ← Azure deployment guide
+├── ENVIRONMENT_VARIABLES_SUMMARY.md ← All config variables
+├── ENV_VARIABLES_CHECKLIST.md    ← Pre-deploy checklist
+└── CONFIGURATION_INDEX.md         ← Configuration doc index
+```
 
-### Frontend routes
+---
 
-| Route | Access |
-|---|---|
-| `/login` | Public |
-| `/dashboard` | Admin, Manager |
-| `/inventory` | Admin, Manager |
-| `/sales` | Admin, Manager, Cashier |
-| `/suppliers` | Admin, Manager |
-| `/transactions` | Admin, Manager |
-| `/transactions/:transactionId/invoice` | Admin, Manager |
-| `/reports/daily` | Admin, Manager |
-| `/users` | Admin |
-| `/access-denied` | Authenticated users |
+## Local Development (Short Version)
 
-### Role model
+See [QUICK_START.md](./QUICK_START.md) for the full guide.
 
-| Role | Summary |
-|---|---|
-| `Admin` | Full access including user management and product deletion |
-| `Manager` | Inventory, suppliers, sales history, reports, product updates |
-| `Cashier` | Sales creation and general product read access |
-
-## Auth and API Notes
-
-- `POST /api/auth/login` is active.
-- `POST /api/auth/register` exists but currently returns `403 Forbidden` because self-registration is disabled.
-- Password reset is handled through `PUT /api/users/{id}/password` and is admin-only.
-- Swagger is enabled only when `ASPNETCORE_ENVIRONMENT=Development`.
-- Health checks are exposed at `GET /api/health`.
-
-## Local Development
-
-Use the dedicated setup guide for step-by-step instructions:
-
-- [QUICK_START.md](./QUICK_START.md)
-
-Short version:
+### Backend
 
 ```bash
 cd backend
-dotnet restore
-dotnet run --project HSMS.API
+dotnet restore HSMS.sln
+dotnet run --project HSMS.API/HSMS.API.csproj
 ```
+
+Default URL: `http://localhost:5162`
+Swagger UI: `http://localhost:5162/swagger`
+
+### Frontend
 
 ```bash
 cd frontend/HWSMS_UI
@@ -113,89 +131,98 @@ npm install
 npm run dev
 ```
 
-Default local URLs:
+Default URL: `http://localhost:5173`
 
-- backend: `http://localhost:5162`
-- frontend: `http://localhost:5173`
+---
 
-## Configuration
+## Role Model
 
-Documentation is split by purpose:
+| Role | Capabilities |
+|---|---|
+| **Admin** | Everything — including user management, product deletion, all reports |
+| **Manager** | Inventory, suppliers, sales history, reports, product updates (no deletion, no user management) |
+| **Cashier** | Sales creation, product search/read only |
 
-- [CONFIGURATION_INDEX.md](./CONFIGURATION_INDEX.md): configuration and doc navigation
-- [ENVIRONMENT_VARIABLES_SUMMARY.md](./ENVIRONMENT_VARIABLES_SUMMARY.md): runtime variable reference
-- [ENV_VARIABLES_CHECKLIST.md](./ENV_VARIABLES_CHECKLIST.md): pre-demo / deployment checklist
-- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md): deployment workflow and CI/CD
+---
 
-Key backend settings:
+## API Surface
 
-- `ConnectionStrings__DefaultConnection`
-- `JWT_SECRET` or `Jwt__Secret`
-- `JWT_ISSUER` or `Jwt__Issuer`
-- `JWT_AUDIENCE` or `Jwt__Audience`
-- `CORS_ORIGINS`
-- `FRONTEND_URL`
-- `ADMIN_PASSWORD`
-- `MANAGER_PASSWORD`
-- `CASHIER_PASSWORD`
+| Controller | Base Route | Key Endpoints |
+|---|---|---|
+| `AuthController` | `/api/auth` | `POST /login` |
+| `ProductController` | `/api/product` | Full CRUD + `/inventory` + `/search` + `/{id}/stock` |
+| `SuppliersController` | `/api/suppliers` | Full CRUD |
+| `SalesController` | `/api/sales` | `POST /`, `GET /history`, `GET /{id}`, `GET /{id}/invoice` |
+| `ReportsController` | `/api/reports` | `daily`, `monthly`, `analytics`, `summary`, `low-stock` + CSV variants |
+| `UsersController` | `/api/users` | Full CRUD + `/{id}/role` + `/{id}/password` |
+| — | `/api/health` | Database health check |
 
-Key frontend settings:
+---
 
-- `VITE_API_BASE_URL`
-- `VITE_DEBUG`
+## Frontend Routes
 
-## Testing
+| Route | Roles |
+|---|---|
+| `/login` | Public |
+| `/dashboard` | Admin, Manager |
+| `/inventory` | Admin, Manager |
+| `/sales` | Admin, Manager, Cashier |
+| `/suppliers` | Admin, Manager |
+| `/transactions` | Admin, Manager |
+| `/transactions/:id/invoice` | Admin, Manager |
+| `/reports/daily` | Admin, Manager |
+| `/users` | Admin only |
 
-The current validated automated suite includes:
+---
 
-- backend tests: `296` passing in `backend/HSMS.Tests`
-- API tests: `194` passing in `backend/HSMS.ApiTests`
-- frontend tests: `17` passing in `frontend/HWSMS_UI`
+## Testing Summary
 
-Common commands:
+| Suite | Count | CI |
+|---|---|---|
+| `HSMS.Tests` (unit + integration + security) | **296** | ✅ |
+| `HSMS.ApiTests` (live HTTP) | **194** | ✅ |
+| Frontend (Vitest) | **17** | ✅ |
+| E2E Selenium | 3 | Manual |
 
+Run all backend tests:
 ```bash
-dotnet test backend/HSMS.Tests/HSMS.Tests.csproj --no-restore
-dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj --no-restore
+dotnet test backend/HSMS.Tests/HSMS.Tests.csproj
+dotnet test backend/HSMS.ApiTests/HSMS.ApiTests.csproj
 ```
 
+Run frontend tests:
 ```bash
-cd frontend/HWSMS_UI
-npm test
-npm run build
+cd frontend/HWSMS_UI && npm test
 ```
 
-Testing documentation:
+---
 
-- [docs/Test-Documents/TESTING_OVERVIEW.md](./docs/Test-Documents/TESTING_OVERVIEW.md)
-- [docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md](./docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md)
-- [docs/Test-Documents/API_TEST_PLAN.md](./docs/Test-Documents/API_TEST_PLAN.md)
-- [docs/Test-Documents/Guides/TEST_EXECUTION_GUIDE.md](./docs/Test-Documents/Guides/TEST_EXECUTION_GUIDE.md)
+## Diagrams
 
-## Generated Test Artifacts
+| Diagram | Location |
+|---|---|
+| System Architecture | [docs/Diagrams/System Architecture.drawio.png](./docs/Diagrams/System%20Architecture.drawio.png) |
+| Deployment Architecture | [docs/Diagrams/Deployment Architecture.drawio.png](./docs/Diagrams/Deployment%20Architecture.drawio.png) |
+| Entity Relationship (ER) | [docs/Diagrams/ER_Diagram_HWSMS_CSP.png](./docs/Diagrams/ER_Diagram_HWSMS_CSP.png) |
+| Activity Diagram | [docs/Diagrams/Activity_Diagram_HWSMS_CSP.png](./docs/Diagrams/Activity_Diagram_HWSMS_CSP.png) |
+| Use Case Diagram | [docs/Diagrams/Usecase_Diagram_HWSMS_CSP.png](./docs/Diagrams/Usecase_Diagram_HWSMS_CSP.png) |
+| Sequence Diagrams (7) | [docs/Diagrams/Sequence_diagrams/](./docs/Diagrams/Sequence_diagrams/) |
 
-The repo includes generated and source-driven test assets:
+---
 
-- Postman collection: [postman/HSMS_API.postman_collection.json](./postman/HSMS_API.postman_collection.json)
-- Postman environment: [postman/HSMS_Local.postman_environment.json](./postman/HSMS_Local.postman_environment.json)
-- JMeter plan: [jmeter/HSMS_API_100_users.jmx](./jmeter/HSMS_API_100_users.jmx)
-- JMeter properties: [jmeter/hsms-jmeter.properties](./jmeter/hsms-jmeter.properties)
+## Additional Documentation
 
-Supporting scripts:
+- [Software Requirements Specification (SRS)](./docs/SRS/SRS_Document_V1.3.pdf)
+- [Master Test Plan](./docs/Test-Documents/HSMS_MASTER_TEST_PLAN.md)
+- [API Test Plan](./docs/Test-Documents/API_TEST_PLAN.md)
+- [JMeter Load Test Guide](./docs/Test-Documents/JMETER_LOAD_TEST.md)
+- [User Management Features](./USER_MANAGEMENT_FEATURES.md)
 
-- `scripts/generate-postman-collection.js`
-- `scripts/generate-jmeter-test-plan.js`
-- `scripts/reset-and-seed-db.js`
-
-## Additional Project Docs
-
-- [backend/README.md](./backend/README.md)
-- [frontend/HWSMS_UI/README.md](./frontend/HWSMS_UI/README.md)
-- [USER_MANAGEMENT_FEATURES.md](./USER_MANAGEMENT_FEATURES.md)
-- [docs/EPIC_4_4_DEVOPS_DEPLOYMENT.md](./docs/EPIC_4_4_DEVOPS_DEPLOYMENT.md)
-- [docs/SRS/SRS_Document_V1.3.pdf](./docs/SRS/SRS_Document_V1.3.pdf)
+---
 
 ## Notes
 
-- Historical test reports and superseded summaries are kept under [docs/Test-Documents/Archive](./docs/Test-Documents/Archive).
-- Active operational documentation should be treated as the source of truth over archived sprint-era reports.
+- Historical test reports are archived under [docs/Test-Documents/Archive/](./docs/Test-Documents/Archive/).
+- The `HSMS.E2E` Selenium tests skip automatically unless `HSMS_E2E_BASE_URL`, `HSMS_E2E_USERNAME`, and `HSMS_E2E_PASSWORD` environment variables are set.
+- Self-registration (`POST /api/auth/register`) is permanently disabled — all users must be created by an Admin.
+- Swagger is only exposed when `ASPNETCORE_ENVIRONMENT=Development`.

@@ -22,12 +22,11 @@ The backend uses ASP.NET Core configuration layering:
 
 Important current behavior:
 
-- the backend does not auto-load `backend/.env.example`
-- alias environment variables are applied in `backend/HSMS.API/Program.cs`
+- the backend does not auto-load a `.env` file (the previously checked-in template has been removed).
+- configuration validation and connection string construction logic are implemented in `backend/HSMS.API/Program.cs` without alias variable mapping.
 
 Primary backend files:
 
-- `backend/.env.example`
 - `backend/HSMS.API/appsettings.json`
 - `backend/HSMS.API/appsettings.Development.json`
 - `backend/HSMS.API/appsettings.Production.json`
@@ -47,12 +46,10 @@ Primary frontend files:
 
 ### Backend
 
-- database: `ConnectionStrings__DefaultConnection`
-- JWT aliases: `JWT_SECRET`, `JWT_ISSUER`, `JWT_AUDIENCE`, `JWT_EXPIRY_MINUTES`
+- database: `ConnectionStrings__DefaultConnection` or individual credentials keys (`Db__Host`, `Db__Port`, `Db__Name`, `Db__User`, `Db__Password`)
 - JWT config keys: `Jwt__Secret`, `Jwt__Issuer`, `Jwt__Audience`, `Jwt__AccessTokenExpiryMinutes`
-- deployment aliases: `AZURE_MYSQL_CONNECTIONSTRING`, `MYSQLCONNSTR_DefaultConnection`
-- CORS: `CORS_ORIGINS`, `FRONTEND_URL`
-- development seeding: `ADMIN_PASSWORD`, `MANAGER_PASSWORD`, `CASHIER_PASSWORD`
+- CORS config keys: `Url__Frontend`, `Url__Backend`
+- development seeding: `Password__Admin`, `Password__Manager`, `Password__Cashier`
 
 ### Frontend
 
@@ -64,7 +61,7 @@ Primary frontend files:
 
 - backend API startup validates required configuration
 - Swagger is only exposed in `Development`
-- seed users are only attempted in `Development`
+- seed users are attempted in `Development` and `Integration` environments
 - seed users require all three seed password variables
 - CI/CD is handled by GitHub Actions, not by a checked-in root deployment compose file
 

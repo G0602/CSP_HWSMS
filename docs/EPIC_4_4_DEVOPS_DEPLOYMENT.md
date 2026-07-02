@@ -36,12 +36,13 @@ It currently covers:
 ## Required Backend App Settings
 
 - `ASPNETCORE_ENVIRONMENT=Production`
-- `ConnectionStrings__DefaultConnection=<mysql-connection-string>`
+- `ConnectionStrings__DefaultConnection=<mysql-connection-string>` (or individual `Db__Host`, `Db__Port`, `Db__Name`, `Db__User`, `Db__Password` variables)
 - `Jwt__Secret=<strong-secret>`
 - `Jwt__Issuer=HSMS.API`
 - `Jwt__Audience=HSMS.Client`
-- `CORS_ORIGINS=<frontend-origin-list>`
-- `FRONTEND_URL=<frontend-url>`
+- `Jwt__AccessTokenExpiryMinutes=60`
+- `Url__Frontend=<frontend-urls>`
+- `Url__Backend=<backend-urls>`
 
 ## Operational Notes
 

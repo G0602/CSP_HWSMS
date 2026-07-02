@@ -36,21 +36,20 @@ The backend reads configuration from:
 2. `HSMS.API/appsettings.{Environment}.json`
 3. environment variables
 
-The current code also accepts aliases for JWT and connection string settings through `Program.cs`.
-
 Important variables:
 
-- `ConnectionStrings__DefaultConnection`
-- `JWT_SECRET` or `Jwt__Secret`
-- `JWT_ISSUER` or `Jwt__Issuer`
-- `JWT_AUDIENCE` or `Jwt__Audience`
-- `CORS_ORIGINS`
-- `FRONTEND_URL`
-- `ADMIN_PASSWORD`
-- `MANAGER_PASSWORD`
-- `CASHIER_PASSWORD`
+- `ConnectionStrings__DefaultConnection` (or individual database parameters `Db__Host`, `Db__Port`, `Db__Name`, `Db__User`, `Db__Password`)
+- `Jwt__Secret`
+- `Jwt__Issuer`
+- `Jwt__Audience`
+- `Jwt__AccessTokenExpiryMinutes`
+- `Url__Frontend`
+- `Url__Backend`
+- `Password__Admin`
+- `Password__Manager`
+- `Password__Cashier`
 
-`backend/.env.example` is a template only. The API does not auto-load it.
+Note: The previously checked-in `backend/.env.example` template has been removed, and the backend does not load any `.env` file at runtime. All configurations must be supplied via host environment variables or appsettings JSON files.
 
 ## Run locally
 

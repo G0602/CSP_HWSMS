@@ -171,11 +171,11 @@ Status:
 
 ## Recommended Test Accounts
 
-Use dedicated test-safe accounts aligned with your configured environment. For local development, match the credentials you seed through:
+Use dedicated test-safe accounts aligned with your configured environment. For local development or integration testing, match the credentials you seed through:
 
-- `ADMIN_PASSWORD`
-- `MANAGER_PASSWORD`
-- `CASHIER_PASSWORD`
+- `Password__Admin`
+- `Password__Manager`
+- `Password__Cashier`
 
 ## Related Docs
 
