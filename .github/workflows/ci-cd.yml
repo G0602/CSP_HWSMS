@@ -186,14 +186,12 @@ jobs:
           }
 
           add_setting "ASPNETCORE_ENVIRONMENT" "Production"
-
           add_setting "ConnectionStrings__DefaultConnection" "${{ secrets.ConnectionStrings__DefaultConnection }}"
           add_setting "Db__Host" "${{ secrets.DB__HOST }}"
           add_setting "Db__Port" "${{ secrets.DB__PORT }}"
           add_setting "Db__Name" "${{ secrets.DB__NAME }}"
           add_setting "Db__User" "${{ secrets.DB__USER }}"
           add_setting "Db__Password" "${{ secrets.DB__PASSWORD }}"
-
           add_setting "Jwt__Secret" "${{ secrets.JWT__SECRET }}"
           add_setting "Jwt__Issuer" "${{ secrets.JWT__ISSUER }}"
           add_setting "Jwt__Audience" "${{ secrets.JWT__AUDIENCE }}"
