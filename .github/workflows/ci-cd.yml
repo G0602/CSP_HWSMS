@@ -157,21 +157,6 @@ jobs:
     environment: production
     timeout-minutes: 20
 
-    env:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: ${{ secrets.ConnectionStrings__DefaultConnection }}
-      DB__HOST: ${{ secrets.DB__HOST }}
-      DB__PORT: ${{ secrets.DB__PORT }}
-      DB__NAME: ${{ secrets.DB__NAME }}
-      DB__USER: ${{ secrets.DB__USER }}
-      DB__PASSWORD: ${{ secrets.DB__PASSWORD }}
-      JWT__SECRET: ${{ secrets.JWT__SECRET }}
-      JWT__ISSUER: ${{ secrets.JWT__ISSUER }}
-      JWT__AUDIENCE: ${{ secrets.JWT__AUDIENCE }}
-      JWT_EXPIRY_MINUTES: ${{ secrets.JWT_EXPIRY_MINUTES }}
-      Url__Frontend: ${{ secrets.Url__Frontend }}
-      Url__Backend: ${{ secrets.Url__Backend }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
