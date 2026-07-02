@@ -12,39 +12,35 @@ The backend uses this precedence order:
 
 Environment variables override JSON values.
 
-The backend also maps alias variables in `backend/HSMS.API/Program.cs`.
+The backend checks configurations at startup.
 
 ### Common backend variables
 
 | Variable | Purpose |
 |---|---|
 | `ConnectionStrings__DefaultConnection` | Main MySQL connection string |
-| `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
-| `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
-| `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
-| `JWT_EXPIRY_MINUTES` or `Jwt__AccessTokenExpiryMinutes` | Access token lifetime |
-| `CORS_ORIGINS` | Allowed browser origins |
-| `FRONTEND_URL` | Additional CORS origin source |
+| `Db__Host` | Database server host (used if connection string is not set) |
+| `Db__Port` | Database server port (default: 3306) |
+| `Db__Name` | Database name |
+| `Db__User` | Database user username |
+| `Db__Password` | Database user password |
+| `Jwt__Secret` | JWT signing secret (minimum 32 bytes) |
+| `Jwt__Issuer` | JWT issuer string |
+| `Jwt__Audience` | JWT audience string |
+| `Jwt__AccessTokenExpiryMinutes` | Token expiry lifetime in minutes |
+| `Url__Frontend` | Allowed browser origin URL(s) for CORS |
+| `Url__Backend` | Backend API URL(s) for CORS |
 | `LOW_STOCK_THRESHOLD` | Low-stock reporting threshold |
-| `ASPNETCORE_ENVIRONMENT` | Environment name |
+| `ASPNETCORE_ENVIRONMENT` | Environment name (e.g., `Development`, `Integration`, `Production`) |
 | `ASPNETCORE_URLS` | API bind URLs |
 
-### Supported alias variables
+### Seed variables (Development and Integration environments only)
 
-- `JWT_SECRET`
-- `JWT_ISSUER`
-- `JWT_AUDIENCE`
-- `JWT_EXPIRY_MINUTES`
-- `AZURE_MYSQL_CONNECTIONSTRING`
-- `MYSQLCONNSTR_DefaultConnection`
+- `Password__Admin`
+- `Password__Manager`
+- `Password__Cashier`
 
-### Development-only seed variables
-
-- `ADMIN_PASSWORD`
-- `MANAGER_PASSWORD`
-- `CASHIER_PASSWORD`
-
-Seed users are created only in `Development` and only when all three seed password variables are present.
+Seed users are created only when all three password variables are present in `Development` or `Integration` environments.
 
 ## Frontend Configuration Model
 
@@ -66,10 +62,10 @@ API base URL resolution currently follows:
 
 ## Important Behavior Notes
 
-- `backend/.env.example` is a template, not an auto-loaded runtime source.
+- The backend does not auto-load a `.env` file; environment variables must be provided via the host platform, system environment, or launch configuration.
 - `frontend/HWSMS_UI/.env.example` can be copied to `.env.development` or `.env.production`.
 - Swagger is only available in `Development`.
-- Backend CORS allow-lists are built from configured origins plus current code defaults.
+- Backend CORS allow-lists are built from configured origins in `Url:Frontend` and `Url:Backend`.
 
 ## Related Docs
 

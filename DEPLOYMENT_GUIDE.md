@@ -31,21 +31,26 @@ It currently performs:
 
 | Setting | Purpose |
 |---|---|
-| `ConnectionStrings__DefaultConnection` | MySQL connection string |
-| `JWT_SECRET` or `Jwt__Secret` | JWT signing secret |
-| `JWT_ISSUER` or `Jwt__Issuer` | JWT issuer |
-| `JWT_AUDIENCE` or `Jwt__Audience` | JWT audience |
-| `CORS_ORIGINS` | Allowed frontend origins |
+| `ConnectionStrings__DefaultConnection` | MySQL connection string (or use individual Db settings below) |
+| `Jwt__Secret` | JWT signing secret (minimum 32 bytes) |
+| `Jwt__Issuer` | JWT issuer |
+| `Jwt__Audience` | JWT audience |
+| `Jwt__AccessTokenExpiryMinutes` | Token expiry lifetime in minutes |
+| `Url__Frontend` | Allowed browser frontend origin(s) for CORS |
+| `Url__Backend` | Backend API origin(s) |
 | `ASPNETCORE_ENVIRONMENT` | Use `Production` in production |
 
-Useful optional settings:
+Useful optional individual database credentials settings (fallback when `ConnectionStrings__DefaultConnection` is not set):
 
 | Setting | Purpose |
 |---|---|
-| `FRONTEND_URL` | Additional CORS origin source |
-| `ASPNETCORE_URLS` | Explicit bind address |
+| `Db__Host` | Database server host |
+| `Db__Port` | Database server port (default: 3306) |
+| `Db__Name` | Database name |
+| `Db__User` | Database user username |
+| `Db__Password` | Database user password |
 | `LOW_STOCK_THRESHOLD` | Reporting threshold |
-| `JWT_EXPIRY_MINUTES` | Token lifetime alias |
+| `ASPNETCORE_URLS` | Explicit bind address |
 
 ### Publish
 
@@ -142,8 +147,8 @@ Frontend:
 
 Check:
 
-- `ConnectionStrings__DefaultConnection`
-- JWT issuer, audience, and secret
+- `ConnectionStrings__DefaultConnection` or individual database parameters (`Db__Host`, `Db__Port`, etc.)
+- JWT settings (`Jwt__Issuer`, `Jwt__Audience`, `Jwt__Secret`)
 - host bind settings
 - MySQL reachability from the host platform
 
@@ -151,8 +156,8 @@ Check:
 
 Check:
 
-- `CORS_ORIGINS`
-- `FRONTEND_URL`
+- `Url__Frontend`
+- `Url__Backend`
 - correct deployed frontend origin
 - trailing slash mismatches
 

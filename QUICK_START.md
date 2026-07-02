@@ -10,20 +10,23 @@ This guide is the fastest path to running the current project locally.
 
 ## 1. Backend setup
 
-The backend does not auto-load `.env` files. Use `backend/.env.example` as a reference only, then provide values through environment variables, local appsettings overrides, or your IDE run profile.
+The backend does not auto-load `.env` files. Provide configurations through environment variables, local appsettings overrides, or your IDE run profile.
 
 Minimum backend settings:
 
-- `ConnectionStrings__DefaultConnection`
-- `JWT_SECRET` or `Jwt__Secret`
-- `JWT_ISSUER` or `Jwt__Issuer`
-- `JWT_AUDIENCE` or `Jwt__Audience`
+- `ConnectionStrings__DefaultConnection` (or individual database parameters `Db__Host`, `Db__Port`, `Db__Name`, `Db__User`, `Db__Password`)
+- `Jwt__Secret`
+- `Jwt__Issuer`
+- `Jwt__Audience`
+- `Jwt__AccessTokenExpiryMinutes`
+- `Url__Frontend` (allowed CORS origin URL(s))
+- `Url__Backend` (backend URL(s))
 
-Optional local development seed settings:
+Optional local development/integration seed settings:
 
-- `ADMIN_PASSWORD`
-- `MANAGER_PASSWORD`
-- `CASHIER_PASSWORD`
+- `Password__Admin`
+- `Password__Manager`
+- `Password__Cashier`
 
 Run the API:
 
@@ -82,10 +85,10 @@ npm run dev
 
 Seed users are created only when all of these are true:
 
-- `ASPNETCORE_ENVIRONMENT=Development`
-- `ADMIN_PASSWORD` is set
-- `MANAGER_PASSWORD` is set
-- `CASHIER_PASSWORD` is set
+- `ASPNETCORE_ENVIRONMENT=Development` or `ASPNETCORE_ENVIRONMENT=Integration`
+- `Password__Admin` is set
+- `Password__Manager` is set
+- `Password__Cashier` is set
 
 There are no guaranteed hard-coded default passwords in the current implementation.
 
@@ -116,10 +119,10 @@ npm run build
 
 | Issue | Check |
 |---|---|
-| Backend startup fails | Connection string and JWT settings |
-| Frontend cannot reach backend | `VITE_API_BASE_URL` and CORS origins |
+| Backend startup fails | Connection string (or Db parameters) and JWT settings |
+| Frontend cannot reach backend | `VITE_API_BASE_URL` and CORS (`Url__Frontend` / `Url__Backend`) |
 | Swagger is missing | `ASPNETCORE_ENVIRONMENT` should be `Development` |
-| Seed users are missing | Development environment and all three password variables |
+| Seed users are missing | Development/Integration environment and all three Password variables |
 
 ## Related Docs
 
