@@ -157,6 +157,21 @@ jobs:
     environment: production
     timeout-minutes: 20
 
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: ${{ secrets.ConnectionStrings__DefaultConnection }}
+      DB__HOST: ${{ secrets.DB__HOST }}
+      DB__PORT: ${{ secrets.DB__PORT }}
+      DB__NAME: ${{ secrets.DB__NAME }}
+      DB__USER: ${{ secrets.DB__USER }}
+      DB__PASSWORD: ${{ secrets.DB__PASSWORD }}
+      JWT__SECRET: ${{ secrets.JWT__SECRET }}
+      JWT__ISSUER: ${{ secrets.JWT__ISSUER }}
+      JWT__AUDIENCE: ${{ secrets.JWT__AUDIENCE }}
+      JWT_EXPIRY_MINUTES: ${{ secrets.JWT_EXPIRY_MINUTES }}
+      Url__Frontend: ${{ secrets.Url__Frontend }}
+      Url__Backend: ${{ secrets.Url__Backend }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -171,49 +186,6 @@ jobs:
 
       - name: Publish backend API
         run: dotnet publish backend/HSMS.API/HSMS.API.csproj -c Release -o ${{ runner.temp }}/backend_publish
-
-      - name: Prepare Azure App Service settings
-        shell: bash
-        run: |
-          SETTINGS="[]"
-
-          add_setting() {
-            local name="$1"
-            local value="$2"
-            if [ -n "$value" ]; then
-              SETTINGS=$(echo "$SETTINGS" | jq --arg n "$name" --arg v "$value" '. += [{"name": $n, "value": $v, "slotSetting": false}]')
-            fi
-          }
-
-          add_setting "ASPNETCORE_ENVIRONMENT" "Production"
-          add_setting "ConnectionStrings__DefaultConnection" "${{ secrets.ConnectionStrings__DefaultConnection }}"
-          add_setting "Db__Host" "${{ secrets.DB__HOST }}"
-          add_setting "Db__Port" "${{ secrets.DB__PORT }}"
-          add_setting "Db__Name" "${{ secrets.DB__NAME }}"
-          add_setting "Db__User" "${{ secrets.DB__USER }}"
-          add_setting "Db__Password" "${{ secrets.DB__PASSWORD }}"
-          add_setting "Jwt__Secret" "${{ secrets.JWT__SECRET }}"
-          add_setting "Jwt__Issuer" "${{ secrets.JWT__ISSUER }}"
-          add_setting "Jwt__Audience" "${{ secrets.JWT__AUDIENCE }}"
-          
-          JWT_EXPIRY="${{ secrets.JWT_EXPIRY_MINUTES }}"
-          add_setting "Jwt__AccessTokenExpiryMinutes" "${JWT_EXPIRY:-60}"
-
-          add_setting "Url__Frontend" "${{ secrets.Url__Frontend }}"
-          add_setting "Url__Backend" "${{ secrets.Url__Backend }}"
-          add_setting "CORS_ORIGINS" "${{ secrets.Url__Frontend }}"
-          add_setting "FRONTEND_URL" "${{ secrets.Url__Frontend }}"
-
-          echo "APP_SETTINGS_JSON<<EOF" >> "$GITHUB_ENV"
-          echo "$SETTINGS" >> "$GITHUB_ENV"
-          echo "EOF" >> "$GITHUB_ENV"
-
-      - name: Update Azure App Service settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: ${{ vars.AZURE_BACKEND_APP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          app-settings-json: ${{ env.APP_SETTINGS_JSON }}
 
       - name: Deploy backend to Azure Web App
         uses: azure/webapps-deploy@v3
