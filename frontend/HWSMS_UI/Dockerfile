@@ -1,72 +1,54 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 — deps: install production dependencies only (cached separately)
+# ─────────────────────────────────────────────────────────────────────────────
+ARG NODE_VERSION=20
+FROM node:${NODE_VERSION}-alpine AS deps
 
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
-ARG NODE_VERSION=22.22.2
-
-################################################################################
-# Use node image for base image for all stages.
-FROM node:${NODE_VERSION}-alpine as base
-
-# Set working directory for all build stages.
 WORKDIR /usr/src/app
 
-
-################################################################################
-# Create a stage for installing production dependecies.
-FROM base as deps
-
-# Download dependencies as a separate step to take advantage of Docker's caching.
-# Leverage a cache mount to /root/.npm to speed up subsequent builds.
-# Leverage bind mounts to package.json and package-lock.json to avoid having to copy them
-# into this layer.
+# Leverage cache mounts so subsequent builds don't re-download packages
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
-################################################################################
-# Create a stage for building the application.
-FROM deps as build
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 — build: compile TypeScript and bundle with Vite
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:${NODE_VERSION}-alpine AS build
 
-# Download additional development dependencies before building, as some projects require
-# "devDependencies" to be installed to build. If you don't need this, remove this step.
+WORKDIR /usr/src/app
+
+# Accept the backend URL at build time so Vite bakes it into the bundle
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# Install ALL dependencies (including devDependencies needed for tsc + vite)
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
     --mount=type=cache,target=/root/.npm \
     npm ci
 
-# Copy the rest of the source files into the image.
 COPY . .
-# Run the build script.
 RUN npm run build
 
-################################################################################
-# Create a new stage to run the application with minimal runtime dependencies
-# where the necessary files are copied from the build stage.
-FROM base as final
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 — final: serve the static bundle with Nginx
+# ─────────────────────────────────────────────────────────────────────────────
+FROM nginx:1.27-alpine AS final
 
-# Use production node environment by default.
-ENV NODE_ENV production
+# Copy the Vite production build into Nginx's document root
+COPY --from=build /usr/src/app/dist /usr/share/nginx/html
 
-# Run the application as a non-root user.
-USER node
+# Replace the default Nginx config with our SPA-aware one.
+# This overwrites the conf.d/default.conf that ships with the image.
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy package.json so that package manager commands can be used.
-COPY package.json .
+EXPOSE 80
 
-# Copy the production dependencies from the deps stage and also
-# the built application from the build stage into the image.
-COPY --from=deps /usr/src/app/node_modules ./node_modules
-COPY --from=build /usr/src/app/dist ./dist
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost/health || exit 1
 
-
-# Expose the port that the application listens on.
-EXPOSE 5173
-
-# Run the application.
-CMD start
+CMD ["nginx", "-g", "daemon off;"]
