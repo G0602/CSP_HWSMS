@@ -32,7 +32,7 @@ function parseConnectionString(connectionString) {
     host: map.server || map.host || "localhost",
     port: map.port || "3306",
     database: map.database || map["initial catalog"] || "",
-    user: map.user || map.uid || map["user id"] || map.username || "root",
+    user: map.user || map.userid || map.uid || map["user id"] || map.username || "root",
     password: map.password || map.pwd || ""
   };
 }
@@ -404,11 +404,11 @@ function main() {
   if (config.dryRun) {
     console.log(`Dry run only. Parsed database config (${config.online ? "online" : "local"} mode):`);
     console.log(JSON.stringify({
-      host: config.host,
-      port: config.port,
-      database: config.database,
-      user: config.user,
-      passwordConfigured: Boolean(config.password)
+      host: config.sqlConfig.host,
+      port: config.sqlConfig.port,
+      database: config.sqlConfig.database,
+      user: config.sqlConfig.user,
+      passwordConfigured: Boolean(config.sqlConfig.password)
     }, null, 2));
     console.log("\nSeeded demo credentials:");
     for (const credential of seed.credentials) {
