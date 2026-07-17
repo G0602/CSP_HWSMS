@@ -21,27 +21,12 @@ services:
       target: final
     container_name: hsms_backend
     restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      ASPNETCORE_URLS: ${ASPNETCORE_URLS}
-      # Single connection string pointing at the Azure MySQL server
-      CONNECTIONSTRINGS__DEFAULTCONNECTION: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
-      DB__HOST: ${DB__HOST}
-      DB__PORT: ${DB__PORT}
-      DB__NAME: ${DB__NAME}
-      DB__USER: ${DB__USER}
-      DB__PASSWORD: ${DB__PASSWORD}
-      JWT__SECRET: ${JWT__SECRET}
-      JWT__ISSUER: ${JWT__ISSUER}
-      JWT__AUDIENCE: ${JWT__AUDIENCE}
-      JWT__ACCESSTOKENEXPIRYMINUTES: ${JWT__ACCESSTOKENEXPIRYMINUTES}
-      URL__BACKEND: ${URL__BACKEND}
-      URL__FRONTEND: ${URL__FRONTEND}
-      Password__Admin: ${Password__Admin}
-      Password__Manager: ${Password__Manager}
-      Password__Cashier: ${Password__Cashier}
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "8080:8080"
+      - "5162:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health || exit 1"]
       interval: 30s
@@ -65,7 +50,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "80:80"
+      - "5173:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
       interval: 30s
